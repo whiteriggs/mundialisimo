@@ -1,43 +1,63 @@
 import Link from "next/link";
 
 const rules = [
-  "Cada apuesta debe incluir entre 9 y 12 favoritos y entre 4 y 6 antifavoritos.",
-  "No se puede repetir grupo: maximo 1 favorito y 1 antifavorito por grupo.",
-  "La puntuacion de una apuesta es: puntos de favoritos menos puntos de antifavoritos.",
-  "No se admiten apuestas identicas; cuenta primero la que se registra y se paga."
+  "Cada apuesta incluye 9-12 favoritos y 4-6 antifavoritos.",
+  "Solo un favorito y un antifavorito por grupo.",
+  "La puntuacion final: favoritos menos antifavoritos.",
+  "Las apuestas identicas se validan por orden de registro y pago."
 ];
 
 const scoring = [
-  "Grupos y partido por el tercer puesto: +1 gol, +5 empate, +10 victoria.",
-  "Eliminatorias: +1 gol, +5 por jugar ronda, +5 empate, +10 victoria.",
-  "Si hay penaltis, el partido cuenta como empate para la porra.",
-  "Los goles en tandas de penaltis no suman puntos."
+  "Fase de grupos y tercer puesto: +1 gol, +5 empate, +10 victoria.",
+  "Eliminatorias: +1 gol, +5 por jugar, +5 empate, +10 victoria.",
+  "Partidos decididos por penaltis cuentan como empate.",
+  "Los goles en tanda no puntuan."
 ];
 
 const tieBreakers = [
-  "Mejor media de posicion final de los favoritos (ranking final del 1 al 32).",
-  "Si persiste empate: se aplica el superfavorito declarado tras cierre.",
-  "Ultimo criterio: orden de inscripcion de la apuesta."
+  "Mejor media de posicion de favoritos en el ranking final (1-32).",
+  "Si persiste el empate, decide el superfavorito.",
+  "Ultimo criterio: orden de inscripcion."
 ];
 
 export default function Home() {
   return (
-    <main className="page">
-      <section className="hero card">
-        <p className="eyebrow">Mundialisimo 2026</p>
-        <h1>Bienvenido a la porra</h1>
+    <main className="page shell">
+      <section className="hero card glow-panel">
+        <div className="hero-top">
+          <p className="eyebrow">Mundialisimo 2026</p>
+          <span className="soft-pill">12 grupos · 48 selecciones</span>
+        </div>
+        <h1>Porra moderna para un mundial mas grande</h1>
         <p className="lead">
-          Esta web centraliza reglas, puntuaciones y clasificacion para el Mundial
-          2026. El sistema esta adaptado al nuevo formato de 12 grupos de 4.
+          Bienvenido. Aqui tienes reglas claras, puntuacion transparente y una
+          experiencia cuidada para empezar sin friccion.
         </p>
         <div className="hero-actions">
           <Link className="btn" href="/apuesta-demo">
-            Probar creador de apuesta
+            Crear apuesta demo
           </Link>
+          <a className="btn btn-secondary" href="#reglamento">
+            Ver reglamento
+          </a>
+        </div>
+        <div className="metric-strip">
+          <article>
+            <p>Favoritos</p>
+            <strong>9-12</strong>
+          </article>
+          <article>
+            <p>Antifavoritos</p>
+            <strong>4-6</strong>
+          </article>
+          <article>
+            <p>Ticket valido</p>
+            <strong>10-15 euros</strong>
+          </article>
         </div>
       </section>
 
-      <section className="grid">
+      <section className="grid" id="reglamento">
         <article className="card">
           <h2>Como funciona</h2>
           <ul>
@@ -66,12 +86,12 @@ export default function Home() {
         </article>
 
         <article className="card highlight">
-          <h2>Estado actual</h2>
+          <h2>Roadmap</h2>
           <p>
-            Esta primera version sirve como portal de informacion y reglamento.
-            En la siguiente fase anadiremos usuarios, login y creacion de
-            apuestas online.
+            Esta fase abre con reglamento y simulador. El siguiente paso sera
+            habilitar usuarios, login y registro real de apuestas.
           </p>
+          <p className="muted">Objetivo: experiencia simple, precisa y sin ruido.</p>
         </article>
       </section>
     </main>

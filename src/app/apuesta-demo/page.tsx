@@ -92,13 +92,16 @@ export default function ApuestaDemoPage() {
   const allValid = validations.every((rule) => rule.ok);
 
   return (
-    <main className="page">
-      <section className="card hero">
-        <p className="eyebrow">Demo sin login</p>
-        <h1>Creador de apuesta</h1>
+    <main className="page shell">
+      <section className="card hero glow-panel">
+        <div className="hero-top">
+          <p className="eyebrow">Demo sin login</p>
+          <span className="soft-pill">Validacion en tiempo real</span>
+        </div>
+        <h1>Creador de apuesta 2026</h1>
         <p className="lead">
-          Simula una apuesta para el formato 2026. Esta pantalla valida reglas y coste
-          en tiempo real.
+          Selecciona equipos y revisa restricciones al instante. Esta version es una
+          maqueta funcional de la experiencia que usaran los participantes.
         </p>
         <div className="hero-actions">
           <Link className="btn btn-secondary" href="/">
@@ -110,7 +113,7 @@ export default function ApuestaDemoPage() {
       <section className="grid">
         <article className="card">
           <h2>Seleccion de favoritos</h2>
-          <p className="muted">Marca entre 9 y 12 equipos. Maximo 1 por grupo.</p>
+          <p className="muted">Marca entre 9 y 12 equipos, maximo 1 por grupo.</p>
           <div className="team-list">
             {teams.map((team) => (
               <label className="team-item" key={`fav-${team.id}`}>
@@ -135,7 +138,7 @@ export default function ApuestaDemoPage() {
 
         <article className="card">
           <h2>Seleccion de antifavoritos</h2>
-          <p className="muted">Marca entre 4 y 6 equipos. Maximo 1 por grupo.</p>
+          <p className="muted">Marca entre 4 y 6 equipos, maximo 1 por grupo.</p>
           <div className="team-list">
             {teams.map((team) => (
               <label className="team-item" key={`anti-${team.id}`}>
