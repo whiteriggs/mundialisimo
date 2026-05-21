@@ -22,38 +22,40 @@ const tieBreakers = [
 
 export default function Home() {
   return (
-    <main className="page shell">
-      <section className="hero card glow-panel">
-        <div className="hero-top">
-          <p className="eyebrow">Mundialisimo 2026</p>
-          <span className="soft-pill">12 grupos · 48 selecciones</span>
+    <main className="app-shell">
+      <header className="topbar">
+        <div className="brand">
+          <span className="dot" />
+          <h1>Mundialisimo</h1>
+          <span className="sub">Porra del Mundial 2026 adaptada a 12 grupos de 4</span>
         </div>
-        <h1>Porra moderna para un mundial mas grande</h1>
-        <p className="lead">
-          Bienvenido. Aqui tienes reglas claras, puntuacion transparente y una
-          experiencia cuidada para empezar sin friccion.
-        </p>
-        <div className="hero-actions">
-          <Link className="btn" href="/apuesta-demo">
-            Crear apuesta demo
-          </Link>
-          <a className="btn btn-secondary" href="#reglamento">
-            Ver reglamento
-          </a>
-        </div>
-        <div className="metric-strip">
-          <article>
-            <p>Favoritos</p>
-            <strong>9-12</strong>
-          </article>
-          <article>
-            <p>Antifavoritos</p>
-            <strong>4-6</strong>
-          </article>
-          <article>
-            <p>Ticket valido</p>
-            <strong>10-15 euros</strong>
-          </article>
+        <Link className="mini-action" href="/apuesta-demo">
+          Abrir demo
+        </Link>
+      </header>
+
+      <section className="hero">
+        <div className="hero-inner home-hero">
+          <div>
+            <div className="hero-eyebrow">Mundialisimo 2026</div>
+            <h2 className="hero-name">Una porra elegante, clara y competitiva</h2>
+            <p className="lead">
+              Reglas simples, puntuacion transparente y desempates definidos para
+              jugar sin dudas desde el primer partido.
+            </p>
+            <div className="hero-actions">
+              <Link className="btn" href="/apuesta-demo">
+                Crear apuesta demo
+              </Link>
+              <a className="btn btn-ghost" href="#reglamento">
+                Ver reglamento
+              </a>
+            </div>
+          </div>
+          <div className="hero-counter">
+            <span className="hero-counter-n">12</span>
+            <span className="hero-counter-l">grupos en 2026</span>
+          </div>
         </div>
       </section>
 

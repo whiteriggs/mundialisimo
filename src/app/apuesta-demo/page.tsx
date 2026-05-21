@@ -92,25 +92,33 @@ export default function ApuestaDemoPage() {
   const allValid = validations.every((rule) => rule.ok);
 
   return (
-    <main className="page shell">
-      <section className="card hero glow-panel">
-        <div className="hero-top">
-          <p className="eyebrow">Demo sin login</p>
-          <span className="soft-pill">Validacion en tiempo real</span>
+    <main className="app-shell">
+      <header className="topbar">
+        <div className="brand">
+          <span className="dot" />
+          <h1>Mundialisimo</h1>
+          <span className="sub">Simulador de apuesta sin login</span>
         </div>
-        <h1>Creador de apuesta 2026</h1>
-        <p className="lead">
-          Selecciona equipos y revisa restricciones al instante. Esta version es una
-          maqueta funcional de la experiencia que usaran los participantes.
-        </p>
-        <div className="hero-actions">
-          <Link className="btn btn-secondary" href="/">
-            Volver al inicio
-          </Link>
+        <Link className="mini-action" href="/">
+          Volver al inicio
+        </Link>
+      </header>
+
+      <section className="hero">
+        <div className="hero-inner">
+          <div className="hero-crest placeholder">26</div>
+          <div className="hero-text">
+            <div className="hero-eyebrow">Demo interactiva</div>
+            <h2 className="hero-name">Creador de apuesta 2026</h2>
+            <p className="lead">
+              Elige selecciones y valida las reglas en tiempo real antes de pasar
+              al registro con usuarios.
+            </p>
+          </div>
         </div>
       </section>
 
-      <section className="grid">
+      <section className="grid grid-demo">
         <article className="card">
           <h2>Seleccion de favoritos</h2>
           <p className="muted">Marca entre 9 y 12 equipos, maximo 1 por grupo.</p>
