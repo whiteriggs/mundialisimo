@@ -18,6 +18,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# local tooling and source docs
+.tmp-venv-xls/
+docs/
+
 # local env files
 .env*.local
 
