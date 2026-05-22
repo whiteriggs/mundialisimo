@@ -1885,3 +1885,138 @@ a {
 .admin-danger-btn:hover:not(:disabled) {
   background: rgba(224, 78, 78, 0.15);
 }
+
+/* ─── Home page ──────────────────────────────────────────────── */
+.home-layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 2rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 3rem;
+  align-items: start;
+}
+
+.home-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.home-hero-text {
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.home-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--text);
+  margin: 0.5rem 0 0.75rem;
+  letter-spacing: -0.02em;
+}
+
+.home-subtitle {
+  font-size: 1rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+  max-width: 520px;
+}
+
+.home-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.home-rule-section {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.home-rule-section h3 {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  margin: 0 0 0.6rem;
+}
+
+.home-rule-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.home-rule-section li {
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.5;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.home-rule-section li::before {
+  content: "·";
+  position: absolute;
+  left: 0;
+  color: var(--text-dim);
+}
+
+/* ── Login card (right column) ───────────────────────────────── */
+.home-right {
+  position: sticky;
+  top: 1.5rem;
+}
+
+.home-login-card {
+  padding: 1.5rem;
+}
+
+.home-login-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--accent);
+  margin: 0 0 0.3rem;
+}
+
+.home-login-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text);
+  margin: 0 0 1.25rem;
+}
+
+.home-login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.home-login-hint {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin: 0;
+  line-height: 1.4;
+}
+
+@media (max-width: 760px) {
+  .home-layout {
+    grid-template-columns: 1fr;
+  }
+  .home-right {
+    position: static;
+  }
+  .home-title {
+    font-size: 1.6rem;
+  }
+}
