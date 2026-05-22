@@ -198,3 +198,46 @@ export async function fetchKnockoutMatches(): Promise<ApiKnockoutMatch[]> {
           : null,
     }));
 }
+
+// ── All matches (schedule + results) ──────────────────────────────────────
+export type ApiAllMatch = {
+  id: string;
+  utcDate: string;
+  status: string;
+  stage: string;
+  home: string;
+  away: string;
+  homeGoals: number | null;
+  awayGoals: number | null;
+  phase: Phase;
+  penalties: boolean;
+  played: boolean;
+};
+
+export async function fetchAllMatches(): Promise<ApiAllMatch[]> {
+  const res = await fetch(
+    `${BASE}/competitions/${COMPETITION}/matches`,
+    { headers: { "X-Auth-Token": API_KEY } }
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`football-data.org ${res.status}: ${text}`);
+  }
+  const data = await res.json();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data.matches as any[])
+    .sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime())
+    .map((m): ApiAllMatch => ({
+      id: String(m.id),
+      utcDate: m.utcDate,
+      status: m.status,
+      stage: m.stage,
+      home: m.homeTeam?.name ? toInternalName(m.homeTeam.name) : "Por determinar",
+      away: m.awayTeam?.name ? toInternalName(m.awayTeam.name) : "Por determinar",
+      homeGoals: m.score?.fullTime?.home ?? null,
+      awayGoals: m.score?.fullTime?.away ?? null,
+      phase: stageToPhase(m.stage),
+      penalties: m.score?.duration === "PENALTY_SHOOTOUT",
+      played: m.status === "FINISHED",
+    }));
+}

@@ -1305,6 +1305,18 @@ a {
   white-space: nowrap;
 }
 
+.match-time {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.match-row--played {
+  background: var(--bg-3);
+}
+
 .pens-badge {
   font-size: 10px;
   font-weight: 600;

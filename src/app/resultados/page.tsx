@@ -15,7 +15,7 @@ import { db } from "@/lib/firebase";
 import { getStoredUser, clearUser, USERS } from "@/lib/auth";
 import { TEAM_NAMES, teamName } from "@/lib/teams";
 import { buildTeamTotals, Phase, Match } from "@/lib/scoring";
-import { fetchFinishedMatches } from "@/lib/football-api";
+import { fetchAllMatches, ApiAllMatch } from "@/lib/football-api";
 
 type BetDoc = {
   user: string;
@@ -43,6 +43,7 @@ export default function ResultadosPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [allApiMatches, setAllApiMatches] = useState<ApiAllMatch[]>([]);
   const [manualMatches, setManualMatches] = useState<Match[]>([]);
   const [bets, setBets] = useState<BetDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,20 +60,29 @@ export default function ResultadosPage() {
 
     async function load() {
       try {
-        const [apiMatches, manualSnap, betSnap] = await Promise.all([
-          fetchFinishedMatches().catch((err) => {
+        const [apiAll, manualSnap, betSnap] = await Promise.all([
+          fetchAllMatches().catch((err) => {
             setApiError(err.message);
-            return [] as Match[];
+            return [] as ApiAllMatch[];
           }),
           getDocs(collection(db, "matches")),
           getDocs(collection(db, "bets")),
         ]);
 
-        const sorted = [...apiMatches].sort((a, b) => {
-          const order: Phase[] = ["groups", "third", "knockout"];
-          return order.indexOf(a.phase) - order.indexOf(b.phase);
-        });
-        setMatches(sorted);
+        setAllApiMatches(apiAll);
+        const finished: Match[] = apiAll
+          .filter((m) => m.played)
+          .map((m) => ({
+            id: m.id,
+            home: m.home,
+            away: m.away,
+            homeGoals: m.homeGoals ?? 0,
+            awayGoals: m.awayGoals ?? 0,
+            phase: m.phase,
+            penalties: m.penalties,
+            played: true,
+          }));
+        setMatches(finished);
 
         const manual: Match[] = manualSnap.docs.map((d) => ({
           id: d.id,
@@ -153,6 +163,25 @@ export default function ResultadosPage() {
 
   const playedMatches = matches.filter((m) => m.played);
 
+  function formatMatchDay(utcDate: string): string {
+    return new Date(utcDate).toLocaleDateString("es-ES", {
+      weekday: "short", day: "numeric", month: "short"
+    });
+  }
+
+  function formatMatchTime(utcDate: string): string {
+    return new Date(utcDate).toLocaleTimeString("es-ES", {
+      hour: "2-digit", minute: "2-digit"
+    });
+  }
+
+  const matchesByDay = allApiMatches.reduce<Map<string, ApiAllMatch[]>>((acc, m) => {
+    const day = m.utcDate.slice(0, 10);
+    if (!acc.has(day)) acc.set(day, []);
+    acc.get(day)!.push(m);
+    return acc;
+  }, new Map());
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -223,31 +252,33 @@ export default function ResultadosPage() {
             </table>
           </div>
 
-          {/* Match list — API */}
-          {playedMatches.length > 0 && (
+          {/* Calendario completo */}
+          {matchesByDay.size > 0 && (
             <div className="results-section">
-              <h2 className="results-title">Partidos jugados</h2>
+              <h2 className="results-title">Partidos</h2>
               <div className="matches-list">
-                {(["groups", "third", "knockout"] as Phase[]).map((phase) => {
-                  const group = playedMatches.filter((m) => m.phase === phase);
-                  if (group.length === 0) return null;
-                  return (
-                    <div key={phase}>
-                      <h3 className="matches-phase-label">{PHASE_LABELS[phase]}</h3>
-                      {group.map((m) => (
-                        <div className="match-row" key={m.id}>
-                          <span className="match-home">{m.home}</span>
+                {Array.from(matchesByDay.entries()).map(([day, dayMatches]) => (
+                  <div key={day}>
+                    <h3 className="matches-phase-label">
+                      {formatMatchDay(dayMatches[0].utcDate)} · {dayMatches.length} partido{dayMatches.length !== 1 ? "s" : ""}
+                    </h3>
+                    {dayMatches.map((m) => (
+                      <div className={`match-row${m.played ? " match-row--played" : ""}`} key={m.id}>
+                        <span className="match-home">{m.home}</span>
+                        {m.played ? (
                           <span className="match-score">
                             {m.homeGoals} – {m.awayGoals}
                             {m.penalties && <span className="pens-badge">pen.</span>}
                           </span>
-                          <span className="match-away">{m.away}</span>
-                          <span />
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })}
+                        ) : (
+                          <span className="match-time">{formatMatchTime(m.utcDate)}</span>
+                        )}
+                        <span className="match-away">{m.away}</span>
+                        <span />
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
           )}
