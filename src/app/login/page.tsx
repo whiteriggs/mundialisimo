@@ -17,7 +17,6 @@ export default function LoginPage() {
   const router = useRouter();
   const [name, setName]       = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm]   = useState("");
   const [mode, setMode]         = useState<Mode>("idle");
   const [error, setError]       = useState("");
   const [busy, setBusy]         = useState(false);
@@ -28,7 +27,6 @@ export default function LoginPage() {
     setMode("checking");
     setError("");
     setPassword("");
-    setConfirm("");
     hasUserPassword(name)
       .then((has) => setMode(has ? "login" : "register"))
       .catch(() => setMode("login"));
@@ -37,7 +35,6 @@ export default function LoginPage() {
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     if (password.length < 4) { setError("Mínimo 4 caracteres."); return; }
-    if (password !== confirm) { setError("Las contraseñas no coinciden."); return; }
     setBusy(true);
     setError("");
     try {
@@ -136,22 +133,6 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 required
                 autoComplete={mode === "register" ? "new-password" : "current-password"}
-              />
-            </div>
-          )}
-
-          {/* Confirm field (register only) */}
-          {mode === "register" && (
-            <div className="login-field">
-              <label htmlFor="confirm">Repite la contraseña</label>
-              <input
-                id="confirm"
-                type="password"
-                value={confirm}
-                onChange={(e) => { setConfirm(e.target.value); setError(""); }}
-                placeholder="••••••••"
-                required
-                autoComplete="new-password"
               />
             </div>
           )}
