@@ -199,6 +199,10 @@ export default function ApuestaPage() {
           <h1>Mundialisimo</h1>
           <span className="sub">{user}</span>
         </div>
+        <nav className="topbar-nav">
+          <Link href="/apuestas">Apuestas</Link>
+          <Link href="/resultados">Resultados</Link>
+        </nav>
         <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
       </header>
 

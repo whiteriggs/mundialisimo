@@ -892,3 +892,373 @@ a {
 
 .muted { color: var(--text-dim); font-size: 13px; }
 
+
+/* ── Topbar nav ─────────────────────────────── */
+.topbar-nav {
+  display: flex;
+  gap: 18px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.topbar-nav a {
+  color: var(--text-dim);
+  text-decoration: none;
+  transition: color 150ms;
+}
+
+.topbar-nav a:hover {
+  color: var(--text);
+}
+
+@media (max-width: 600px) {
+  .topbar-nav {
+    display: none;
+  }
+}
+
+/* ── Apuestas grid ──────────────────────────── */
+.bets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  padding: 24px 20px 60px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.bet-card {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bet-card--pending {
+  opacity: 0.55;
+}
+
+.bet-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bet-card-name {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.status-confirmed {
+  background: rgba(76, 175, 117, 0.15);
+  color: #4caf75;
+}
+
+.status-pending {
+  background: rgba(138, 147, 160, 0.12);
+  color: var(--text-dim);
+}
+
+.bet-card-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bet-card-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin: 0 0 4px;
+}
+
+.bet-team-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bet-team-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--bg-3);
+}
+
+.fav-list li {
+  border-left: 2px solid var(--green);
+}
+
+.anti-list li {
+  border-left: 2px solid var(--red);
+}
+
+.bet-team-name {
+  flex: 1;
+}
+
+.bet-team-group {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.bet-team-price {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  min-width: 28px;
+  text-align: right;
+}
+
+/* ── Resultados page ────────────────────────── */
+.results-section {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+.results-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 14px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 12px;
+}
+
+/* Ranking table */
+.ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.ranking-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.ranking-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.ranking-table tbody tr:hover {
+  background: var(--bg-2);
+}
+
+.row-me td {
+  background: rgba(78, 163, 255, 0.06);
+}
+
+.row-pending {
+  opacity: 0.5;
+}
+
+.col-rank {
+  width: 36px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.col-pts {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--gold);
+}
+
+.col-detail {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .col-detail { display: none; }
+}
+
+.me-badge {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.pending-label {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* Match form */
+.match-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.match-form-teams {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: end;
+}
+
+.match-form-score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 1px;
+}
+
+.match-form-score input {
+  width: 52px;
+  text-align: center;
+  background: var(--bg-3);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 12px 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  outline: none;
+}
+
+.match-form-score input:focus {
+  border-color: var(--accent);
+}
+
+.score-sep {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.match-form-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.match-form-meta .login-field {
+  flex: 1;
+  min-width: 160px;
+}
+
+.penalties-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding-top: 20px;
+}
+
+.penalties-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+/* Matches list */
+.matches-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.matches-phase-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  margin: 16px 0 6px;
+}
+
+.match-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.match-home {
+  text-align: right;
+}
+
+.match-score {
+  font-weight: 700;
+  font-size: 15px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.pens-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(246, 192, 80, 0.15);
+  color: var(--gold);
+  padding: 2px 5px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.match-delete {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background 150ms, color 150ms;
+}
+
+.match-delete:hover {
+  background: rgba(224, 78, 78, 0.15);
+  color: var(--red);
+}
+
+@media (max-width: 560px) {
+  .match-form-teams {
+    grid-template-columns: 1fr;
+  }
+  .match-form-score {
+    justify-content: center;
+  }
+}
