@@ -1431,8 +1431,9 @@ a {
   border: 1px solid var(--line);
   border-radius: 10px;
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
   padding: 14px 16px;
   transition: border-color 150ms;
 }
@@ -1491,4 +1492,28 @@ a {
   .bracket-vs {
     font-size: 10px;
   }
+}
+
+.bracket-match-teams {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.bracket-match-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  width: 100%;
+}
+
+.bracket-match-meta span:first-child {
+  font-weight: 600;
+  color: var(--accent);
+  flex-shrink: 0;
 }

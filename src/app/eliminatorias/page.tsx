@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { getStoredUser, clearUser } from "@/lib/auth";
 
 type MatchSlot = { label: string; isTbd?: boolean };
-type BracketMatch = { home: MatchSlot; away: MatchSlot };
+type BracketMatch = { home: MatchSlot; away: MatchSlot; date?: string; venue?: string };
 type Round = { id: string; label: string; dates: string; matches: BracketMatch[] };
 
 function slot(label: string, isTbd = false): MatchSlot {
@@ -14,52 +14,53 @@ function slot(label: string, isTbd = false): MatchSlot {
 }
 const TBD = slot("Por determinar", true);
 
+// Cruces oficiales — fuente: marca.com/futbol/mundial/calendario/cuadro-final.html
 const ROUNDS: Round[] = [
   {
     id: "r32",
     label: "Dieciseisavos de final",
-    dates: "4–8 jul 2026",
+    dates: "28 jun – 4 jul 2026",
     matches: [
-      { home: slot("1º Grupo A"), away: slot("2º Grupo B") },
-      { home: slot("1º Grupo C"), away: slot("2º Grupo D") },
-      { home: slot("1º Grupo B"), away: slot("2º Grupo A") },
-      { home: slot("1º Grupo D"), away: slot("2º Grupo C") },
-      { home: slot("1º Grupo E"), away: slot("2º Grupo F") },
-      { home: slot("1º Grupo G"), away: slot("2º Grupo H") },
-      { home: slot("1º Grupo F"), away: slot("2º Grupo E") },
-      { home: slot("1º Grupo H"), away: slot("2º Grupo G") },
-      { home: slot("1º Grupo I"), away: slot("2º Grupo J") },
-      { home: slot("1º Grupo K"), away: slot("2º Grupo L") },
-      { home: slot("1º Grupo J"), away: slot("2º Grupo I") },
-      { home: slot("1º Grupo L"), away: slot("2º Grupo K") },
-      { home: slot("Mejor 3er clasif."), away: slot("Mejor 3er clasif.") },
-      { home: slot("Mejor 3er clasif."), away: slot("Mejor 3er clasif.") },
-      { home: slot("Mejor 3er clasif."), away: slot("Mejor 3er clasif.") },
-      { home: slot("Mejor 3er clasif."), away: slot("Mejor 3er clasif.") },
+      { home: slot("2º Grupo A"),               away: slot("2º Grupo B"),               date: "28 jun", venue: "SoFi Stadium, Los Ángeles" },
+      { home: slot("1º Grupo C"),               away: slot("2º Grupo F"),               date: "29 jun", venue: "NRG Stadium, Houston" },
+      { home: slot("1º Grupo E"),               away: slot("Mejor 3º (A/B/C/D/F)"),    date: "29 jun", venue: "Gillette Stadium, Boston" },
+      { home: slot("1º Grupo F"),               away: slot("2º Grupo C"),               date: "30 jun", venue: "Est. BBVA, Guadalupe" },
+      { home: slot("2º Grupo E"),               away: slot("2º Grupo I"),               date: "30 jun", venue: "AT&T Stadium, Dallas" },
+      { home: slot("1º Grupo I"),               away: slot("Mejor 3º (C/D/F/G/H)"),    date: "30 jun", venue: "MetLife Stadium, Nueva York" },
+      { home: slot("1º Grupo A"),               away: slot("Mejor 3º (C/E/F/H/I)"),    date: "1 jul",  venue: "Est. Banorte, Ciudad de México" },
+      { home: slot("1º Grupo L"),               away: slot("Mejor 3º (E/H/I/J/K)"),    date: "1 jul",  venue: "Mercedes-Benz Stadium, Atlanta" },
+      { home: slot("1º Grupo G"),               away: slot("Mejor 3º (A/E/H/I/J)"),    date: "1 jul",  venue: "Lumen Field, Seattle" },
+      { home: slot("1º Grupo D"),               away: slot("Mejor 3º (B/E/F/I/J)"),    date: "2 jul",  venue: "Levi's Stadium, San Francisco" },
+      { home: slot("1º Grupo H"),               away: slot("2º Grupo J"),               date: "2 jul",  venue: "SoFi Stadium, Los Ángeles" },
+      { home: slot("2º Grupo K"),               away: slot("2º Grupo L"),               date: "3 jul",  venue: "BMO Field, Toronto" },
+      { home: slot("1º Grupo B"),               away: slot("Mejor 3º (E/F/G/I/J)"),    date: "3 jul",  venue: "BC Place, Vancouver" },
+      { home: slot("2º Grupo D"),               away: slot("2º Grupo G"),               date: "3 jul",  venue: "AT&T Stadium, Dallas" },
+      { home: slot("1º Grupo J"),               away: slot("2º Grupo H"),               date: "3 jul",  venue: "Hard Rock Stadium, Miami" },
+      { home: slot("1º Grupo K"),               away: slot("Mejor 3º (D/E/I/J/L)"),    date: "4 jul",  venue: "Arrowhead Stadium, Kansas City" },
     ],
   },
   {
     id: "r16",
     label: "Octavos de final",
-    dates: "10–14 jul 2026",
+    dates: "4–7 jul 2026",
     matches: Array.from({ length: 8 }, () => ({ home: TBD, away: TBD })),
   },
   {
     id: "qf",
     label: "Cuartos de final",
-    dates: "17–18 jul 2026",
+    dates: "9–12 jul 2026",
     matches: Array.from({ length: 4 }, () => ({ home: TBD, away: TBD })),
   },
   {
     id: "sf",
     label: "Semifinales",
-    dates: "21–22 jul 2026",
+    dates: "14–15 jul 2026",
     matches: Array.from({ length: 2 }, () => ({ home: TBD, away: TBD })),
   },
   {
     id: "final",
     label: "Final",
-    dates: "26 jul 2026 · MetLife Stadium",
+    dates: "19 jul 2026 · MetLife Stadium, Nueva York",
     matches: [{ home: TBD, away: TBD }],
   },
 ];
@@ -67,13 +68,21 @@ const ROUNDS: Round[] = [
 function MatchCard({ match, highlight }: { match: BracketMatch; highlight?: boolean }) {
   return (
     <div className={`bracket-match${highlight ? " bracket-match--final" : ""}`}>
-      <span className={match.home.isTbd ? "bracket-slot bracket-slot--tbd" : "bracket-slot"}>
-        {match.home.label}
-      </span>
-      <span className="bracket-vs">vs</span>
-      <span className={match.away.isTbd ? "bracket-slot bracket-slot--tbd" : "bracket-slot"}>
-        {match.away.label}
-      </span>
+      <div className="bracket-match-teams">
+        <span className={match.home.isTbd ? "bracket-slot bracket-slot--tbd" : "bracket-slot"}>
+          {match.home.label}
+        </span>
+        <span className="bracket-vs">vs</span>
+        <span className={match.away.isTbd ? "bracket-slot bracket-slot--tbd" : "bracket-slot"}>
+          {match.away.label}
+        </span>
+      </div>
+      {(match.date || match.venue) && (
+        <div className="bracket-match-meta">
+          {match.date && <span>{match.date}</span>}
+          {match.venue && <span>{match.venue}</span>}
+        </div>
+      )}
     </div>
   );
 }
@@ -115,7 +124,7 @@ export default function EliminatoriasPage() {
             <div className="hero-eyebrow">Mundial 2026 · Fase eliminatoria</div>
             <h2 className="hero-name">Cuadro de eliminatorias</h2>
             <p className="lead">
-              Cruces de la segunda fase. Los clasificados se actualizarán al terminar la fase de grupos.
+              Cruces oficiales de la segunda fase. Los clasificados se conocerán al terminar los grupos (2 jul 2026).
             </p>
           </div>
         </div>
