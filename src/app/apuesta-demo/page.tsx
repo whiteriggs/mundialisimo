@@ -109,6 +109,20 @@ export default function ApuestaDemoPage() {
     return groupPool[group as keyof typeof groupPool] || [];
   }
 
+  function hasGroupInFavorites(group: string): boolean {
+    return favorites.some((id) => {
+      const team = teams.find((t) => t.id === id);
+      return team?.group === group;
+    });
+  }
+
+  function hasGroupInAntifavorites(group: string): boolean {
+    return antiFavorites.some((id) => {
+      const team = teams.find((t) => t.id === id);
+      return team?.group === group;
+    });
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -168,17 +182,17 @@ export default function ApuestaDemoPage() {
                         </div>
                         <div className="team-controls">
                           <button
-                            className={`team-btn fav-btn ${isFav ? "active" : ""} ${favorites.length >= 12 && !isFav ? "disabled" : ""}`}
+                            className={`team-btn fav-btn ${isFav ? "active" : ""} ${(favorites.length >= 12 && !isFav) || (hasGroupInFavorites(group) && !isFav) ? "disabled" : ""}`}
                             onClick={() => toggleTeam(teamId, true)}
-                            disabled={favorites.length >= 12 && !isFav}
-                            title="Marcar como favorito"
+                            disabled={(favorites.length >= 12 && !isFav) || (hasGroupInFavorites(group) && !isFav)}
+                            title={isFav ? "Remover de favoritos" : hasGroupInFavorites(group) ? "Ya hay un equipo de este grupo" : "Marcar como favorito"}
                             aria-label={`${name} como favorito`}
                           />
                           <button
-                            className={`team-btn anti-btn ${isAnti ? "active" : ""} ${antiFavorites.length >= 6 && !isAnti ? "disabled" : ""}`}
+                            className={`team-btn anti-btn ${isAnti ? "active" : ""} ${(antiFavorites.length >= 6 && !isAnti) || (hasGroupInAntifavorites(group) && !isAnti) ? "disabled" : ""}`}
                             onClick={() => toggleTeam(teamId, false)}
-                            disabled={antiFavorites.length >= 6 && !isAnti}
-                            title="Marcar como antifavorito"
+                            disabled={(antiFavorites.length >= 6 && !isAnti) || (hasGroupInAntifavorites(group) && !isAnti)}
+                            title={isAnti ? "Remover de antifavoritos" : hasGroupInAntifavorites(group) ? "Ya hay un equipo de este grupo" : "Marcar como antifavorito"}
                             aria-label={`${name} como antifavorito`}
                           />
                         </div>
