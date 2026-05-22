@@ -381,16 +381,21 @@ a {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 9px;
+  font-weight: 700;
   transition: all 100ms ease;
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-dim);
 }
 
-.team-btn:hover {
+.team-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.12);
   transform: scale(1.05);
+}
+
+.team-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .fav-btn {

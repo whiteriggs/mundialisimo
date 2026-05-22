@@ -168,14 +168,16 @@ export default function ApuestaDemoPage() {
                         </div>
                         <div className="team-controls">
                           <button
-                            className={`team-btn fav-btn ${isFav ? "active" : ""}`}
+                            className={`team-btn fav-btn ${isFav ? "active" : ""} ${favorites.length >= 12 && !isFav ? "disabled" : ""}`}
                             onClick={() => toggleTeam(teamId, true)}
+                            disabled={favorites.length >= 12 && !isFav}
                             title="Marcar como favorito"
                             aria-label={`${name} como favorito`}
                           />
                           <button
-                            className={`team-btn anti-btn ${isAnti ? "active" : ""}`}
+                            className={`team-btn anti-btn ${isAnti ? "active" : ""} ${antiFavorites.length >= 6 && !isAnti ? "disabled" : ""}`}
                             onClick={() => toggleTeam(teamId, false)}
+                            disabled={antiFavorites.length >= 6 && !isAnti}
                             title="Marcar como antifavorito"
                             aria-label={`${name} como antifavorito`}
                           />
