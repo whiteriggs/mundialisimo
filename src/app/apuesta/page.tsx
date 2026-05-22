@@ -200,6 +200,7 @@ export default function ApuestaPage() {
           <span className="sub">{user}</span>
         </div>
         <nav className="topbar-nav">
+          <Link href="/grupos">Grupos</Link>
           <Link href="/apuestas">Apuestas</Link>
           <Link href="/resultados">Resultados</Link>
         </nav>

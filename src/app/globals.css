@@ -1262,3 +1262,100 @@ a {
     justify-content: center;
   }
 }
+
+/* ── Grupos standings ───────────────────────── */
+.groups-standings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: 20px;
+  padding: 24px 20px 60px;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.group-standing-card {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.group-standing-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-dim);
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--line);
+  margin: 0;
+}
+
+.standing-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.standing-table th {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  padding: 6px 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+}
+
+.standing-table th.st-name {
+  text-align: left;
+}
+
+.standing-table td {
+  padding: 8px 8px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.standing-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.standing-table tbody tr:hover {
+  background: rgba(255,255,255,0.03);
+}
+
+.st-pos {
+  width: 24px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.st-name {
+  text-align: left !important;
+  font-weight: 500;
+  padding-left: 12px !important;
+}
+
+.st-pts {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.row-qualifier .st-name {
+  border-left: 2px solid var(--accent);
+}
+
+.row-qualifier .st-pts {
+  color: var(--gold);
+}
+
+.gd-pos { color: #4caf75; }
+.gd-neg { color: #e04e4e; }
+
+@media (max-width: 480px) {
+  .groups-standings-grid {
+    grid-template-columns: 1fr;
+  }
+}

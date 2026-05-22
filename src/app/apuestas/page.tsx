@@ -79,6 +79,7 @@ export default function ApuestasPage() {
         </div>
         <nav className="topbar-nav">
           <Link href="/apuesta">Mi apuesta</Link>
+          <Link href="/grupos">Grupos</Link>
           <Link href="/resultados">Resultados</Link>
         </nav>
         <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
