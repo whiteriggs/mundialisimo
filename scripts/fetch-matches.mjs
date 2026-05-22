@@ -9,6 +9,7 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 const OUT = join(ROOT, "public/matches.json");
+const OUT_STANDINGS = join(ROOT, "public/standings.json");
 
 // Leer .env.local si existe (para desarrollo local)
 const envLocal = join(ROOT, ".env.local");
@@ -85,6 +86,40 @@ async function main() {
     console.log(`[fetch-matches] OK — ${matches.length} partidos → public/matches.json`);
   } catch (err) {
     console.warn("[fetch-matches] Error:", err.message, "— se omite matches.json");
+  }
+
+  // ── Standings ────────────────────────────────────────────────────────────
+  try {
+    const sRes = await fetch(
+      `https://api.football-data.org/v4/competitions/WC/standings`,
+      { headers: { "X-Auth-Token": API_KEY } }
+    );
+    if (!sRes.ok) {
+      console.warn(`[fetch-matches] standings API ${sRes.status} — se omite standings.json`);
+    } else {
+      const sData = await sRes.json();
+      const groups = (sData.standings ?? [])
+        .filter((s) => s.stage === "GROUP_STAGE" && s.type === "TOTAL")
+        .map((s) => ({
+          group: s.group,
+          table: (s.table ?? []).map((row) => ({
+            position: row.position,
+            team: { name: toName(row.team?.name ?? "") || row.team?.name },
+            playedGames: row.playedGames,
+            won: row.won,
+            draw: row.draw,
+            lost: row.lost,
+            goalsFor: row.goalsFor,
+            goalsAgainst: row.goalsAgainst,
+            goalDifference: row.goalDifference,
+            points: row.points,
+          })),
+        }));
+      writeFileSync(OUT_STANDINGS, JSON.stringify(groups));
+      console.log(`[fetch-matches] OK — ${groups.length} grupos → public/standings.json`);
+    }
+  } catch (err) {
+    console.warn("[fetch-matches] standings Error:", err.message, "— se omite standings.json");
   }
 }
 

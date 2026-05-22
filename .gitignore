@@ -29,3 +29,4 @@ docs/
 *.tsbuildinfo
 next-env.d.ts
 /public/matches.json
+/public/standings.json

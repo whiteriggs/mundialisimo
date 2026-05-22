@@ -91,6 +91,17 @@ export type ApiStandingGroup = {
 };
 
 export async function fetchGroupStandings(): Promise<ApiStandingGroup[]> {
+  // 1. Intentar el JSON bakeado (sin CORS)
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  try {
+    const staticRes = await fetch(`${basePath}/standings.json`, { cache: "no-store" });
+    if (staticRes.ok) {
+      const data = await staticRes.json();
+      if (Array.isArray(data) && data.length > 0) return data as ApiStandingGroup[];
+    }
+  } catch { /* ignorar */ }
+
+  // 2. Fallback: llamada directa (funciona en local)
   const res = await fetch(`${BASE}/competitions/${COMPETITION}/standings`, {
     headers: { "X-Auth-Token": API_KEY },
   });
@@ -99,7 +110,6 @@ export async function fetchGroupStandings(): Promise<ApiStandingGroup[]> {
     throw new Error(`football-data.org ${res.status}: ${text}`);
   }
   const data = await res.json();
-  // Only group-stage total standings
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (data.standings as any[]).filter(
     (s) => s.stage === "GROUP_STAGE" && s.type === "TOTAL"
