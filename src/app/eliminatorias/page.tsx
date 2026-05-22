@@ -5,87 +5,136 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { getStoredUser, clearUser } from "@/lib/auth";
 
-type MatchSlot = { label: string; isTbd?: boolean };
-type BracketMatch = { home: MatchSlot; away: MatchSlot; date?: string; venue?: string };
-type Round = { id: string; label: string; dates: string; matches: BracketMatch[] };
+type BMatch = { home: string; away: string; date?: string; isTbd?: boolean };
+// BHalf: array of rounds, each round is array of pairs, each pair is 1 or 2 matches
+type BHalf = BMatch[][][];
 
-function slot(label: string, isTbd = false): MatchSlot {
-  return { label, isTbd };
-}
-const TBD = slot("Por determinar", true);
+const TBD: BMatch = { home: "Por determinar", away: "Por determinar", isTbd: true };
 
-// Cruces oficiales — fuente: marca.com/futbol/mundial/calendario/cuadro-final.html
-const ROUNDS: Round[] = [
-  {
-    id: "r32",
-    label: "Dieciseisavos de final",
-    dates: "28 jun – 4 jul 2026",
-    matches: [
-      { home: slot("2º Grupo A"),               away: slot("2º Grupo B"),               date: "28 jun", venue: "SoFi Stadium, Los Ángeles" },
-      { home: slot("1º Grupo C"),               away: slot("2º Grupo F"),               date: "29 jun", venue: "NRG Stadium, Houston" },
-      { home: slot("1º Grupo E"),               away: slot("Mejor 3º (A/B/C/D/F)"),    date: "29 jun", venue: "Gillette Stadium, Boston" },
-      { home: slot("1º Grupo F"),               away: slot("2º Grupo C"),               date: "30 jun", venue: "Est. BBVA, Guadalupe" },
-      { home: slot("2º Grupo E"),               away: slot("2º Grupo I"),               date: "30 jun", venue: "AT&T Stadium, Dallas" },
-      { home: slot("1º Grupo I"),               away: slot("Mejor 3º (C/D/F/G/H)"),    date: "30 jun", venue: "MetLife Stadium, Nueva York" },
-      { home: slot("1º Grupo A"),               away: slot("Mejor 3º (C/E/F/H/I)"),    date: "1 jul",  venue: "Est. Banorte, Ciudad de México" },
-      { home: slot("1º Grupo L"),               away: slot("Mejor 3º (E/H/I/J/K)"),    date: "1 jul",  venue: "Mercedes-Benz Stadium, Atlanta" },
-      { home: slot("1º Grupo G"),               away: slot("Mejor 3º (A/E/H/I/J)"),    date: "1 jul",  venue: "Lumen Field, Seattle" },
-      { home: slot("1º Grupo D"),               away: slot("Mejor 3º (B/E/F/I/J)"),    date: "2 jul",  venue: "Levi's Stadium, San Francisco" },
-      { home: slot("1º Grupo H"),               away: slot("2º Grupo J"),               date: "2 jul",  venue: "SoFi Stadium, Los Ángeles" },
-      { home: slot("2º Grupo K"),               away: slot("2º Grupo L"),               date: "3 jul",  venue: "BMO Field, Toronto" },
-      { home: slot("1º Grupo B"),               away: slot("Mejor 3º (E/F/G/I/J)"),    date: "3 jul",  venue: "BC Place, Vancouver" },
-      { home: slot("2º Grupo D"),               away: slot("2º Grupo G"),               date: "3 jul",  venue: "AT&T Stadium, Dallas" },
-      { home: slot("1º Grupo J"),               away: slot("2º Grupo H"),               date: "3 jul",  venue: "Hard Rock Stadium, Miami" },
-      { home: slot("1º Grupo K"),               away: slot("Mejor 3º (D/E/I/J/L)"),    date: "4 jul",  venue: "Arrowhead Stadium, Kansas City" },
+// ─────────────────────────────────────────────────────────────────
+//  Official bracket — source: marca.com cuadro-final.html
+//  Left half: R32 pairs → R16 → QF → SF  (left side of draw)
+//  Right half: SF → QF → R16 → R32 pairs (right side, mirrored)
+// ─────────────────────────────────────────────────────────────────
+
+// Left half column order in DOM: R32, R16, QF, SF
+const LEFT_HALF: BHalf = [
+  // R32 — 4 pairs × 2 matches (feed into R16-1…R16-4)
+  [
+    [
+      { home: "2º Gr. A",  away: "2º Gr. B",         date: "28 jun" },
+      { home: "1º Gr. E",  away: "M.3º A/B/C/D/F",  date: "29 jun" },
     ],
-  },
-  {
-    id: "r16",
-    label: "Octavos de final",
-    dates: "4–7 jul 2026",
-    matches: Array.from({ length: 8 }, () => ({ home: TBD, away: TBD })),
-  },
-  {
-    id: "qf",
-    label: "Cuartos de final",
-    dates: "9–12 jul 2026",
-    matches: Array.from({ length: 4 }, () => ({ home: TBD, away: TBD })),
-  },
-  {
-    id: "sf",
-    label: "Semifinales",
-    dates: "14–15 jul 2026",
-    matches: Array.from({ length: 2 }, () => ({ home: TBD, away: TBD })),
-  },
-  {
-    id: "final",
-    label: "Final",
-    dates: "19 jul 2026 · MetLife Stadium, Nueva York",
-    matches: [{ home: TBD, away: TBD }],
-  },
+    [
+      { home: "1º Gr. C",  away: "2º Gr. F",         date: "29 jun" },
+      { home: "2º Gr. E",  away: "2º Gr. I",         date: "30 jun" },
+    ],
+    [
+      { home: "1º Gr. F",  away: "2º Gr. C",         date: "30 jun" },
+      { home: "1º Gr. I",  away: "M.3º C/D/F/G/H",  date: "30 jun" },
+    ],
+    [
+      { home: "1º Gr. A",  away: "M.3º C/E/F/H/I",  date: "1 jul"  },
+      { home: "1º Gr. L",  away: "M.3º E/H/I/J/K",  date: "1 jul"  },
+    ],
+  ],
+  // R16 — 2 pairs × 2 matches
+  [
+    [TBD, TBD],
+    [TBD, TBD],
+  ],
+  // QF — 1 pair × 2 matches
+  [
+    [TBD, TBD],
+  ],
+  // SF — 1 single match
+  [
+    [TBD],
+  ],
 ];
 
-function MatchCard({ match, highlight }: { match: BracketMatch; highlight?: boolean }) {
+// Right half column order in DOM: SF, QF, R16, R32
+const RIGHT_HALF: BHalf = [
+  // SF
+  [[TBD]],
+  // QF
+  [[TBD, TBD]],
+  // R16 — 2 pairs × 2 matches
+  [
+    [TBD, TBD],
+    [TBD, TBD],
+  ],
+  // R32 — 4 pairs × 2 matches (feed into R16-5…R16-8)
+  [
+    [
+      { home: "1º Gr. G",  away: "M.3º A/E/H/I/J",  date: "1 jul"  },
+      { home: "1º Gr. D",  away: "M.3º B/E/F/I/J",  date: "2 jul"  },
+    ],
+    [
+      { home: "1º Gr. H",  away: "2º Gr. J",         date: "2 jul"  },
+      { home: "2º Gr. K",  away: "2º Gr. L",         date: "3 jul"  },
+    ],
+    [
+      { home: "1º Gr. B",  away: "M.3º E/F/G/I/J",  date: "3 jul"  },
+      { home: "1º Gr. J",  away: "2º Gr. H",         date: "3 jul"  },
+    ],
+    [
+      { home: "2º Gr. D",  away: "2º Gr. G",         date: "3 jul"  },
+      { home: "1º Gr. K",  away: "M.3º D/E/I/J/L",  date: "4 jul"  },
+    ],
+  ],
+];
+
+const LEFT_LABELS  = ["Dieciseisavos", "Octavos", "Cuartos", "Semifinal"];
+const RIGHT_LABELS = ["Semifinal", "Cuartos", "Octavos", "Dieciseisavos"];
+
+function MatchCard({ m, isFinal = false }: { m: BMatch; isFinal?: boolean }) {
   return (
-    <div className={`bracket-match${highlight ? " bracket-match--final" : ""}`}>
-      <div className="bracket-match-teams">
-        <span className={match.home.isTbd ? "bracket-slot bracket-slot--tbd" : "bracket-slot"}>
-          {match.home.label}
-        </span>
-        <span className="bracket-vs">vs</span>
-        <span className={match.away.isTbd ? "bracket-slot bracket-slot--tbd" : "bracket-slot"}>
-          {match.away.label}
-        </span>
-      </div>
-      {(match.date || match.venue) && (
-        <div className="bracket-match-meta">
-          {match.date && <span>{match.date}</span>}
-          {match.venue && <span>{match.venue}</span>}
-        </div>
-      )}
+    <div className={[
+      "bk-match",
+      m.isTbd  ? "bk-match--tbd"   : "",
+      isFinal  ? "bk-match--final" : "",
+    ].join(" ").trim()}>
+      <div className={`bk-team${m.isTbd ? " bk-team--tbd" : ""}`}>{m.home}</div>
+      <div className={`bk-team${m.isTbd ? " bk-team--tbd" : ""}`}>{m.away}</div>
+      {m.date && <div className="bk-date">{m.date}</div>}
     </div>
   );
 }
+
+function HalfBracket({
+  half, labels, side,
+}: {
+  half: BHalf;
+  labels: string[];
+  side: "left" | "right";
+}) {
+  return (
+    <div className={`bk-half bk-half--${side}`}>
+      {half.map((round, ri) => (
+        <div key={ri} className="bk-col">
+          <div className="bk-col-label">{labels[ri]}</div>
+          <div className="bk-col-body">
+            {round.map((pair, pi) => (
+              <div
+                key={pi}
+                className={`bk-pair${pair.length === 1 ? " bk-pair--single" : ""}`}
+              >
+                {pair.map((match, mi) => (
+                  <div key={mi} className="bk-entry">
+                    <MatchCard m={match} />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const FINAL_MATCH: BMatch = { home: "Por determinar", away: "Por determinar", date: "19 jul · MetLife, NY", isTbd: true };
 
 export default function EliminatoriasPage() {
   const router = useRouter();
@@ -131,28 +180,31 @@ export default function EliminatoriasPage() {
       </section>
 
       <div className="content-area">
-        <p className="api-notice" style={{ marginBottom: 32 }}>
-          El Mundial arranca el 11 de junio. Hasta entonces, los cruces muestran las posiciones de grupo
-          (1º, 2º) y los 8 mejores terceros clasificados que acceden a dieciseisavos.
+        <p className="api-notice" style={{ marginBottom: 20 }}>
+          Los cruces de dieciseisavos son fijos. M.3º = mejor tercer clasificado de los grupos indicados.
         </p>
 
-        {ROUNDS.map((round) => (
-          <section key={round.id} className="bracket-round">
-            <div className="bracket-round-header">
-              <h3 className="bracket-round-title">{round.label}</h3>
-              <span className="bracket-round-dates">{round.dates}</span>
+        <div className="bk-scroll-hint">← Desplaza para ver el cuadro completo →</div>
+
+        <div className="bk-scroll">
+          <div className="bk-stage">
+            <HalfBracket half={LEFT_HALF}  labels={LEFT_LABELS}  side="left" />
+
+            {/* Final */}
+            <div className="bk-final-col">
+              <div className="bk-col-label bk-col-label--final">Final</div>
+              <div className="bk-col-body">
+                <div className="bk-pair bk-pair--single">
+                  <div className="bk-entry">
+                    <MatchCard m={FINAL_MATCH} isFinal />
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className={`bracket-grid bracket-grid--${round.id}`}>
-              {round.matches.map((match, i) => (
-                <MatchCard
-                  key={i}
-                  match={match}
-                  highlight={round.id === "final"}
-                />
-              ))}
-            </div>
-          </section>
-        ))}
+
+            <HalfBracket half={RIGHT_HALF} labels={RIGHT_LABELS} side="right" />
+          </div>
+        </div>
       </div>
     </main>
   );

@@ -1517,3 +1517,192 @@ a {
   color: var(--accent);
   flex-shrink: 0;
 }
+
+/* ══════════════════════════════════════════════
+   BRACKET / CUADRO ELIMINATORIAS  (.bk-*)
+   Cuadro tipo tenis: dos mitades + Final central
+   ══════════════════════════════════════════════ */
+
+.bk-scroll-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  margin-bottom: 12px;
+  letter-spacing: 0.05em;
+}
+
+.bk-scroll {
+  overflow-x: auto;
+  padding-bottom: 20px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Stage: top-level flex container ─── */
+.bk-stage {
+  display: flex;
+  align-items: stretch;
+  min-height: 600px;
+  width: max-content;          /* allows scroll */
+}
+
+/* ── Each half ─────────────────────── */
+.bk-half {
+  display: flex;
+  align-items: stretch;
+}
+
+/* ── Each column ────────────────────── */
+.bk-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 164px;
+  position: relative;
+}
+
+/* Gap for connector lines */
+.bk-half--left  .bk-col { margin-right: 22px; }
+.bk-half--right .bk-col { margin-left:  22px; }
+
+.bk-col-label {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-dim);
+  padding: 0 4px 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.bk-col-label--final {
+  color: var(--gold);
+}
+
+.bk-col-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Pair: 2 entries that converge into one ─ */
+.bk-pair {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ── Entry: wraps one match card ─────── */
+.bk-entry {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  padding: 5px 0;
+  position: relative;
+}
+
+/* ──────────────────────────────────────────────
+   CONNECTOR LINES
+   Each entry has a horizontal line going outward.
+   Each pair (with 2 entries) has a vertical line
+   connecting the midpoints of the two entries,
+   forming the classic bracket "]" shape.
+   ────────────────────────────────────────────── */
+
+/* Horizontal line FROM entry toward connector point */
+.bk-half--left .bk-entry::after,
+.bk-half--right .bk-entry::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 14px;
+  height: 1px;
+  background: var(--line);
+}
+
+.bk-half--left  .bk-entry::after { right: -22px; }
+.bk-half--right .bk-entry::after { left:  -22px; }
+
+/* Vertical line connecting 2 entries of a pair (left half: right side) */
+.bk-half--left .bk-pair:not(.bk-pair--single)::after {
+  content: "";
+  position: absolute;
+  right: -22px;
+  top: 25%;
+  height: 50%;
+  width: 1px;
+  background: var(--line);
+}
+
+/* Vertical line connecting 2 entries of a pair (right half: left side) */
+.bk-half--right .bk-pair:not(.bk-pair--single)::after {
+  content: "";
+  position: absolute;
+  left: -22px;
+  top: 25%;
+  height: 50%;
+  width: 1px;
+  background: var(--line);
+}
+
+/* ── Final column ───────────────────── */
+.bk-final-col {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+}
+
+.bk-final-col .bk-col-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Match card ─────────────────────── */
+.bk-match {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 120ms;
+}
+
+.bk-match--final {
+  border-color: var(--gold);
+  background: rgba(246, 192, 80, 0.06);
+}
+
+.bk-team {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bk-team:last-of-type {
+  border-bottom: none;
+}
+
+.bk-team--tbd {
+  color: var(--text-dim);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.bk-date {
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent);
+  border-top: 1px solid var(--line);
+}
+
+.bk-match--final .bk-date {
+  color: var(--gold);
+}
