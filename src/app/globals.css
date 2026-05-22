@@ -231,7 +231,121 @@ a {
 }
 
 .grid-demo {
-  grid-template-columns: 1fr 1fr 0.95fr;
+  grid-template-columns: 1fr;
+}
+
+.bet-builder {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 18px;
+}
+
+.bet-section {
+  margin-bottom: 48px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.section-header h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.section-meta {
+  font-size: 13px;
+  color: var(--text-dim);
+  background: var(--bg-3);
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.group-card {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.group-card:hover {
+  border-color: #303843;
+}
+
+.group-label {
+  margin: 0 0 9px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.group-teams {
+  display: grid;
+  gap: 7px;
+}
+
+.group-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: #191e24;
+  border: 1px solid #2a3139;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+.group-team:hover {
+  border-color: #384350;
+  background: #1e2329;
+}
+
+.group-team input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.group-team.selected {
+  border-color: rgba(78, 163, 255, 0.55);
+  background: rgba(78, 163, 255, 0.08);
+}
+
+.group-team.conflict {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.team-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.team-price {
+  font-size: 12px;
+  color: var(--text-dim);
+  flex: 0 0 auto;
 }
 
 .card {

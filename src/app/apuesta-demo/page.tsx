@@ -49,6 +49,8 @@ export default function ApuestaDemoPage() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [antiFavorites, setAntiFavorites] = useState<string[]>([]);
 
+  const groupLabels = Object.keys(groupPool);
+
   const favoritesCost = useMemo(
     () => favorites.reduce((sum, id) => sum + (teams.find((team) => team.id === id)?.price ?? 0), 0),
     [favorites]
@@ -91,6 +93,22 @@ export default function ApuestaDemoPage() {
 
   const allValid = validations.every((rule) => rule.ok);
 
+  function toggleTeam(teamId: string, isFavorite: boolean) {
+    if (isFavorite) {
+      setFavorites((current) =>
+        current.includes(teamId) ? current.filter((id) => id !== teamId) : [...current, teamId]
+      );
+    } else {
+      setAntiFavorites((current) =>
+        current.includes(teamId) ? current.filter((id) => id !== teamId) : [...current, teamId]
+      );
+    }
+  }
+
+  function getGroupTeams(group: string) {
+    return groupPool[group as keyof typeof groupPool] || [];
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -118,57 +136,87 @@ export default function ApuestaDemoPage() {
         </div>
       </section>
 
-      <section className="grid grid-demo">
-        <article className="card">
-          <h2>Seleccion de favoritos</h2>
+      <div className="bet-builder">
+        <section className="bet-section">
+          <div className="section-header">
+            <h2>Favoritos</h2>
+            <span className="section-meta">
+              {favorites.length}/9-12
+            </span>
+          </div>
           <p className="muted">Marca entre 9 y 12 equipos, maximo 1 por grupo.</p>
-          <div className="team-list">
-            {teams.map((team) => (
-              <label className="team-item" key={`fav-${team.id}`}>
-                <input
-                  checked={favorites.includes(team.id)}
-                  onChange={(event) => {
-                    if (event.target.checked) {
-                      setFavorites((current) => [...current, team.id]);
-                    } else {
-                      setFavorites((current) => current.filter((id) => id !== team.id));
-                    }
-                  }}
-                  type="checkbox"
-                />
-                <span>
-                  {team.name} (Grupo {team.group}) - {team.price} euros
-                </span>
-              </label>
+          <div className="groups-grid">
+            {groupLabels.map((group) => (
+              <div className="group-card" key={`fav-group-${group}`}>
+                <h3 className="group-label">Grupo {group}</h3>
+                <div className="group-teams">
+                  {getGroupTeams(group).map((name, idx) => {
+                    const teamId = `${group}-${idx + 1}`;
+                    const isSelected = favorites.includes(teamId);
+                    const hasConflict = antiFavorites.includes(teamId);
+                    const team = teams.find((t) => t.id === teamId);
+                    return (
+                      <label
+                        className={`group-team ${isSelected ? "selected" : ""} ${hasConflict ? "conflict" : ""}`}
+                        key={teamId}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleTeam(teamId, true)}
+                        />
+                        <span className="team-name">{name}</span>
+                        <span className="team-price">{team?.price || 0}€</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </div>
-        </article>
+        </section>
 
-        <article className="card">
-          <h2>Seleccion de antifavoritos</h2>
+        <section className="bet-section">
+          <div className="section-header">
+            <h2>Antifavoritos</h2>
+            <span className="section-meta">
+              {antiFavorites.length}/4-6
+            </span>
+          </div>
           <p className="muted">Marca entre 4 y 6 equipos, maximo 1 por grupo.</p>
-          <div className="team-list">
-            {teams.map((team) => (
-              <label className="team-item" key={`anti-${team.id}`}>
-                <input
-                  checked={antiFavorites.includes(team.id)}
-                  onChange={(event) => {
-                    if (event.target.checked) {
-                      setAntiFavorites((current) => [...current, team.id]);
-                    } else {
-                      setAntiFavorites((current) => current.filter((id) => id !== team.id));
-                    }
-                  }}
-                  type="checkbox"
-                />
-                <span>
-                  {team.name} (Grupo {team.group}) - {team.price} euros
-                </span>
-              </label>
+          <div className="groups-grid">
+            {groupLabels.map((group) => (
+              <div className="group-card" key={`anti-group-${group}`}>
+                <h3 className="group-label">Grupo {group}</h3>
+                <div className="group-teams">
+                  {getGroupTeams(group).map((name, idx) => {
+                    const teamId = `${group}-${idx + 1}`;
+                    const isSelected = antiFavorites.includes(teamId);
+                    const hasConflict = favorites.includes(teamId);
+                    const team = teams.find((t) => t.id === teamId);
+                    return (
+                      <label
+                        className={`group-team ${isSelected ? "selected" : ""} ${hasConflict ? "conflict" : ""}`}
+                        key={teamId}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleTeam(teamId, false)}
+                        />
+                        <span className="team-name">{name}</span>
+                        <span className="team-price">{team?.price || 0}€</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </div>
-        </article>
+        </section>
+      </div>
 
+      <div className="grid">
         <article className="card highlight">
           <h2>Resumen</h2>
           <p>Coste favoritos: {favoritesCost} euros</p>
@@ -190,7 +238,7 @@ export default function ApuestaDemoPage() {
               : "La apuesta aun no cumple todas las reglas."}
           </p>
         </article>
-      </section>
+      </div>
     </main>
   );
 }
