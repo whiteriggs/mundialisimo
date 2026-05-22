@@ -826,6 +826,13 @@ a {
   margin: 0;
 }
 
+.login-checking {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 0;
+  font-style: italic;
+}
+
 .login-form .btn {
   width: 100%;
   padding: 14px;
