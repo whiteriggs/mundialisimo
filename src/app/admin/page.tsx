@@ -165,6 +165,30 @@ export default function AdminPage() {
     setTimeout(() => setBetMsg(null), 4000);
   }
 
+  async function handleResetBet() {
+    if (!betUser) return;
+    if (!confirm(`¿Resetear la apuesta de ${betUser}? Se guardará vacía.`)) return;
+    setBetSaving(true);
+    setBetMsg(null);
+    try {
+      await setDoc(doc(db, "bets", betUser.toLowerCase()), {
+        favorites: [],
+        antiFavorites: [],
+        confirmed: false,
+        updatedAt: new Date(),
+      });
+      setFavorites([]);
+      setAntiFavorites([]);
+      setConfirmed(false);
+      setBetMsg(`Apuesta de ${betUser} reseteada.`);
+    } catch {
+      setBetMsg("Error al resetear.");
+    } finally {
+      setBetSaving(false);
+    }
+    setTimeout(() => setBetMsg(null), 4000);
+  }
+
   function toggleTeam(teamId: string, isFavorite: boolean) {
     if (isFavorite) {
       setFavorites((c) => c.includes(teamId) ? c.filter((id) => id !== teamId) : [...c, teamId]);
@@ -373,6 +397,14 @@ export default function AdminPage() {
                         onClick={handleSaveBet}
                       >
                         {betSaving ? "Guardando…" : allValidBet ? `Guardar apuesta de ${betUser}` : "Completa la apuesta para guardar"}
+                      </button>
+                      <button
+                        className="btn admin-danger-btn"
+                        disabled={betSaving}
+                        onClick={handleResetBet}
+                        style={{ marginLeft: "0.75rem" }}
+                      >
+                        Resetear apuesta
                       </button>
                     </div>
                   </section>
