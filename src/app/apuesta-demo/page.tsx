@@ -36,7 +36,7 @@ const teams: Team[] = Object.entries(groupPool).flatMap(([group, names]) =>
 
 const favoriteBounds = { min: 9, max: 12 };
 const antiBounds = { min: 4, max: 6 };
-const ticketBounds = { min: 10, max: 15 };
+const ticketBounds = { min: 15, max: 22 };
 
 function hasDuplicateGroup(ids: string[]) {
   const groups = ids
