@@ -195,11 +195,10 @@ export default function ApuestaDemoPage() {
                     const team = teams.find((t) => t.id === teamId);
 
                     if (confirmed) {
-                      if (!isFav && !isAnti) return null;
                       return (
-                        <div className={`team-result ${isFav ? "team-result-fav" : "team-result-anti"}`} key={teamId}>
+                        <div className={`team-result ${isFav ? "team-result-fav" : isAnti ? "team-result-anti" : "team-result-neutral"}`} key={teamId}>
                           <span className="team-name">{name}</span>
-                          <span className="team-result-badge">{isFav ? `+${team?.price}€` : `-${team?.price}€`}</span>
+                          <span className="team-result-badge">{isFav ? `+${team?.price}€` : isAnti ? `-${team?.price}€` : `${team?.price}€`}</span>
                         </div>
                       );
                     }

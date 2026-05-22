@@ -658,6 +658,13 @@ a {
   font-weight: 500;
 }
 
+.team-result-neutral {
+  background: transparent;
+  border: 1px solid #1e2329;
+  color: var(--text-dim);
+  opacity: 0.5;
+}
+
 .team-result-fav {
   background: rgba(34, 197, 94, 0.12);
   border: 1px solid rgba(34, 197, 94, 0.3);
