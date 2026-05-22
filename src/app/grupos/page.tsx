@@ -3,14 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { getStoredUser, clearUser } from "@/lib/auth";
-import { Match, Phase } from "@/lib/scoring";
-import { buildGroupStandings, TeamStanding } from "@/lib/standings";
-import { GROUP_POOL } from "@/lib/teams";
-
-const GROUP_LABELS = Object.keys(GROUP_POOL);
+import { fetchGroupStandings, ApiStandingGroup, toInternalName } from "@/lib/football-api";
 
 function sign(n: number) {
   if (n > 0) return `+${n}`;
@@ -18,31 +12,32 @@ function sign(n: number) {
   return "0";
 }
 
+function groupLetter(apiGroup: string) {
+  return apiGroup.replace("GROUP_", "");
+}
+
 export default function GruposPage() {
   const router = useRouter();
-  const [standings, setStandings] = useState<Record<string, TeamStanding[]>>({});
+  const [groups, setGroups] = useState<ApiStandingGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [matchCount, setMatchCount] = useState(0);
 
   useEffect(() => {
     const user = getStoredUser();
     if (!user) { router.push("/login"); return; }
 
-    async function load() {
-      try {
-        const snap = await getDocs(collection(db, "matches"));
-        const matches: Match[] = snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<Match, "id">),
-        }));
-        const groupMatches = matches.filter((m) => m.phase === "groups" && m.played);
-        setMatchCount(groupMatches.length);
-        setStandings(buildGroupStandings(matches));
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    fetchGroupStandings()
+      .then((data) => {
+        setGroups(data);
+        const played = data.reduce(
+          (sum, g) => sum + (g.table[0]?.playedGames ?? 0),
+          0
+        );
+        setMatchCount(played);
+      })
+      .catch((err: Error) => setError(err.message))
+      .finally(() => setLoading(false));
   }, [router]);
 
   function handleLogout() {
@@ -74,22 +69,27 @@ export default function GruposPage() {
             <h2 className="hero-name">Clasificación de grupos</h2>
             <p className="lead">
               {matchCount === 0
-                ? "El Mundial empieza el 11 de junio. La tabla se actualiza con los partidos que vayáis añadiendo en Resultados."
+                ? "El Mundial empieza el 11 de junio. Los datos se actualizan automáticamente desde football-data.org."
                 : `${matchCount} partido${matchCount !== 1 ? "s" : ""} de grupo jugado${matchCount !== 1 ? "s" : ""}.`}
             </p>
           </div>
         </div>
       </section>
 
-      {loading ? (
-        <div className="loading-screen"><p className="muted">Cargando…</p></div>
-      ) : (
+      {loading && <div className="loading-screen"><p className="muted">Cargando datos oficiales…</p></div>}
+      {error && (
+        <div className="results-section">
+          <p className="login-error">Error al cargar: {error}</p>
+          <p className="muted">Comprueba que la API key está configurada y que el torneo ya tiene datos en football-data.org.</p>
+        </div>
+      )}
+      {!loading && !error && (
         <div className="groups-standings-grid">
-          {GROUP_LABELS.map((group) => {
-            const rows = standings[group] ?? [];
+          {groups.map((g) => {
+            const letter = groupLetter(g.group);
             return (
-              <div className="group-standing-card" key={group}>
-                <h3 className="group-standing-title">Grupo {group}</h3>
+              <div className="group-standing-card" key={g.group}>
+                <h3 className="group-standing-title">Grupo {letter}</h3>
                 <table className="standing-table">
                   <thead>
                     <tr>
@@ -106,23 +106,20 @@ export default function GruposPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((team, idx) => (
-                      <tr
-                        key={team.name}
-                        className={idx < 2 ? "row-qualifier" : ""}
-                      >
-                        <td className="st-pos">{idx + 1}</td>
-                        <td className="st-name">{team.name}</td>
-                        <td>{team.played}</td>
-                        <td>{team.won}</td>
-                        <td>{team.drawn}</td>
-                        <td>{team.lost}</td>
-                        <td>{team.gf}</td>
-                        <td>{team.ga}</td>
-                        <td className={team.gd > 0 ? "gd-pos" : team.gd < 0 ? "gd-neg" : ""}>
-                          {sign(team.gd)}
+                    {g.table.map((row, idx) => (
+                      <tr key={row.team.name} className={idx < 2 ? "row-qualifier" : ""}>
+                        <td className="st-pos">{row.position}</td>
+                        <td className="st-name">{toInternalName(row.team.name)}</td>
+                        <td>{row.playedGames}</td>
+                        <td>{row.won}</td>
+                        <td>{row.draw}</td>
+                        <td>{row.lost}</td>
+                        <td>{row.goalsFor}</td>
+                        <td>{row.goalsAgainst}</td>
+                        <td className={row.goalDifference > 0 ? "gd-pos" : row.goalDifference < 0 ? "gd-neg" : ""}>
+                          {sign(row.goalDifference)}
                         </td>
-                        <td className="st-pts">{team.pts}</td>
+                        <td className="st-pts">{row.points}</td>
                       </tr>
                     ))}
                   </tbody>

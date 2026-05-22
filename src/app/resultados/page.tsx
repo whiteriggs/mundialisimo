@@ -3,22 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  deleteDoc,
-  doc,
-} from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getStoredUser, clearUser, USERS } from "@/lib/auth";
-import { TEAM_NAMES, teamName } from "@/lib/teams";
-import {
-  buildTeamTotals,
-  calcUserScore,
-  Phase,
-  Match,
-} from "@/lib/scoring";
+import { teamName } from "@/lib/teams";
+import { buildTeamTotals, Phase, Match } from "@/lib/scoring";
+import { fetchFinishedMatches } from "@/lib/football-api";
 
 type BetDoc = {
   user: string;
@@ -33,28 +23,13 @@ const PHASE_LABELS: Record<Phase, string> = {
   knockout: "Eliminatoria",
 };
 
-const EMPTY_FORM = {
-  home: "",
-  away: "",
-  homeGoals: 0,
-  awayGoals: 0,
-  phase: "groups" as Phase,
-  penalties: false,
-};
-
-function cap(s: string) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
 export default function ResultadosPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [bets, setBets] = useState<BetDoc[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
     const user = getStoredUser();
@@ -63,19 +38,20 @@ export default function ResultadosPage() {
 
     async function load() {
       try {
-        const [matchSnap, betSnap] = await Promise.all([
-          getDocs(collection(db, "matches")),
+        const [apiMatches, betSnap] = await Promise.all([
+          fetchFinishedMatches().catch((err) => {
+            setApiError(err.message);
+            return [] as Match[];
+          }),
           getDocs(collection(db, "bets")),
         ]);
-        const loadedMatches: Match[] = matchSnap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<Match, "id">),
-        }));
-        loadedMatches.sort((a, b) => {
+
+        const sorted = [...apiMatches].sort((a, b) => {
           const order: Phase[] = ["groups", "third", "knockout"];
           return order.indexOf(a.phase) - order.indexOf(b.phase);
         });
-        setMatches(loadedMatches);
+        setMatches(sorted);
+
         setBets(
           betSnap.docs.map((d) => {
             const raw = d.data() as Partial<Omit<BetDoc, "user">>;
@@ -100,71 +76,13 @@ export default function ResultadosPage() {
     const uid = u.toLowerCase();
     const bet = bets.find((b) => b.user === uid);
     const favPts = bet?.confirmed
-      ? (bet.favorites ?? []).reduce(
-          (s, id) => s + (teamTotals[teamName(id)] ?? 0),
-          0
-        )
+      ? (bet.favorites ?? []).reduce((s, id) => s + (teamTotals[teamName(id)] ?? 0), 0)
       : 0;
     const antiPts = bet?.confirmed
-      ? (bet.antiFavorites ?? []).reduce(
-          (s, id) => s + (teamTotals[teamName(id)] ?? 0),
-          0
-        )
+      ? (bet.antiFavorites ?? []).reduce((s, id) => s + (teamTotals[teamName(id)] ?? 0), 0)
       : 0;
-    return {
-      user: u,
-      uid,
-      total: favPts - antiPts,
-      favPts,
-      antiPts,
-      confirmed: bet?.confirmed ?? false,
-    };
+    return { user: u, uid, total: favPts - antiPts, favPts, antiPts, confirmed: bet?.confirmed ?? false };
   }).sort((a, b) => b.total - a.total);
-
-  async function handleAddMatch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.home || !form.away || form.home === form.away) return;
-    setSaving(true);
-    setFormError(null);
-    try {
-      const newMatch: Omit<Match, "id"> = {
-        home: form.home,
-        away: form.away,
-        homeGoals: form.homeGoals,
-        awayGoals: form.awayGoals,
-        phase: form.phase,
-        penalties: form.phase === "knockout" ? form.penalties : false,
-        played: true,
-      };
-      const docRef = await addDoc(collection(db, "matches"), newMatch);
-      const added: Match = { id: docRef.id, ...newMatch };
-      setMatches((prev) => {
-        const updated = [...prev, added].sort((a, b) => {
-          const order: Phase[] = ["groups", "third", "knockout"];
-          return order.indexOf(a.phase) - order.indexOf(b.phase);
-        });
-        return updated;
-      });
-      setForm(EMPTY_FORM);
-    } catch (err) {
-      setFormError(
-        err instanceof Error ? err.message : "Error al guardar. Revisa las reglas de Firestore."
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDelete(id: string) {
-    try {
-      await deleteDoc(doc(db, "matches", id));
-      setMatches((prev) => prev.filter((m) => m.id !== id));
-    } catch (err) {
-      setFormError(
-        err instanceof Error ? err.message : "Error al eliminar."
-      );
-    }
-  }
 
   function handleLogout() {
     clearUser();
@@ -197,8 +115,8 @@ export default function ResultadosPage() {
             <h2 className="hero-name">Clasificación</h2>
             <p className="lead">
               {playedMatches.length === 0
-                ? "El Mundial empieza el 11 de junio. Aquí verás la clasificación en tiempo real."
-                : `${playedMatches.length} partido${playedMatches.length !== 1 ? "s" : ""} jugado${playedMatches.length !== 1 ? "s" : ""}.`}
+                ? "El Mundial empieza el 11 de junio. La clasificación se actualizará automáticamente."
+                : `${playedMatches.length} partido${playedMatches.length !== 1 ? "s" : ""} jugado${playedMatches.length !== 1 ? "s" : ""} · datos de football-data.org`}
             </p>
           </div>
         </div>
@@ -208,7 +126,13 @@ export default function ResultadosPage() {
         <div className="loading-screen"><p className="muted">Cargando…</p></div>
       ) : (
         <>
-          {/* Rankings table */}
+          {apiError && (
+            <div className="results-section">
+              <p className="login-error">Error API: {apiError}</p>
+            </div>
+          )}
+
+          {/* Rankings */}
           <div className="results-section">
             <table className="ranking-table">
               <thead>
@@ -241,90 +165,6 @@ export default function ResultadosPage() {
             </table>
           </div>
 
-          {/* Add match form */}
-          <div className="results-section">
-            <h2 className="results-title">Añadir resultado</h2>
-            <form className="match-form card" onSubmit={handleAddMatch}>
-              <div className="match-form-teams">
-                <div className="login-field">
-                  <label>Local</label>
-                  <select
-                    value={form.home}
-                    onChange={(e) => setForm((f) => ({ ...f, home: e.target.value }))}
-                    required
-                  >
-                    <option value="">— Equipo —</option>
-                    {TEAM_NAMES.map((n) => (
-                      <option key={n} value={n}>{n}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="match-form-score">
-                  <input
-                    type="number"
-                    min={0}
-                    max={30}
-                    value={form.homeGoals}
-                    onChange={(e) => setForm((f) => ({ ...f, homeGoals: Number(e.target.value) }))}
-                  />
-                  <span className="score-sep">–</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={30}
-                    value={form.awayGoals}
-                    onChange={(e) => setForm((f) => ({ ...f, awayGoals: Number(e.target.value) }))}
-                  />
-                </div>
-
-                <div className="login-field">
-                  <label>Visitante</label>
-                  <select
-                    value={form.away}
-                    onChange={(e) => setForm((f) => ({ ...f, away: e.target.value }))}
-                    required
-                  >
-                    <option value="">— Equipo —</option>
-                    {TEAM_NAMES.map((n) => (
-                      <option key={n} value={n}>{n}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="match-form-meta">
-                <div className="login-field">
-                  <label>Fase</label>
-                  <select
-                    value={form.phase}
-                    onChange={(e) => setForm((f) => ({ ...f, phase: e.target.value as Phase, penalties: false }))}
-                  >
-                    <option value="groups">Grupos</option>
-                    <option value="knockout">Eliminatoria</option>
-                    <option value="third">3er / 4º puesto</option>
-                  </select>
-                </div>
-
-                {form.phase === "knockout" && (
-                  <label className="penalties-check">
-                    <input
-                      type="checkbox"
-                      checked={form.penalties}
-                      onChange={(e) => setForm((f) => ({ ...f, penalties: e.target.checked }))}
-                    />
-                    Decidido por penaltis
-                  </label>
-                )}
-              </div>
-
-              <button className="btn" type="submit" disabled={saving || !form.home || !form.away || form.home === form.away}>
-                {saving ? "Guardando…" : "Añadir partido"}
-              </button>
-              {formError && <p className="login-error">{formError}</p>}
-            </form>
-          </div>
-
           {/* Match list */}
           {playedMatches.length > 0 && (
             <div className="results-section">
@@ -344,13 +184,7 @@ export default function ResultadosPage() {
                             {m.penalties && <span className="pens-badge">pen.</span>}
                           </span>
                           <span className="match-away">{m.away}</span>
-                          <button
-                            className="match-delete"
-                            onClick={() => handleDelete(m.id)}
-                            title="Eliminar partido"
-                          >
-                            ✕
-                          </button>
+                          <span />
                         </div>
                       ))}
                     </div>

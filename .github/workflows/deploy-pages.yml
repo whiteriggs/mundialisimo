@@ -33,6 +33,7 @@ jobs:
       - name: Build static site
         env:
           GITHUB_REPOSITORY: ${{ github.repository }}
+          NEXT_PUBLIC_FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
         run: npm run build:pages
 
       - name: Upload Pages artifact
