@@ -203,6 +203,7 @@ export default function ApuestaPage() {
           <Link href="/grupos">Grupos</Link>
           <Link href="/apuestas">Apuestas</Link>
           <Link href="/resultados">Resultados</Link>
+          <Link href="/eliminatorias">Eliminatorias</Link>
         </nav>
         <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
       </header>
