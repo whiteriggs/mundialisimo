@@ -152,16 +152,6 @@ export default function ApuestaDemoPage() {
 
       <div className={`price-bar ${ticketCost > ticketBounds.max ? "price-over" : ticketCost < ticketBounds.min && (favorites.length > 0 || antiFavorites.length > 0) ? "price-under" : ticketCost >= ticketBounds.min && ticketCost <= ticketBounds.max ? "price-ok" : ""}`}>
         <div className="price-bar-inner">
-          <span className="price-bar-item">
-            <span className="price-bar-label">Favoritos</span>
-            <span className="price-bar-value">+{favoritesCost}€</span>
-          </span>
-          <span className="price-bar-sep">−</span>
-          <span className="price-bar-item">
-            <span className="price-bar-label">Antifavoritos</span>
-            <span className="price-bar-value">{antiDiscount}€</span>
-          </span>
-          <span className="price-bar-sep">=</span>
           <span className="price-bar-total">
             <span className="price-bar-label">Apuesta</span>
             <span className="price-bar-amount">{ticketCost}€</span>
