@@ -17,7 +17,7 @@ import { TEAM_NAMES, teamName } from "@/lib/teams";
 import { buildTeamTotals, Phase, Match } from "@/lib/scoring";
 import { fetchAllMatches, ApiAllMatch } from "@/lib/football-api";
 import { buildStaticSchedule } from "@/lib/static-schedule";
-import { flagFor } from "@/lib/flags";
+import Flag from "@/components/Flag";
 
 type BetDoc = {
   user: string;
@@ -266,7 +266,7 @@ export default function ResultadosPage() {
                     </h3>
                     {dayMatches.map((m) => (
                       <div className={`match-row${m.played ? " match-row--played" : ""}`} key={m.id}>
-                        <span className="match-home">{flagFor(m.home)} {m.home}</span>
+                        <span className="match-home"><Flag name={m.home} />{m.home}</span>
                         {m.played ? (
                           <span className="match-score">
                             {m.homeGoals} – {m.awayGoals}
@@ -277,7 +277,7 @@ export default function ResultadosPage() {
                         ) : (
                           <span className="match-time">{formatMatchTime(m.utcDate)}</span>
                         )}
-                        <span className="match-away">{flagFor(m.away)} {m.away}</span>
+                        <span className="match-away"><Flag name={m.away} />{m.away}</span>
                         <span />
                       </div>
                     ))}
@@ -347,12 +347,12 @@ export default function ResultadosPage() {
                     <h3 className="matches-phase-label">Partidos manuales</h3>
                     {manualMatches.map((m) => (
                       <div className="match-row" key={m.id}>
-                        <span className="match-home">{flagFor(m.home)} {m.home}</span>
+                        <span className="match-home"><Flag name={m.home} />{m.home}</span>
                         <span className="match-score">
                           {m.homeGoals} – {m.awayGoals}
                           {m.penalties && <span className="pens-badge">pen.</span>}
                         </span>
-                        <span className="match-away">{flagFor(m.away)} {m.away}</span>
+                        <span className="match-away"><Flag name={m.away} />{m.away}</span>
                         <button className="match-delete" onClick={() => handleDelete(m.id)} title="Eliminar">✕</button>
                       </div>
                     ))}

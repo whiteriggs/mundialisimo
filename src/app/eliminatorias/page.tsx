@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getStoredUser, clearUser } from "@/lib/auth";
 import { fetchKnockoutMatches, ApiKnockoutMatch } from "@/lib/football-api";
-import { flagFor } from "@/lib/flags";
+import Flag from "@/components/Flag";
 
 type BMatch = {
   home: string;
@@ -160,7 +160,7 @@ function MatchCard({ m, isFinal = false }: { m: BMatch; isFinal?: boolean }) {
         m.winner === "home" ? "bk-team--winner" : "",
         m.winner === "away" ? "bk-team--loser"  : "",
       ].join(" ").trim()}>
-        <span className="bk-team-name">{flagFor(m.home)} {m.home}</span>
+        <span className="bk-team-name"><Flag name={m.home} />{m.home}</span>
         {showScore && <span className="bk-team-score">{m.homeGoals}{m.penalties && m.winner === "home" ? "p" : ""}</span>}
       </div>
       <div className={[
@@ -169,7 +169,7 @@ function MatchCard({ m, isFinal = false }: { m: BMatch; isFinal?: boolean }) {
         m.winner === "away" ? "bk-team--winner" : "",
         m.winner === "home" ? "bk-team--loser"  : "",
       ].join(" ").trim()}>
-        <span className="bk-team-name">{flagFor(m.away)} {m.away}</span>
+        <span className="bk-team-name"><Flag name={m.away} />{m.away}</span>
         {showScore && <span className="bk-team-score">{m.awayGoals}{m.penalties && m.winner === "away" ? "p" : ""}</span>}
       </div>
       {m.date && <div className="bk-date">{m.date}</div>}
