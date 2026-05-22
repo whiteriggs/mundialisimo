@@ -250,25 +250,54 @@ a {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 14px;
+  flex-wrap: wrap;
 }
 
 .section-header h2 {
   margin: 0;
   font-size: 22px;
+  flex: 1 1 auto;
 }
 
-.section-meta {
+.counters {
+  display: flex;
+  gap: 12px;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+}
+
+.counter {
   font-size: 13px;
   color: var(--text-dim);
   background: var(--bg-3);
   padding: 6px 10px;
   border-radius: 8px;
   border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.dot-fav {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+.dot-anti {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
 }
 
 .groups-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
   margin-top: 16px;
 }
@@ -278,7 +307,7 @@ a {
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 12px;
-  transition: border-color 120ms ease, box-shadow 120ms ease;
+  transition: border-color 120ms ease;
 }
 
 .group-card:hover {
@@ -296,56 +325,102 @@ a {
 
 .group-teams {
   display: grid;
-  gap: 7px;
+  gap: 8px;
 }
 
-.group-team {
+.team-dual {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  padding: 7px 9px;
+  padding: 8px;
   border-radius: 8px;
   background: #191e24;
   border: 1px solid #2a3139;
-  cursor: pointer;
   transition: all 120ms ease;
 }
 
-.group-team:hover {
+.team-dual:hover {
   border-color: #384350;
   background: #1e2329;
 }
 
-.group-team input[type="checkbox"] {
-  accent-color: var(--accent);
-  cursor: pointer;
-  flex: 0 0 auto;
-}
-
-.group-team.selected {
-  border-color: rgba(78, 163, 255, 0.55);
-  background: rgba(78, 163, 255, 0.08);
-}
-
-.group-team.conflict {
-  opacity: 0.45;
-  cursor: not-allowed;
-  pointer-events: none;
+.team-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .team-name {
-  flex: 1 1 auto;
-  min-width: 0;
   font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .team-price {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-dim);
+}
+
+.team-controls {
+  display: flex;
+  gap: 4px;
   flex: 0 0 auto;
+}
+
+.team-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 100ms ease;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-dim);
+}
+
+.team-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: scale(1.05);
+}
+
+.fav-btn {
+  border-color: #22c55e;
+  color: #22c55e;
+}
+
+.fav-btn.active {
+  background: #22c55e;
+  color: #0b0d10;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.3);
+}
+
+.fav-btn.active::after {
+  content: "✓";
+}
+
+.anti-btn {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.anti-btn.active {
+  background: #ef4444;
+  color: #0b0d10;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+}
+
+.anti-btn.active::after {
+  content: "✓";
 }
 
 .card {
