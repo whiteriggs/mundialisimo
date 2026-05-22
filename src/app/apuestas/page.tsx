@@ -12,6 +12,7 @@ type BetDoc = {
   user: string;
   favorites: string[];
   antiFavorites: string[];
+  superFavorite?: string | null;
   confirmed: boolean;
 };
 
@@ -45,6 +46,7 @@ export default function ApuestasPage() {
             user: d.id,
             favorites: raw.favorites ?? [],
             antiFavorites: raw.antiFavorites ?? [],
+            superFavorite: raw.superFavorite ?? null,
             confirmed: raw.confirmed ?? false,
           };
         });
@@ -133,8 +135,10 @@ export default function ApuestasPage() {
                   <ul className="bet-team-list fav-list">
                     {bet.favorites.map((id) => {
                       const team = TEAMS.find((t) => t.id === id);
+                      const isSuper = bet.superFavorite === id;
                       return (
-                        <li key={id}>
+                        <li key={id} className={isSuper ? "bet-team-super" : ""}>
+                          {isSuper && <span className="super-star">★</span>}
                           <span className="bet-team-name">{teamName(id)}</span>
                           <span className="bet-team-group">Gr. {team?.group}</span>
                           <span className="bet-team-price">+{team?.price}€</span>

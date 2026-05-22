@@ -50,6 +50,7 @@ export default function AdminPage() {
   const [betUser, setBetUser]         = useState("");
   const [favorites, setFavorites]     = useState<string[]>([]);
   const [antiFavorites, setAntiFavorites] = useState<string[]>([]);
+  const [superFavorite, setSuperFavorite] = useState<string | null>(null);
   const [confirmed, setConfirmed]     = useState(false);
   const [betLoading, setBetLoading]   = useState(false);
   const [betSaving, setBetSaving]     = useState(false);
@@ -130,10 +131,12 @@ export default function AdminPage() {
         const data = snap.data();
         setFavorites(data.favorites ?? []);
         setAntiFavorites(data.antiFavorites ?? []);
+        setSuperFavorite(data.superFavorite ?? null);
         setConfirmed(data.confirmed ?? false);
       } else {
         setFavorites([]);
         setAntiFavorites([]);
+        setSuperFavorite(null);
         setConfirmed(false);
       }
       setBetLoaded(true);
@@ -152,6 +155,7 @@ export default function AdminPage() {
       await setDoc(doc(db, "bets", betUser.toLowerCase()), {
         favorites,
         antiFavorites,
+        superFavorite: superFavorite ?? null,
         confirmed: true,
         updatedAt: new Date(),
       });
@@ -179,11 +183,11 @@ export default function AdminPage() {
       });
       setFavorites([]);
       setAntiFavorites([]);
+      setSuperFavorite(null);
       setConfirmed(false);
       setBetMsg(`Apuesta de ${betUser} reseteada.`);
     } catch {
       setBetMsg("Error al resetear.");
-    } finally {
       setBetSaving(false);
     }
     setTimeout(() => setBetMsg(null), 4000);
@@ -368,6 +372,16 @@ export default function AdminPage() {
                                 <div className="team-dual" key={teamId}>
                                   <div className="team-info">
                                     <span className="team-name">{tname}</span>
+                                    {isFav && (
+                                      <button
+                                        type="button"
+                                        className={`star-btn${superFavorite === teamId ? " star-btn--active" : ""}`}
+                                        onClick={() => setSuperFavorite(superFavorite === teamId ? null : teamId)}
+                                        title={superFavorite === teamId ? "Quitar superfavorito" : "Marcar como campeón (desempate)"}
+                                      >
+                                        {superFavorite === teamId ? "★" : "☆"}
+                                      </button>
+                                    )}
                                     <span className="team-price">{team?.price ?? 0}€</span>
                                   </div>
                                   <div className="team-controls">

@@ -345,6 +345,28 @@ a {
   background: #1e2329;
 }
 
+.star-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-dim);
+  opacity: 0;
+  padding: 0 1px;
+  line-height: 1;
+  transition: opacity 0.12s, color 0.12s;
+}
+
+.team-dual:hover .star-btn {
+  opacity: 1;
+}
+
+.star-btn--active {
+  opacity: 1 !important;
+  color: var(--gold);
+}
+
 .team-info {
   display: flex;
   flex-direction: column;
@@ -675,6 +697,22 @@ a {
   background: rgba(239, 68, 68, 0.12);
   border: 1px solid rgba(239, 68, 68, 0.3);
   color: #fca5a5;
+}
+
+.team-result-super {
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 1px rgba(246, 192, 80, 0.25);
+}
+
+.super-star {
+  color: var(--gold);
+  font-size: 13px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.bet-team-super {
+  font-weight: 700;
 }
 
 .team-result-badge {

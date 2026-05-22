@@ -58,6 +58,7 @@ export default function ApuestaPage() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [antiFavorites, setAntiFavorites] = useState<string[]>([]);
   const [confirmed, setConfirmed] = useState(false);
+  const [superFavorite, setSuperFavorite] = useState<string | null>(null);
 
   const groupLabels = Object.keys(groupPool);
   const isClosed = new Date() >= DEADLINE;
@@ -78,6 +79,7 @@ export default function ApuestaPage() {
           const data = docSnap.data();
           setFavorites(data.favorites ?? []);
           setAntiFavorites(data.antiFavorites ?? []);
+          setSuperFavorite(data.superFavorite ?? null);
           setConfirmed(data.confirmed ?? false);
         }
       } catch {
@@ -89,6 +91,13 @@ export default function ApuestaPage() {
 
     loadBet();
   }, [router]);
+
+  // Auto-clear superFavorite if team removed from favorites
+  useEffect(() => {
+    if (superFavorite && !favorites.includes(superFavorite)) {
+      setSuperFavorite(null);
+    }
+  }, [favorites, superFavorite]);
 
   const favoritesCost = useMemo(
     () => favorites.reduce((sum, id) => sum + (teams.find((t) => t.id === id)?.price ?? 0), 0),
@@ -150,6 +159,7 @@ export default function ApuestaPage() {
       await setDoc(doc(db, "bets", user.toLowerCase()), {
         favorites,
         antiFavorites,
+        superFavorite: superFavorite ?? null,
         confirmed: true,
         updatedAt: new Date()
       });
@@ -166,6 +176,7 @@ export default function ApuestaPage() {
       await setDoc(doc(db, "bets", user.toLowerCase()), {
         favorites,
         antiFavorites,
+        superFavorite: superFavorite ?? null,
         confirmed: false,
         updatedAt: new Date()
       });
@@ -271,10 +282,13 @@ export default function ApuestaPage() {
                     if (confirmed) {
                       return (
                         <div
-                          className={`team-result ${isFav ? "team-result-fav" : isAnti ? "team-result-anti" : "team-result-neutral"}`}
+                          className={`team-result ${isFav ? "team-result-fav" : isAnti ? "team-result-anti" : "team-result-neutral"}${superFavorite === teamId ? " team-result-super" : ""}`}
                           key={teamId}
                         >
-                          <span className="team-name">{name}</span>
+                          <span className="team-name">
+                            {superFavorite === teamId && <span className="super-star">★</span>}
+                            {name}
+                          </span>
                           <span className="team-result-badge">
                             {isFav ? `+${team?.price}€` : isAnti ? `-${team?.price}€` : `${team?.price}€`}
                           </span>
@@ -286,6 +300,16 @@ export default function ApuestaPage() {
                       <div className="team-dual" key={teamId}>
                         <div className="team-info">
                           <span className="team-name">{name}</span>
+                          {isFav && (
+                            <button
+                              type="button"
+                              className={`star-btn${superFavorite === teamId ? " star-btn--active" : ""}`}
+                              onClick={() => setSuperFavorite(superFavorite === teamId ? null : teamId)}
+                              title={superFavorite === teamId ? "Quitar superfavorito" : "Marcar como campeón (desempate)"}
+                            >
+                              {superFavorite === teamId ? "★" : "☆"}
+                            </button>
+                          )}
                           <span className="team-price">{team?.price || 0}€</span>
                         </div>
                         <div className="team-controls">
