@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/fetch-matches.mjs",
     "build": "next build",
     "build:pages": "next build",
     "start": "next start",

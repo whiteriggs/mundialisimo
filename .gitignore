@@ -28,3 +28,4 @@ docs/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+/public/matches.json

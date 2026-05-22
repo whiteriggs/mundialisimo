@@ -165,6 +165,38 @@ export type ApiKnockoutMatch = {
 };
 
 export async function fetchKnockoutMatches(): Promise<ApiKnockoutMatch[]> {
+  // Reusar el JSON bakeado si está disponible
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  let rawMatches: ApiKnockoutMatch[] | null = null;
+  try {
+    const staticRes = await fetch(`${basePath}/matches.json`, { cache: "no-store" });
+    if (staticRes.ok) {
+      const data: ApiAllMatch[] = await staticRes.json();
+      if (Array.isArray(data) && data.length > 0) {
+        rawMatches = data
+          .filter((m) => KNOCKOUT_STAGES.has(m.stage))
+          .map((m): ApiKnockoutMatch => ({
+            id: m.id,
+            stage: m.stage,
+            home: m.home,
+            away: m.away,
+            homeGoals: m.homeGoals,
+            awayGoals: m.awayGoals,
+            finished: m.played,
+            penalties: m.penalties,
+            date: new Date(m.utcDate).toLocaleDateString("es-ES", { day: "numeric", month: "short" }),
+            winner: m.played
+              ? m.homeGoals !== null && m.awayGoals !== null
+                ? m.homeGoals > m.awayGoals ? "home" : m.awayGoals > m.homeGoals ? "away" : null
+                : null
+              : null,
+          }));
+      }
+    }
+  } catch { /* ignorar */ }
+
+  if (rawMatches) return rawMatches;
+
   const res = await fetch(
     `${BASE}/competitions/${COMPETITION}/matches`,
     { headers: { "X-Auth-Token": API_KEY } }
@@ -215,6 +247,19 @@ export type ApiAllMatch = {
 };
 
 export async function fetchAllMatches(): Promise<ApiAllMatch[]> {
+  // 1. Intentar el JSON pre-generado en build time (sin restricciones CORS)
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  try {
+    const staticRes = await fetch(`${basePath}/matches.json`, { cache: "no-store" });
+    if (staticRes.ok) {
+      const data = await staticRes.json();
+      if (Array.isArray(data) && data.length > 0) return data as ApiAllMatch[];
+    }
+  } catch {
+    // ignorar — intentar API directa
+  }
+
+  // 2. Fallback: llamada directa a la API (funciona en local, falla en producción por CORS)
   const res = await fetch(
     `${BASE}/competitions/${COMPETITION}/matches`,
     { headers: { "X-Auth-Token": API_KEY } }
