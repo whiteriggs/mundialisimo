@@ -29,8 +29,8 @@ export default function Home() {
           <h1>Mundialisimo</h1>
           <span className="sub">Porra del Mundial 2026 adaptada a 12 grupos de 4</span>
         </div>
-        <Link className="mini-action" href="/apuesta-demo">
-          Abrir demo
+        <Link className="mini-action" href="/login">
+          Hacer mi apuesta
         </Link>
       </header>
 
@@ -44,8 +44,11 @@ export default function Home() {
               jugar sin dudas desde el primer partido.
             </p>
             <div className="hero-actions">
-              <Link className="btn" href="/apuesta-demo">
-                Crear apuesta demo
+              <Link className="btn" href="/login">
+                Hacer mi apuesta
+              </Link>
+              <Link className="btn btn-ghost" href="/apuesta-demo">
+                Probar demo
               </Link>
               <a className="btn btn-ghost" href="#reglamento">
                 Ver reglamento

@@ -1,0 +1,344 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { getStoredUser, clearUser } from "@/lib/auth";
+
+type Team = {
+  id: string;
+  name: string;
+  group: string;
+  price: number;
+};
+
+const groupPool: Record<string, string[]> = {
+  A: ["México", "Sudáfrica", "Rep. Corea", "Rep. Checa"],
+  B: ["Canadá", "Bosnia y Herz.", "Catar", "Suiza"],
+  C: ["Brasil", "Marruecos", "Haití", "Escocia"],
+  D: ["EE.UU.", "Paraguay", "Australia", "Turquía"],
+  E: ["Alemania", "Costa Marfil", "Ecuador", "Curazao"],
+  F: ["Países Bajos", "Japón", "Suecia", "Túnez"],
+  G: ["Bélgica", "Egipto", "Irán", "Nueva Zelanda"],
+  H: ["España", "Uruguay", "Arabia Saudí", "Cabo Verde"],
+  I: ["Francia", "Noruega", "Senegal", "Irak"],
+  J: ["Argentina", "Austria", "Argelia", "Jordania"],
+  K: ["Portugal", "Colombia", "RD Congo", "Uzbekistán"],
+  L: ["Inglaterra", "Croacia", "Ghana", "Panamá"]
+};
+
+const teams: Team[] = Object.entries(groupPool).flatMap(([group, names]) =>
+  names.map((name, teamIndex) => ({
+    id: `${group}-${teamIndex + 1}`,
+    name,
+    group,
+    price: 4 - teamIndex
+  }))
+);
+
+const favoriteBounds = { min: 9, max: 12 };
+const antiBounds = { min: 4, max: 6 };
+const ticketBounds = { min: 15, max: 22 };
+const DEADLINE = new Date("2026-06-11T00:00:00");
+
+function hasDuplicateGroup(ids: string[]) {
+  const groups = ids
+    .map((id) => teams.find((t) => t.id === id)?.group)
+    .filter(Boolean) as string[];
+  return new Set(groups).size !== groups.length;
+}
+
+export default function ApuestaPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [antiFavorites, setAntiFavorites] = useState<string[]>([]);
+  const [confirmed, setConfirmed] = useState(false);
+
+  const groupLabels = Object.keys(groupPool);
+  const isClosed = new Date() >= DEADLINE;
+
+  useEffect(() => {
+    const storedUser = getStoredUser();
+    if (!storedUser) {
+      router.push("/login");
+      return;
+    }
+    setUser(storedUser);
+
+    async function loadBet() {
+      try {
+        const docRef = doc(db, "bets", storedUser!.toLowerCase());
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setFavorites(data.favorites ?? []);
+          setAntiFavorites(data.antiFavorites ?? []);
+          setConfirmed(data.confirmed ?? false);
+        }
+      } catch {
+        // Firestore error: continue with empty state
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadBet();
+  }, [router]);
+
+  const favoritesCost = useMemo(
+    () => favorites.reduce((sum, id) => sum + (teams.find((t) => t.id === id)?.price ?? 0), 0),
+    [favorites]
+  );
+
+  const antiDiscount = useMemo(
+    () => antiFavorites.reduce((sum, id) => sum + (teams.find((t) => t.id === id)?.price ?? 0), 0),
+    [antiFavorites]
+  );
+
+  const ticketCost = favoritesCost - antiDiscount;
+  const overlap = favorites.some((id) => antiFavorites.includes(id));
+
+  const validations = [
+    {
+      ok: favorites.length >= favoriteBounds.min && favorites.length <= favoriteBounds.max,
+      text: `Favoritos: ${favoriteBounds.min}-${favoriteBounds.max} (actual ${favorites.length})`
+    },
+    {
+      ok: antiFavorites.length >= antiBounds.min && antiFavorites.length <= antiBounds.max,
+      text: `Antifavoritos: ${antiBounds.min}-${antiBounds.max} (actual ${antiFavorites.length})`
+    },
+    { ok: !hasDuplicateGroup(favorites), text: "No repetir grupo en favoritos" },
+    { ok: !hasDuplicateGroup(antiFavorites), text: "No repetir grupo en antifavoritos" },
+    { ok: !overlap, text: "Un equipo no puede estar en ambos bloques" },
+    {
+      ok: ticketCost >= ticketBounds.min && ticketCost <= ticketBounds.max,
+      text: `Coste entre ${ticketBounds.min} y ${ticketBounds.max}€ (actual ${ticketCost}€)`
+    }
+  ];
+
+  const allValid = validations.every((r) => r.ok);
+
+  function toggleTeam(teamId: string, isFavorite: boolean) {
+    if (isFavorite) {
+      setFavorites((c) => c.includes(teamId) ? c.filter((id) => id !== teamId) : [...c, teamId]);
+    } else {
+      setAntiFavorites((c) => c.includes(teamId) ? c.filter((id) => id !== teamId) : [...c, teamId]);
+    }
+  }
+
+  function getGroupTeams(group: string) {
+    return groupPool[group as keyof typeof groupPool] || [];
+  }
+
+  function hasGroupInFavorites(group: string) {
+    return favorites.some((id) => teams.find((t) => t.id === id)?.group === group);
+  }
+
+  function hasGroupInAntifavorites(group: string) {
+    return antiFavorites.some((id) => teams.find((t) => t.id === id)?.group === group);
+  }
+
+  async function handleConfirm() {
+    if (!user || !allValid) return;
+    setSaving(true);
+    try {
+      await setDoc(doc(db, "bets", user.toLowerCase()), {
+        favorites,
+        antiFavorites,
+        confirmed: true,
+        updatedAt: new Date()
+      });
+      setConfirmed(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleEdit() {
+    if (!user || isClosed) return;
+    setSaving(true);
+    try {
+      await setDoc(doc(db, "bets", user.toLowerCase()), {
+        favorites,
+        antiFavorites,
+        confirmed: false,
+        updatedAt: new Date()
+      });
+      setConfirmed(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleLogout() {
+    clearUser();
+    router.push("/login");
+  }
+
+  if (loading) {
+    return (
+      <main className="app-shell">
+        <header className="topbar">
+          <div className="brand"><span className="dot" /><h1>Mundialisimo</h1></div>
+        </header>
+        <div className="loading-screen"><p className="muted">Cargando tu apuesta…</p></div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="app-shell">
+      <header className="topbar">
+        <div className="brand">
+          <span className="dot" />
+          <h1>Mundialisimo</h1>
+          <span className="sub">{user}</span>
+        </div>
+        <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
+      </header>
+
+      <section className="hero">
+        <div className="hero-inner">
+          <div className="hero-crest placeholder">26</div>
+          <div className="hero-text">
+            <div className="hero-eyebrow">Tu apuesta</div>
+            <h2 className="hero-name">Hola, {user}</h2>
+            <p className="lead">
+              {confirmed
+                ? "Tu apuesta está confirmada. Puedes editarla hasta el inicio del Mundial."
+                : "Elige tus favoritos y antifavoritos y confirma tu apuesta."}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className={`price-bar ${confirmed ? "price-confirmed" : ticketCost > ticketBounds.max ? "price-over" : ticketCost < ticketBounds.min && (favorites.length > 0 || antiFavorites.length > 0) ? "price-under" : ticketCost >= ticketBounds.min && ticketCost <= ticketBounds.max ? "price-ok" : ""}`}>
+        <div className="price-bar-inner">
+          <span className="price-bar-total">
+            <span className="price-bar-label">{confirmed ? "Apuesta confirmada" : "Apuesta"}</span>
+            <span className="price-bar-amount">{ticketCost}€</span>
+          </span>
+          {!confirmed && <span className="price-bar-range">rango válido: {ticketBounds.min}-{ticketBounds.max}€</span>}
+          {confirmed && !isClosed && (
+            <button className="btn edit-btn" onClick={handleEdit} disabled={saving}>
+              {saving ? "Guardando…" : "Editar apuesta"}
+            </button>
+          )}
+          {isClosed && confirmed && (
+            <span className="price-bar-range closed-label">Apuestas cerradas · Mundial en marcha</span>
+          )}
+        </div>
+      </div>
+
+      <div className="bet-builder">
+        <section className="bet-section">
+          <div className="section-header">
+            <h2>Selecciona tus equipos</h2>
+            <div className="counters">
+              <span className="counter fav-counter">
+                <span className="dot-fav" /> Favoritos {favorites.length}/9-12
+              </span>
+              <span className="counter anti-counter">
+                <span className="dot-anti" /> Antifavoritos {antiFavorites.length}/4-6
+              </span>
+            </div>
+          </div>
+          {!confirmed && <p className="muted">Botones verdes para favoritos, rojos para antifavoritos. Máximo 1 equipo por grupo en cada bloque.</p>}
+
+          <div className="groups-grid">
+            {groupLabels.map((group) => (
+              <div className="group-card" key={`group-${group}`}>
+                <h3 className="group-label">Grupo {group}</h3>
+                <div className="group-teams">
+                  {getGroupTeams(group).map((name, idx) => {
+                    const teamId = `${group}-${idx + 1}`;
+                    const isFav = favorites.includes(teamId);
+                    const isAnti = antiFavorites.includes(teamId);
+                    const team = teams.find((t) => t.id === teamId);
+
+                    if (confirmed) {
+                      return (
+                        <div
+                          className={`team-result ${isFav ? "team-result-fav" : isAnti ? "team-result-anti" : "team-result-neutral"}`}
+                          key={teamId}
+                        >
+                          <span className="team-name">{name}</span>
+                          <span className="team-result-badge">
+                            {isFav ? `+${team?.price}€` : isAnti ? `-${team?.price}€` : `${team?.price}€`}
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="team-dual" key={teamId}>
+                        <div className="team-info">
+                          <span className="team-name">{name}</span>
+                          <span className="team-price">{team?.price || 0}€</span>
+                        </div>
+                        <div className="team-controls">
+                          <button
+                            className={`team-btn fav-btn ${isFav ? "active" : ""} ${!isFav && (favorites.length >= 12 || hasGroupInFavorites(group) || isAnti) ? "disabled" : ""}`}
+                            onClick={() => toggleTeam(teamId, true)}
+                            disabled={!isFav && (favorites.length >= 12 || hasGroupInFavorites(group) || isAnti)}
+                            title={isFav ? "Remover de favoritos" : isAnti ? "Ya es antifavorito" : hasGroupInFavorites(group) ? "Ya hay un equipo de este grupo" : "Marcar como favorito"}
+                          />
+                          <button
+                            className={`team-btn anti-btn ${isAnti ? "active" : ""} ${!isAnti && (antiFavorites.length >= 6 || hasGroupInAntifavorites(group) || isFav) ? "disabled" : ""}`}
+                            onClick={() => toggleTeam(teamId, false)}
+                            disabled={!isAnti && (antiFavorites.length >= 6 || hasGroupInAntifavorites(group) || isFav)}
+                            title={isAnti ? "Remover de antifavoritos" : isFav ? "Ya es favorito" : hasGroupInAntifavorites(group) ? "Ya hay un equipo de este grupo" : "Marcar como antifavorito"}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {!confirmed && !isClosed && (
+            <div className="bet-actions">
+              <button
+                className={`btn confirm-btn ${allValid ? "" : "confirm-btn-disabled"}`}
+                disabled={!allValid || saving}
+                onClick={handleConfirm}
+              >
+                {saving ? "Guardando…" : allValid ? "Confirmar apuesta" : "Completa la apuesta para confirmar"}
+              </button>
+            </div>
+          )}
+          {isClosed && !confirmed && (
+            <p className="deadline-notice ko">Las apuestas están cerradas desde el inicio del Mundial (11 jun 2026).</p>
+          )}
+        </section>
+      </div>
+
+      <div className="grid">
+        <article className="card highlight summary-card">
+          <h2>Resumen</h2>
+          <p>Coste favoritos: {favoritesCost}€</p>
+          <p>Abono antifavoritos: {antiDiscount}€</p>
+          <p><strong>Coste final: {ticketCost}€</strong></p>
+          <h3>Validaciones</h3>
+          <ul className="checks">
+            {validations.map((rule) => (
+              <li className={rule.ok ? "ok" : "ko"} key={rule.text}>
+                {rule.ok ? "✓" : "✗"} {rule.text}
+              </li>
+            ))}
+          </ul>
+          <p className={allValid ? "ok" : "ko"}>
+            {allValid ? "Apuesta válida." : "Aún no cumple todas las reglas."}
+          </p>
+        </article>
+      </div>
+    </main>
+  );
+}
