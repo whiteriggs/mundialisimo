@@ -54,6 +54,7 @@ export default function ResultadosPage() {
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     const user = getStoredUser();
@@ -124,6 +125,7 @@ export default function ResultadosPage() {
     e.preventDefault();
     if (!form.home || !form.away || form.home === form.away) return;
     setSaving(true);
+    setFormError(null);
     try {
       const newMatch: Omit<Match, "id"> = {
         home: form.home,
@@ -144,14 +146,24 @@ export default function ResultadosPage() {
         return updated;
       });
       setForm(EMPTY_FORM);
+    } catch (err) {
+      setFormError(
+        err instanceof Error ? err.message : "Error al guardar. Revisa las reglas de Firestore."
+      );
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    await deleteDoc(doc(db, "matches", id));
-    setMatches((prev) => prev.filter((m) => m.id !== id));
+    try {
+      await deleteDoc(doc(db, "matches", id));
+      setMatches((prev) => prev.filter((m) => m.id !== id));
+    } catch (err) {
+      setFormError(
+        err instanceof Error ? err.message : "Error al eliminar."
+      );
+    }
   }
 
   function handleLogout() {
@@ -308,6 +320,7 @@ export default function ResultadosPage() {
               <button className="btn" type="submit" disabled={saving || !form.home || !form.away || form.home === form.away}>
                 {saving ? "Guardando…" : "Añadir partido"}
               </button>
+              {formError && <p className="login-error">{formError}</p>}
             </form>
           </div>
 
