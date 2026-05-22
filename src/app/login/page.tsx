@@ -85,7 +85,7 @@ export default function LoginPage() {
 
       <section className="hero">
         <div className="hero-inner">
-          <div className="hero-crest placeholder">26</div>
+          <div className="hero-crest placeholder">⚽</div>
           <div className="hero-text">
             <div className="hero-eyebrow">Acceso a la porra</div>
             <h2 className="hero-name">¿Quién eres?</h2>

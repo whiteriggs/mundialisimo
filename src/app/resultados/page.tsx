@@ -172,7 +172,7 @@ export default function ResultadosPage() {
 
       <section className="hero">
         <div className="hero-inner">
-          <div className="hero-crest placeholder">26</div>
+          <div className="hero-crest placeholder">⚽</div>
           <div className="hero-text">
             <div className="hero-eyebrow">Porra Mundial 2026</div>
             <h2 className="hero-name">Clasificación</h2>

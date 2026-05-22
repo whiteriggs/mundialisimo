@@ -223,7 +223,7 @@ export default function ApuestaPage() {
 
       <section className="hero">
         <div className="hero-inner">
-          <div className="hero-crest placeholder">26</div>
+          <div className="hero-crest placeholder">⚽</div>
           <div className="hero-text">
             <div className="hero-eyebrow">Tu apuesta</div>
             <h2 className="hero-name">Hola, {user}</h2>

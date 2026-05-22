@@ -132,9 +132,8 @@ a {
 }
 
 .hero-crest.placeholder {
-  font-size: 36px;
-  font-weight: 700;
-  color: var(--text-dim);
+  font-size: 64px;
+  line-height: 1;
 }
 
 .hero-eyebrow {
