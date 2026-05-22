@@ -157,9 +157,9 @@ export default function ApuestaDemoPage() {
         <div className="price-bar-inner">
           <span className="price-bar-total">
             <span className="price-bar-label">{confirmed ? "Apuesta confirmada" : "Apuesta"}</span>
-            <span className="price-bar-amount">{ticketCost}€</span>
+            <span className="price-bar-amount">{ticketCost} pts</span>
           </span>
-          {!confirmed && <span className="price-bar-range">rango válido: {ticketBounds.min}-{ticketBounds.max}€</span>}
+          {!confirmed && <span className="price-bar-range">rango válido: {ticketBounds.min}-{ticketBounds.max} pts</span>}
           {confirmed && !isClosed && (
             <button className="btn edit-btn" onClick={() => setConfirmed(false)}>Editar apuesta</button>
           )}
@@ -198,7 +198,7 @@ export default function ApuestaDemoPage() {
                       return (
                         <div className={`team-result ${isFav ? "team-result-fav" : isAnti ? "team-result-anti" : "team-result-neutral"}`} key={teamId}>
                           <span className="team-name">{name}</span>
-                          <span className="team-result-badge">{isFav ? `+${team?.price}€` : isAnti ? `-${team?.price}€` : `${team?.price}€`}</span>
+                          <span className="team-result-badge">{isFav ? `+${team?.price} pts` : isAnti ? `-${team?.price} pts` : `${team?.price} pts`}</span>
                         </div>
                       );
                     }
@@ -207,7 +207,7 @@ export default function ApuestaDemoPage() {
                       <div className="team-dual" key={teamId}>
                         <div className="team-info">
                           <span className="team-name">{name}</span>
-                          <span className="team-price">{team?.price || 0}€</span>
+                          <span className="team-price">{team?.price || 0} pts</span>
                         </div>
                         <div className="team-controls">
                           <button

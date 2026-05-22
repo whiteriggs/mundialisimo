@@ -219,7 +219,7 @@ export default function AdminPage() {
     { ok: !hasDuplicateGroup(favorites), text: "No repetir grupo en favoritos" },
     { ok: !hasDuplicateGroup(antiFavorites), text: "No repetir grupo en antifavoritos" },
     { ok: !overlap, text: "Un equipo no puede estar en ambos bloques" },
-    { ok: ticketCost >= ticketBounds.min && ticketCost <= ticketBounds.max, text: `Coste entre ${ticketBounds.min} y ${ticketBounds.max}€ (actual ${ticketCost}€)` },
+    { ok: ticketCost >= ticketBounds.min && ticketCost <= ticketBounds.max, text: `Coste entre ${ticketBounds.min} y ${ticketBounds.max} pts (actual ${ticketCost} pts)` },
   ];
   const allValidBet = validationsBet.every((r) => r.ok);
 
@@ -343,9 +343,9 @@ export default function AdminPage() {
                   <div className="price-bar-inner">
                     <span className="price-bar-total">
                       <span className="price-bar-label">Apuesta de {betUser}</span>
-                      <span className="price-bar-amount">{ticketCost}€</span>
+                      <span className="price-bar-amount">{ticketCost} pts</span>
                     </span>
-                    <span className="price-bar-range">rango válido: {ticketBounds.min}-{ticketBounds.max}€</span>
+                    <span className="price-bar-range">rango válido: {ticketBounds.min}-{ticketBounds.max} pts</span>
                   </div>
                 </div>
 
@@ -382,7 +382,7 @@ export default function AdminPage() {
                                         {superFavorite === teamId ? "★" : "☆"}
                                       </button>
                                     )}
-                                    <span className="team-price">{team?.price ?? 0}€</span>
+                                    <span className="team-price">{team?.price ?? 0} pts</span>
                                   </div>
                                   <div className="team-controls">
                                     <button
@@ -427,9 +427,9 @@ export default function AdminPage() {
                 <div className="grid" style={{ marginTop: "1.5rem" }}>
                   <article className="card highlight summary-card">
                     <h2>Resumen</h2>
-                    <p>Favoritos: {favoritesCost}€</p>
-                    <p>Antifavoritos: −{antiDiscount}€</p>
-                    <p><strong>Total: {ticketCost}€</strong></p>
+                    <p>Favoritos: {favoritesCost} pts</p>
+                    <p>Antifavoritos: −{antiDiscount} pts</p>
+                    <p><strong>Total: {ticketCost} pts</strong></p>
                     <ul className="checks">
                       {validationsBet.map((r) => (
                         <li className={r.ok ? "ok" : "ko"} key={r.text}>{r.ok ? "✓" : "✗"} {r.text}</li>

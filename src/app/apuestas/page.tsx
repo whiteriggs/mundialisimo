@@ -127,7 +127,7 @@ export default function ApuestasPage() {
               <div className="bet-card" key={uid}>
                 <div className="bet-card-header">
                   <span className="bet-card-name">{displayName}{isMe ? " (tú)" : ""}</span>
-                  <span className="status-badge status-confirmed">Confirmada · {cost}€</span>
+                  <span className="status-badge status-confirmed">Confirmada · {cost} pts</span>
                 </div>
 
                 <div className="bet-card-section">
@@ -141,7 +141,7 @@ export default function ApuestasPage() {
                           {isSuper && <span className="super-star">★</span>}
                           <span className="bet-team-name">{teamName(id)}</span>
                           <span className="bet-team-group">Gr. {team?.group}</span>
-                          <span className="bet-team-price">+{team?.price}€</span>
+                          <span className="bet-team-price">+{team?.price} pts</span>
                         </li>
                       );
                     })}
@@ -157,7 +157,7 @@ export default function ApuestasPage() {
                         <li key={id}>
                           <span className="bet-team-name">{teamName(id)}</span>
                           <span className="bet-team-group">Gr. {team?.group}</span>
-                          <span className="bet-team-price">−{team?.price}€</span>
+                          <span className="bet-team-price">−{team?.price} pts</span>
                         </li>
                       );
                     })}

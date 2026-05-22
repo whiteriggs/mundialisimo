@@ -126,7 +126,7 @@ export default function ApuestaPage() {
     { ok: !overlap, text: "Un equipo no puede estar en ambos bloques" },
     {
       ok: ticketCost >= ticketBounds.min && ticketCost <= ticketBounds.max,
-      text: `Coste entre ${ticketBounds.min} y ${ticketBounds.max}€ (actual ${ticketCost}€)`
+      text: `Coste entre ${ticketBounds.min} y ${ticketBounds.max} pts (actual ${ticketCost} pts)`
     }
   ];
 
@@ -239,9 +239,9 @@ export default function ApuestaPage() {
         <div className="price-bar-inner">
           <span className="price-bar-total">
             <span className="price-bar-label">{confirmed ? "Apuesta confirmada" : "Apuesta"}</span>
-            <span className="price-bar-amount">{ticketCost}€</span>
+            <span className="price-bar-amount">{ticketCost} pts</span>
           </span>
-          {!confirmed && <span className="price-bar-range">rango válido: {ticketBounds.min}-{ticketBounds.max}€</span>}
+          {!confirmed && <span className="price-bar-range">rango válido: {ticketBounds.min}-{ticketBounds.max} pts</span>}
           {confirmed && !isClosed && (
             <button className="btn edit-btn" onClick={handleEdit} disabled={saving}>
               {saving ? "Guardando…" : "Editar apuesta"}
@@ -290,7 +290,7 @@ export default function ApuestaPage() {
                             {name}
                           </span>
                           <span className="team-result-badge">
-                            {isFav ? `+${team?.price}€` : isAnti ? `-${team?.price}€` : `${team?.price}€`}
+                            {isFav ? `+${team?.price} pts` : isAnti ? `-${team?.price} pts` : `${team?.price} pts`}
                           </span>
                         </div>
                       );
@@ -310,7 +310,7 @@ export default function ApuestaPage() {
                               {superFavorite === teamId ? "★" : "☆"}
                             </button>
                           )}
-                          <span className="team-price">{team?.price || 0}€</span>
+                          <span className="team-price">{team?.price || 0} pts</span>
                         </div>
                         <div className="team-controls">
                           <button
@@ -354,9 +354,9 @@ export default function ApuestaPage() {
       <div className="grid">
         <article className="card highlight summary-card">
           <h2>Resumen</h2>
-          <p>Coste favoritos: {favoritesCost}€</p>
-          <p>Abono antifavoritos: {antiDiscount}€</p>
-          <p><strong>Coste final: {ticketCost}€</strong></p>
+          <p>Coste favoritos: {favoritesCost} pts</p>
+          <p>Abono antifavoritos: {antiDiscount} pts</p>
+          <p><strong>Coste final: {ticketCost} pts</strong></p>
           <h3>Validaciones</h3>
           <ul className="checks">
             {validations.map((rule) => (
