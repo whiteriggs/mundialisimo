@@ -35,7 +35,7 @@ const ALL_RULES = [
   {
     title: "Desempates",
     items: [
-      "Mejor posición media de favoritos en el ranking final (1-32).",
+      "Mejor posición media de favoritos en el ranking final (1-48).",
       "Si persiste el empate, decide el superfavorito.",
       "Último criterio: orden de inscripción.",
     ],
