@@ -1,7 +1,35 @@
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
 export const USERS = ["Juan", "Javi", "Jordi", "Jorge", "Esteban", "Manuel", "JuanRa"];
+
+export async function getUsers(): Promise<string[]> {
+  try {
+    const snap = await getDoc(doc(db, "config", "users"));
+    if (snap.exists()) {
+      const data = snap.data() as { list?: string[] };
+      if (data.list && data.list.length > 0) return data.list;
+    }
+  } catch { /* ignore */ }
+  return USERS;
+}
+
+export async function addUser(username: string): Promise<void> {
+  const current = await getUsers();
+  if (current.map((u) => u.toLowerCase()).includes(username.toLowerCase())) return;
+  await setDoc(doc(db, "config", "users"), { list: [...current, username] });
+}
+
+export async function removeUser(username: string): Promise<void> {
+  const current = await getUsers();
+  await setDoc(doc(db, "config", "users"), {
+    list: current.filter((u) => u.toLowerCase() !== username.toLowerCase()),
+  });
+}
+
+export async function deleteUserPassword(username: string): Promise<void> {
+  await deleteDoc(doc(db, "userPasswords", username.toLowerCase()));
+}
 
 async function hashPassword(password: string): Promise<string> {
   const data = new TextEncoder().encode(password);

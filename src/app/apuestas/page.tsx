@@ -82,6 +82,7 @@ export default function ApuestasPage() {
           <Link href="/grupos">Grupos</Link>
           <Link href="/resultados">Resultados</Link>
           <Link href="/eliminatorias">Eliminatorias</Link>
+          {currentUser === "Javi" && <Link href="/admin">Admin</Link>}
         </nav>
         <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
       </header>

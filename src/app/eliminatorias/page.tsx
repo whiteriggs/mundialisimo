@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getStoredUser, clearUser } from "@/lib/auth";
 
 type BMatch = { home: string; away: string; date?: string; isTbd?: boolean };
@@ -138,10 +138,12 @@ const FINAL_MATCH: BMatch = { home: "Por determinar", away: "Por determinar", da
 
 export default function EliminatoriasPage() {
   const router = useRouter();
+  const [user, setUser] = useState<string | null>(null);
 
   useEffect(() => {
-    const user = getStoredUser();
-    if (!user) router.push("/login");
+    const u = getStoredUser();
+    if (!u) { router.push("/login"); return; }
+    setUser(u);
   }, [router]);
 
   function handleLogout() {
@@ -162,6 +164,7 @@ export default function EliminatoriasPage() {
           <Link href="/apuestas">Apuestas</Link>
           <Link href="/resultados">Resultados</Link>
           <Link href="/grupos">Grupos</Link>
+          {user === "Javi" && <Link href="/admin">Admin</Link>}
         </nav>
         <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
       </header>

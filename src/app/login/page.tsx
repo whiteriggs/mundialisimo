@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  USERS,
+  getUsers,
   hasUserPassword,
   createUserPassword,
   verifyUserPassword,
@@ -20,6 +20,11 @@ export default function LoginPage() {
   const [mode, setMode]         = useState<Mode>("idle");
   const [error, setError]       = useState("");
   const [busy, setBusy]         = useState(false);
+  const [userList, setUserList]  = useState<string[]>([]);
+
+  useEffect(() => {
+    getUsers().then(setUserList);
+  }, []);
 
   // When the user picks a name, check Firestore for existing password
   useEffect(() => {
@@ -108,7 +113,7 @@ export default function LoginPage() {
               required
             >
               <option value="">— Selecciona —</option>
-              {USERS.map((u) => (
+              {userList.map((u) => (
                 <option key={u} value={u}>{u}</option>
               ))}
             </select>

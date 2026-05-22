@@ -204,6 +204,7 @@ export default function ApuestaPage() {
           <Link href="/apuestas">Apuestas</Link>
           <Link href="/resultados">Resultados</Link>
           <Link href="/eliminatorias">Eliminatorias</Link>
+          {user === "Javi" && <Link href="/admin">Admin</Link>}
         </nav>
         <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
       </header>

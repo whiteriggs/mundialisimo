@@ -24,9 +24,12 @@ export default function GruposPage() {
   const [noData, setNoData] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
 
+  const [user, setUser] = useState<string | null>(null);
+
   useEffect(() => {
-    const user = getStoredUser();
-    if (!user) { router.push("/login"); return; }
+    const u = getStoredUser();
+    if (!u) { router.push("/login"); return; }
+    setUser(u);
 
     fetchGroupStandings()
       .then((data) => {
@@ -57,6 +60,7 @@ export default function GruposPage() {
           <Link href="/apuestas">Apuestas</Link>
           <Link href="/resultados">Resultados</Link>
           <Link href="/eliminatorias">Eliminatorias</Link>
+          {user === "Javi" && <Link href="/admin">Admin</Link>}
         </nav>
         <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
       </header>
