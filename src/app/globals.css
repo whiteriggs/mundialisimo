@@ -1377,3 +1377,14 @@ a {
   border-color: var(--accent);
   color: var(--text);
 }
+
+/* ── API notice (neutral info) ──────────────── */
+.api-notice {
+  font-size: 14px;
+  color: var(--text-dim);
+  background: rgba(78, 163, 255, 0.07);
+  border: 1px solid rgba(78, 163, 255, 0.15);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 0;
+}

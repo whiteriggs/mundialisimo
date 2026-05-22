@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getStoredUser, clearUser } from "@/lib/auth";
 import { fetchGroupStandings, ApiStandingGroup, toInternalName } from "@/lib/football-api";
+import { GROUP_POOL } from "@/lib/teams";
 
 function sign(n: number) {
   if (n > 0) return `+${n}`;
@@ -20,7 +21,7 @@ export default function GruposPage() {
   const router = useRouter();
   const [groups, setGroups] = useState<ApiStandingGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [noData, setNoData] = useState(false);
   const [matchCount, setMatchCount] = useState(0);
 
   useEffect(() => {
@@ -29,14 +30,12 @@ export default function GruposPage() {
 
     fetchGroupStandings()
       .then((data) => {
+        if (data.length === 0) { setNoData(true); return; }
         setGroups(data);
-        const played = data.reduce(
-          (sum, g) => sum + (g.table[0]?.playedGames ?? 0),
-          0
-        );
+        const played = data.reduce((sum, g) => sum + (g.table[0]?.playedGames ?? 0), 0);
         setMatchCount(played);
       })
-      .catch((err: Error) => setError(err.message))
+      .catch(() => setNoData(true))
       .finally(() => setLoading(false));
   }, [router]);
 
@@ -68,8 +67,10 @@ export default function GruposPage() {
             <div className="hero-eyebrow">Mundial 2026 · Fase de grupos</div>
             <h2 className="hero-name">Clasificación de grupos</h2>
             <p className="lead">
-              {matchCount === 0
-                ? "El Mundial empieza el 11 de junio. Los datos se actualizan automáticamente desde football-data.org."
+              {noData
+                ? "Los datos se actualizarán automáticamente cuando empiece el Mundial el 11 de junio."
+                : matchCount === 0
+                ? "Torneo en marcha. Datos actualizados desde football-data.org."
                 : `${matchCount} partido${matchCount !== 1 ? "s" : ""} de grupo jugado${matchCount !== 1 ? "s" : ""}.`}
             </p>
           </div>
@@ -77,13 +78,45 @@ export default function GruposPage() {
       </section>
 
       {loading && <div className="loading-screen"><p className="muted">Cargando datos oficiales…</p></div>}
-      {error && (
-        <div className="results-section">
-          <p className="login-error">Error al cargar: {error}</p>
-          <p className="muted">Comprueba que la API key está configurada y que el torneo ya tiene datos en football-data.org.</p>
-        </div>
+
+      {!loading && noData && (
+        <>
+          <div className="results-section">
+            <p className="api-notice">El Mundial empieza el 11 de junio. Aquí están los grupos ya definidos — las puntuaciones aparecerán cuando comiencen los partidos.</p>
+          </div>
+          <div className="groups-standings-grid">
+            {Object.entries(GROUP_POOL).map(([letter, teams]) => (
+              <div className="group-standing-card" key={letter}>
+                <h3 className="group-standing-title">Grupo {letter}</h3>
+                <table className="standing-table">
+                  <thead>
+                    <tr>
+                      <th className="st-pos">#</th>
+                      <th className="st-name">Equipo</th>
+                      <th>PJ</th><th>V</th><th>E</th><th>D</th>
+                      <th>GF</th><th>GC</th><th>DG</th>
+                      <th className="st-pts">Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teams.map((name, idx) => (
+                      <tr key={name}>
+                        <td className="st-pos">{idx + 1}</td>
+                        <td className="st-name">{name}</td>
+                        <td>–</td><td>–</td><td>–</td><td>–</td>
+                        <td>–</td><td>–</td><td>–</td>
+                        <td className="st-pts">–</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+          </div>
+        </>
       )}
-      {!loading && !error && (
+
+      {!loading && !noData && (
         <div className="groups-standings-grid">
           {groups.map((g) => {
             const letter = groupLetter(g.group);

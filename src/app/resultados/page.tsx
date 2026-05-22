@@ -189,7 +189,7 @@ export default function ResultadosPage() {
         <>
           {apiError && (
             <div className="results-section">
-              <p className="login-error">Error API: {apiError}</p>
+              <p className="api-notice">Los datos de partidos se cargarán automáticamente cuando empiece el Mundial (11 jun 2026).</p>
             </div>
           )}
 
