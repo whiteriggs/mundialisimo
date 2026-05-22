@@ -4,8 +4,19 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getStoredUser, clearUser } from "@/lib/auth";
+import { fetchKnockoutMatches, ApiKnockoutMatch } from "@/lib/football-api";
 
-type BMatch = { home: string; away: string; date?: string; isTbd?: boolean };
+type BMatch = {
+  home: string;
+  away: string;
+  date?: string;
+  isTbd?: boolean;
+  homeGoals?: number | null;
+  awayGoals?: number | null;
+  finished?: boolean;
+  winner?: "home" | "away" | null;
+  penalties?: boolean;
+};
 // BHalf: array of rounds, each round is array of pairs, each pair is 1 or 2 matches
 type BHalf = BMatch[][][];
 
@@ -88,15 +99,77 @@ const RIGHT_HALF: BHalf = [
 const LEFT_LABELS  = ["Dieciseisavos", "Octavos", "Cuartos", "Semifinal"];
 const RIGHT_LABELS = ["Semifinal", "Cuartos", "Octavos", "Dieciseisavos"];
 
+function apiToBMatch(m: ApiKnockoutMatch): BMatch {
+  return {
+    home: m.home,
+    away: m.away,
+    date: m.date,
+    isTbd: m.home === "Por determinar" && m.away === "Por determinar",
+    homeGoals: m.homeGoals,
+    awayGoals: m.awayGoals,
+    finished: m.finished,
+    winner: m.winner,
+    penalties: m.penalties,
+  };
+}
+
+function buildBracketFromApi(matches: ApiKnockoutMatch[]): {
+  left: BHalf;
+  right: BHalf;
+  final: BMatch;
+} {
+  const by = (stage: string) => matches.filter((m) => m.stage === stage).map(apiToBMatch);
+  const at = (arr: BMatch[], i: number): BMatch => arr[i] ?? TBD;
+
+  const r32 = by("ROUND_OF_32");
+  const r16 = by("ROUND_OF_16");
+  const qf  = by("QUARTER_FINALS");
+  const sf  = by("SEMI_FINALS");
+  const fin = by("FINAL");
+
+  const left: BHalf = [
+    [[at(r32,0), at(r32,1)], [at(r32,2), at(r32,3)], [at(r32,4), at(r32,5)], [at(r32,6), at(r32,7)]],
+    [[at(r16,0), at(r16,1)], [at(r16,2), at(r16,3)]],
+    [[at(qf,0),  at(qf,1)]],
+    [[at(sf,0)]],
+  ];
+  const right: BHalf = [
+    [[at(sf,1)]],
+    [[at(qf,2),  at(qf,3)]],
+    [[at(r16,4), at(r16,5)], [at(r16,6), at(r16,7)]],
+    [[at(r32,8), at(r32,9)], [at(r32,10), at(r32,11)], [at(r32,12), at(r32,13)], [at(r32,14), at(r32,15)]],
+  ];
+
+  return { left, right, final: fin[0] ?? { ...FINAL_MATCH } };
+}
+
 function MatchCard({ m, isFinal = false }: { m: BMatch; isFinal?: boolean }) {
+  const showScore = m.finished && m.homeGoals !== null && m.homeGoals !== undefined;
   return (
     <div className={[
       "bk-match",
-      m.isTbd  ? "bk-match--tbd"   : "",
-      isFinal  ? "bk-match--final" : "",
+      m.isTbd  ? "bk-match--tbd"      : "",
+      isFinal  ? "bk-match--final"    : "",
+      m.finished ? "bk-match--finished" : "",
     ].join(" ").trim()}>
-      <div className={`bk-team${m.isTbd ? " bk-team--tbd" : ""}`}>{m.home}</div>
-      <div className={`bk-team${m.isTbd ? " bk-team--tbd" : ""}`}>{m.away}</div>
+      <div className={[
+        "bk-team",
+        m.isTbd      ? "bk-team--tbd"    : "",
+        m.winner === "home" ? "bk-team--winner" : "",
+        m.winner === "away" ? "bk-team--loser"  : "",
+      ].join(" ").trim()}>
+        <span className="bk-team-name">{m.home}</span>
+        {showScore && <span className="bk-team-score">{m.homeGoals}{m.penalties && m.winner === "home" ? "p" : ""}</span>}
+      </div>
+      <div className={[
+        "bk-team",
+        m.isTbd      ? "bk-team--tbd"    : "",
+        m.winner === "away" ? "bk-team--winner" : "",
+        m.winner === "home" ? "bk-team--loser"  : "",
+      ].join(" ").trim()}>
+        <span className="bk-team-name">{m.away}</span>
+        {showScore && <span className="bk-team-score">{m.awayGoals}{m.penalties && m.winner === "away" ? "p" : ""}</span>}
+      </div>
       {m.date && <div className="bk-date">{m.date}</div>}
     </div>
   );
@@ -139,11 +212,27 @@ const FINAL_MATCH: BMatch = { home: "Por determinar", away: "Por determinar", da
 export default function EliminatoriasPage() {
   const router = useRouter();
   const [user, setUser] = useState<string | null>(null);
+  const [leftHalf,   setLeftHalf]   = useState<BHalf>(LEFT_HALF);
+  const [rightHalf,  setRightHalf]  = useState<BHalf>(RIGHT_HALF);
+  const [finalMatch, setFinalMatch] = useState<BMatch>(FINAL_MATCH);
+  const [apiNote, setApiNote]       = useState<string | null>(null);
 
   useEffect(() => {
     const u = getStoredUser();
     if (!u) { router.push("/login"); return; }
     setUser(u);
+
+    fetchKnockoutMatches()
+      .then((matches) => {
+        if (matches.length === 0) return; // pre-torneo: mantener datos estáticos
+        const { left, right, final } = buildBracketFromApi(matches);
+        setLeftHalf(left);
+        setRightHalf(right);
+        setFinalMatch(final);
+      })
+      .catch(() => {
+        setApiNote("No se pudieron cargar los datos en directo. Mostrando cuadro del sorteo oficial.");
+      });
   }, [router]);
 
   function handleLogout() {
@@ -183,15 +272,18 @@ export default function EliminatoriasPage() {
       </section>
 
       <div className="content-area">
-        <p className="api-notice" style={{ marginBottom: 20 }}>
-          Los cruces de dieciseisavos son fijos. M.3º = mejor tercer clasificado de los grupos indicados.
-        </p>
+        {apiNote
+          ? <p className="api-notice" style={{ marginBottom: 20 }}>{apiNote}</p>
+          : <p className="api-notice" style={{ marginBottom: 20 }}>
+              Los cruces de dieciseisavos son fijos. M.3º = mejor tercer clasificado de los grupos indicados.
+            </p>
+        }
 
         <div className="bk-scroll-hint">← Desplaza para ver el cuadro completo →</div>
 
         <div className="bk-scroll">
           <div className="bk-stage">
-            <HalfBracket half={LEFT_HALF}  labels={LEFT_LABELS}  side="left" />
+            <HalfBracket half={leftHalf}  labels={LEFT_LABELS}  side="left" />
 
             {/* Final */}
             <div className="bk-final-col">
@@ -199,13 +291,13 @@ export default function EliminatoriasPage() {
               <div className="bk-col-body">
                 <div className="bk-pair bk-pair--single">
                   <div className="bk-entry">
-                    <MatchCard m={FINAL_MATCH} isFinal />
+                    <MatchCard m={finalMatch} isFinal />
                   </div>
                 </div>
               </div>
             </div>
 
-            <HalfBracket half={RIGHT_HALF} labels={RIGHT_LABELS} side="right" />
+            <HalfBracket half={rightHalf} labels={RIGHT_LABELS} side="right" />
           </div>
         </div>
       </div>
