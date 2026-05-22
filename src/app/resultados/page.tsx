@@ -16,6 +16,7 @@ import { getStoredUser, clearUser, USERS } from "@/lib/auth";
 import { TEAM_NAMES, teamName } from "@/lib/teams";
 import { buildTeamTotals, Phase, Match } from "@/lib/scoring";
 import { fetchAllMatches, ApiAllMatch } from "@/lib/football-api";
+import { buildStaticSchedule } from "@/lib/static-schedule";
 
 type BetDoc = {
   user: string;
@@ -69,7 +70,7 @@ export default function ResultadosPage() {
           getDocs(collection(db, "bets")),
         ]);
 
-        setAllApiMatches(apiAll);
+        setAllApiMatches(apiAll.length > 0 ? apiAll : buildStaticSchedule());
         const finished: Match[] = apiAll
           .filter((m) => m.played)
           .map((m) => ({
@@ -270,6 +271,8 @@ export default function ResultadosPage() {
                             {m.homeGoals} – {m.awayGoals}
                             {m.penalties && <span className="pens-badge">pen.</span>}
                           </span>
+                        ) : m.id.startsWith("static-") ? (
+                          <span className="match-time">Pendiente</span>
                         ) : (
                           <span className="match-time">{formatMatchTime(m.utcDate)}</span>
                         )}
