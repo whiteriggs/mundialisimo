@@ -1,5 +1,6 @@
 "use client";
 
+import NavBar from "@/components/NavBar";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -79,13 +80,7 @@ export default function ApuestasPage() {
           <h1>Mundialisimo</h1>
           <span className="sub">Apuestas</span>
         </div>
-        <nav className="topbar-nav">
-          <Link href="/apuesta">Mi apuesta</Link>
-          <Link href="/grupos">Grupos</Link>
-          <Link href="/resultados">Resultados</Link>
-          <Link href="/eliminatorias">Eliminatorias</Link>
-          {currentUser === "Javi" && <Link href="/admin">Admin</Link>}
-        </nav>
+        <NavBar user={currentUser} />
         <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
       </header>
 

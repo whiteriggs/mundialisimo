@@ -98,7 +98,7 @@ a {
 
 .hero {
   position: relative;
-  padding: 52px 18px 42px;
+  padding: 24px 18px 20px;
   background:
     radial-gradient(circle at 20% 0%, rgba(246, 192, 80, 0.1), transparent 60%),
     radial-gradient(circle at 80% 100%, rgba(78, 163, 255, 0.1), transparent 55%),
@@ -110,8 +110,8 @@ a {
   max-width: 960px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: 132px 1fr;
-  gap: 26px;
+  grid-template-columns: 80px 1fr;
+  gap: 16px;
   align-items: center;
 }
 
@@ -120,19 +120,19 @@ a {
 }
 
 .hero-crest {
-  width: 132px;
-  height: 132px;
-  border-radius: 20px;
+  width: 80px;
+  height: 80px;
+  border-radius: 16px;
   border: 1px solid var(--line);
   background: var(--bg-2);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 .hero-crest.placeholder {
-  font-size: 64px;
+  font-size: 40px;
   line-height: 1;
 }
 
@@ -146,16 +146,17 @@ a {
 
 .hero-name {
   margin: 0;
-  font-size: clamp(2rem, 4vw, 3.1rem);
+  font-size: clamp(1.4rem, 3vw, 2rem);
   font-weight: 700;
-  letter-spacing: -0.45px;
-  line-height: 1.05;
+  letter-spacing: -0.3px;
+  line-height: 1.1;
 }
 
 .lead {
-  margin: 14px 0 0;
+  margin: 6px 0 0;
   max-width: 60ch;
   color: var(--text-dim);
+  font-size: 14px;
 }
 
 .hero-actions {
@@ -948,11 +949,20 @@ a {
 .topbar-nav a {
   color: var(--text-dim);
   text-decoration: none;
-  transition: color 150ms;
+  transition: color 150ms, background 150ms;
+  padding: 4px 8px;
+  border-radius: 7px;
 }
 
 .topbar-nav a:hover {
   color: var(--text);
+  background: var(--bg-3);
+}
+
+.topbar-nav a.nav-active {
+  color: var(--text);
+  background: var(--bg-3);
+  font-weight: 600;
 }
 
 @media (max-width: 600px) {

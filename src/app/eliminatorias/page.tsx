@@ -1,5 +1,6 @@
 "use client";
 
+import NavBar from "@/components/NavBar";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -248,13 +249,7 @@ export default function EliminatoriasPage() {
           <h1>Mundialisimo</h1>
           <span className="sub">Eliminatorias</span>
         </div>
-        <nav className="topbar-nav">
-          <Link href="/apuesta">Mi apuesta</Link>
-          <Link href="/apuestas">Apuestas</Link>
-          <Link href="/resultados">Resultados</Link>
-          <Link href="/grupos">Grupos</Link>
-          {user === "Javi" && <Link href="/admin">Admin</Link>}
-        </nav>
+        <NavBar user={user} />
         <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
       </header>
 
