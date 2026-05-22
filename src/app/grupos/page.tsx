@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { getStoredUser, clearUser } from "@/lib/auth";
 import { fetchGroupStandings, ApiStandingGroup, toInternalName } from "@/lib/football-api";
 import { GROUP_POOL } from "@/lib/teams";
+import { flagFor } from "@/lib/flags";
 
 function sign(n: number) {
   if (n > 0) return `+${n}`;
@@ -142,7 +143,7 @@ export default function GruposPage() {
                     {g.table.map((row, idx) => (
                       <tr key={row.team.name} className={idx < 2 ? "row-qualifier" : ""}>
                         <td className="st-pos">{row.position}</td>
-                        <td className="st-name">{toInternalName(row.team.name)}</td>
+                        <td className="st-name">{flagFor(toInternalName(row.team.name))} {toInternalName(row.team.name)}</td>
                         <td>{row.playedGames}</td>
                         <td>{row.won}</td>
                         <td>{row.draw}</td>

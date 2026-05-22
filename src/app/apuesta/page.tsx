@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getStoredUser, clearUser } from "@/lib/auth";
+import { flagFor } from "@/lib/flags";
 
 type Team = {
   id: string;
@@ -283,7 +284,7 @@ export default function ApuestaPage() {
                         >
                           <span className="team-name">
                             {superFavorite === teamId && <span className="super-star">★</span>}
-                            {name}
+                            {flagFor(name)} {name}
                           </span>
                           <span className="team-result-badge">
                             {isFav ? `+${team?.price} pts` : isAnti ? `-${team?.price} pts` : `${team?.price} pts`}
@@ -295,7 +296,7 @@ export default function ApuestaPage() {
                     return (
                       <div className="team-dual" key={teamId}>
                         <div className="team-info">
-                          <span className="team-name">{name}</span>
+                          <span className="team-name">{flagFor(name)} {name}</span>
                           <span className="team-price">{team?.price || 0} pts</span>
                         </div>
                         <div className="team-controls">

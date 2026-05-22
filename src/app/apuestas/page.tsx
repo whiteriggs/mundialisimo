@@ -8,6 +8,7 @@ import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getStoredUser, clearUser, USERS } from "@/lib/auth";
 import { TEAMS, teamName } from "@/lib/teams";
+import { flagFor } from "@/lib/flags";
 
 type BetDoc = {
   user: string;
@@ -134,7 +135,7 @@ export default function ApuestasPage() {
                       return (
                         <li key={id} className={isSuper ? "bet-team-super" : ""}>
                           {isSuper && <span className="super-star">★</span>}
-                          <span className="bet-team-name">{teamName(id)}</span>
+                          <span className="bet-team-name">{flagFor(teamName(id))} {teamName(id)}</span>
                           <span className="bet-team-group">Gr. {team?.group}</span>
                           <span className="bet-team-price">+{team?.price} pts</span>
                         </li>
@@ -150,7 +151,7 @@ export default function ApuestasPage() {
                       const team = TEAMS.find((t) => t.id === id);
                       return (
                         <li key={id}>
-                          <span className="bet-team-name">{teamName(id)}</span>
+                          <span className="bet-team-name">{flagFor(teamName(id))} {teamName(id)}</span>
                           <span className="bet-team-group">Gr. {team?.group}</span>
                           <span className="bet-team-price">−{team?.price} pts</span>
                         </li>
