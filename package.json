@@ -6,7 +6,7 @@
     "dev": "next dev",
     "prebuild": "node scripts/fetch-matches.mjs",
     "build": "next build",
-    "build:pages": "next build",
+    "build:pages": "node scripts/fetch-matches.mjs && next build",
     "start": "next start",
     "serve:out": "npx serve out",
     "lint": "eslint ."
