@@ -1359,3 +1359,21 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Toggle manual form ─────────────────────── */
+.toggle-form-btn {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: border-color 150ms, color 150ms;
+}
+
+.toggle-form-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
