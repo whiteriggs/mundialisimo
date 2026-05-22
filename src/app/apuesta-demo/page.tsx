@@ -11,26 +11,26 @@ type Team = {
 };
 
 const groupPool: Record<string, string[]> = {
-  A: ["USA", "Mexico", "Costa Rica", "Ghana"],
-  B: ["Brazil", "Serbia", "Japan", "Canada"],
-  C: ["Argentina", "Poland", "Egypt", "Australia"],
-  D: ["Spain", "Uruguay", "Korea", "Tunisia"],
-  E: ["France", "Denmark", "Nigeria", "Peru"],
-  F: ["England", "Switzerland", "Iran", "Ecuador"],
-  G: ["Portugal", "Croatia", "Morocco", "Iraq"],
-  H: ["Germany", "Colombia", "Cameroon", "Saudi Arabia"],
-  I: ["Italy", "Senegal", "Chile", "Qatar"],
-  J: ["Netherlands", "Turkey", "Paraguay", "New Zealand"],
-  K: ["Belgium", "Sweden", "Algeria", "Honduras"],
-  L: ["Japan B", "Romania", "Panama", "South Africa"]
+  A: ["México", "Sudáfrica", "Rep. Corea", "Rep. Checa"],
+  B: ["Canadá", "Bosnia y Herz.", "Catar", "Suiza"],
+  C: ["Brasil", "Marruecos", "Haití", "Escocia"],
+  D: ["EE.UU.", "Paraguay", "Australia", "Turquía"],
+  E: ["Alemania", "Costa Marfil", "Ecuador", "Curazao"],
+  F: ["Países Bajos", "Japón", "Suecia", "Túnez"],
+  G: ["Bélgica", "Egipto", "Irán", "Nueva Zelanda"],
+  H: ["España", "Uruguay", "Arabia Saudí", "Cabo Verde"],
+  I: ["Francia", "Noruega", "Senegal", "Irak"],
+  J: ["Argentina", "Austria", "Argelia", "Jordania"],
+  K: ["Portugal", "Colombia", "RD Congo", "Uzbekistán"],
+  L: ["Inglaterra", "Croacia", "Ghana", "Panamá"]
 };
 
-const teams: Team[] = Object.entries(groupPool).flatMap(([group, names], groupIndex) =>
+const teams: Team[] = Object.entries(groupPool).flatMap(([group, names]) =>
   names.map((name, teamIndex) => ({
     id: `${group}-${teamIndex + 1}`,
     name,
     group,
-    price: 1 + ((groupIndex + teamIndex) % 5)
+    price: 4 - teamIndex
   }))
 );
 
