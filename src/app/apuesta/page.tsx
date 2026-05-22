@@ -127,7 +127,8 @@ export default function ApuestaPage() {
     {
       ok: ticketCost >= ticketBounds.min && ticketCost <= ticketBounds.max,
       text: `Coste entre ${ticketBounds.min} y ${ticketBounds.max} pts (actual ${ticketCost} pts)`
-    }
+    },
+    { ok: superFavorite !== null, text: "Marca un favorito como campeón (★)" }
   ];
 
   const allValid = validations.every((r) => r.ok);
@@ -300,6 +301,9 @@ export default function ApuestaPage() {
                       <div className="team-dual" key={teamId}>
                         <div className="team-info">
                           <span className="team-name">{name}</span>
+                          <span className="team-price">{team?.price || 0} pts</span>
+                        </div>
+                        <div className="team-controls">
                           {isFav && (
                             <button
                               type="button"
@@ -310,9 +314,6 @@ export default function ApuestaPage() {
                               {superFavorite === teamId ? "★" : "☆"}
                             </button>
                           )}
-                          <span className="team-price">{team?.price || 0} pts</span>
-                        </div>
-                        <div className="team-controls">
                           <button
                             className={`team-btn fav-btn ${isFav ? "active" : ""} ${!isFav && (favorites.length >= 12 || hasGroupInFavorites(group) || isAnti) ? "disabled" : ""}`}
                             onClick={() => toggleTeam(teamId, true)}
