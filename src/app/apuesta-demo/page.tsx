@@ -37,6 +37,7 @@ const teams: Team[] = Object.entries(groupPool).flatMap(([group, names]) =>
 const favoriteBounds = { min: 9, max: 12 };
 const antiBounds = { min: 4, max: 6 };
 const ticketBounds = { min: 15, max: 22 };
+const DEADLINE = new Date("2026-06-11T00:00:00");
 
 function hasDuplicateGroup(ids: string[]) {
   const groups = ids
@@ -48,6 +49,8 @@ function hasDuplicateGroup(ids: string[]) {
 export default function ApuestaDemoPage() {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [antiFavorites, setAntiFavorites] = useState<string[]>([]);
+  const [confirmed, setConfirmed] = useState(false);
+  const isClosed = new Date() >= DEADLINE;
 
   const groupLabels = Object.keys(groupPool);
 
@@ -150,13 +153,19 @@ export default function ApuestaDemoPage() {
         </div>
       </section>
 
-      <div className={`price-bar ${ticketCost > ticketBounds.max ? "price-over" : ticketCost < ticketBounds.min && (favorites.length > 0 || antiFavorites.length > 0) ? "price-under" : ticketCost >= ticketBounds.min && ticketCost <= ticketBounds.max ? "price-ok" : ""}`}>
+      <div className={`price-bar ${confirmed ? "price-confirmed" : ticketCost > ticketBounds.max ? "price-over" : ticketCost < ticketBounds.min && (favorites.length > 0 || antiFavorites.length > 0) ? "price-under" : ticketCost >= ticketBounds.min && ticketCost <= ticketBounds.max ? "price-ok" : ""}`}>
         <div className="price-bar-inner">
           <span className="price-bar-total">
-            <span className="price-bar-label">Apuesta</span>
+            <span className="price-bar-label">{confirmed ? "Apuesta confirmada" : "Apuesta"}</span>
             <span className="price-bar-amount">{ticketCost}€</span>
           </span>
-          <span className="price-bar-range">rango válido: {ticketBounds.min}-{ticketBounds.max}€</span>
+          {!confirmed && <span className="price-bar-range">rango válido: {ticketBounds.min}-{ticketBounds.max}€</span>}
+          {confirmed && !isClosed && (
+            <button className="btn edit-btn" onClick={() => setConfirmed(false)}>Editar apuesta</button>
+          )}
+          {isClosed && confirmed && (
+            <span className="price-bar-range closed-label">Apuestas cerradas · Mundial en marcha</span>
+          )}
         </div>
       </div>
 
@@ -173,7 +182,7 @@ export default function ApuestaDemoPage() {
               </span>
             </div>
           </div>
-          <p className="muted">Usa los botones verdes para favoritos y rojos para antifavoritos. Máximo 1 equipo por grupo en cada bloque.</p>
+          {!confirmed && <p className="muted">Usa los botones verdes para favoritos y rojos para antifavoritos. Máximo 1 equipo por grupo en cada bloque.</p>}
           <div className="groups-grid">
             {groupLabels.map((group) => (
               <div className="group-card" key={`group-${group}`}>
@@ -184,6 +193,17 @@ export default function ApuestaDemoPage() {
                     const isFav = favorites.includes(teamId);
                     const isAnti = antiFavorites.includes(teamId);
                     const team = teams.find((t) => t.id === teamId);
+
+                    if (confirmed) {
+                      if (!isFav && !isAnti) return null;
+                      return (
+                        <div className={`team-result ${isFav ? "team-result-fav" : "team-result-anti"}`} key={teamId}>
+                          <span className="team-name">{name}</span>
+                          <span className="team-result-badge">{isFav ? `+${team?.price}€` : `-${team?.price}€`}</span>
+                        </div>
+                      );
+                    }
+
                     return (
                       <div className="team-dual" key={teamId}>
                         <div className="team-info">
@@ -213,6 +233,21 @@ export default function ApuestaDemoPage() {
               </div>
             ))}
           </div>
+
+          {!confirmed && !isClosed && (
+            <div className="bet-actions">
+              <button
+                className={`btn confirm-btn ${allValid ? "" : "confirm-btn-disabled"}`}
+                disabled={!allValid}
+                onClick={() => setConfirmed(true)}
+              >
+                {allValid ? "Confirmar apuesta" : "Completa la apuesta para confirmar"}
+              </button>
+            </div>
+          )}
+          {isClosed && !confirmed && (
+            <p className="deadline-notice ko">Las apuestas están cerradas desde el inicio del Mundial (11 jun 2026).</p>
+          )}
         </section>
       </div>
 
