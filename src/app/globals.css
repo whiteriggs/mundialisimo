@@ -960,8 +960,8 @@ a {
 }
 
 .topbar-nav a.nav-active {
-  color: var(--text);
-  background: var(--bg-3);
+  color: var(--accent);
+  background: rgba(78, 163, 255, 0.1);
   font-weight: 600;
 }
 

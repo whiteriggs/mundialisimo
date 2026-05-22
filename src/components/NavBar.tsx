@@ -12,14 +12,17 @@ const NAV_LINKS = [
 ];
 
 export default function NavBar({ user }: { user: string | null }) {
-  const pathname = usePathname();
+  const rawPathname = usePathname();
+  // Next.js con trailingSlash:true puede devolver "/apuestas/" — normalizar
+  const pathname = rawPathname?.replace(/\/$/, "") || "/";
+  const isActive = (href: string) => pathname === href;
   return (
     <nav className="topbar-nav">
       {NAV_LINKS.map(({ href, label }) => (
         <Link
           key={href}
           href={href}
-          className={pathname === href ? "nav-active" : undefined}
+          className={isActive(href) ? "nav-active" : undefined}
         >
           {label}
         </Link>
@@ -27,7 +30,7 @@ export default function NavBar({ user }: { user: string | null }) {
       {user === "Javi" && (
         <Link
           href="/admin"
-          className={pathname === "/admin" ? "nav-active" : undefined}
+          className={isActive("/admin") ? "nav-active" : undefined}
         >
           Admin
         </Link>
