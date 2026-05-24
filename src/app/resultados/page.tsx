@@ -363,24 +363,17 @@ export default function ResultadosPage() {
                     {dayMatches.map((m) => {
                       const mPts = m.played ? matchPoints({ id: m.id, home: m.home, away: m.away, homeGoals: m.homeGoals ?? 0, awayGoals: m.awayGoals ?? 0, phase: m.phase, penalties: m.penalties, played: true }) : null;
                       const gains = mPts ? getGains(mPts) : [];
-                      return (
-                        <div key={m.id} className={m.played ? "match-card" : ""}>
-                          <div className={`match-row${m.played ? " match-row--played" : ""}`}>
+                      return m.played ? (
+                        <div key={m.id} className="match-card">
+                          <div className="match-card-info">
                             <span className="match-home"><Flag name={m.home} />{m.home}</span>
-                            {m.played ? (
-                              <span className="match-score">
-                                {m.homeGoals} – {m.awayGoals}
-                                {m.penalties && <span className="pens-badge">pen.</span>}
-                              </span>
-                            ) : m.id.startsWith("static-") ? (
-                              <span className="match-time">Pendiente</span>
-                            ) : (
-                              <span className="match-time">{formatMatchTime(m.utcDate)}</span>
-                            )}
+                            <span className="match-score">
+                              {m.homeGoals} – {m.awayGoals}
+                              {m.penalties && <span className="pens-badge">pen.</span>}
+                            </span>
                             <span className="match-away"><Flag name={m.away} />{m.away}</span>
-                            <span />
                           </div>
-                          {m.played && gains.length > 0 && (
+                          {gains.length > 0 && (
                             <div className="match-gains">
                               {gains.map(({ user, uid, gain }, i) => (
                                 <span key={uid}>
@@ -394,6 +387,17 @@ export default function ResultadosPage() {
                               ))}
                             </div>
                           )}
+                        </div>
+                      ) : (
+                        <div key={m.id} className="match-row">
+                          <span className="match-home"><Flag name={m.home} />{m.home}</span>
+                          {m.id.startsWith("static-") ? (
+                            <span className="match-time">Pendiente</span>
+                          ) : (
+                            <span className="match-time">{formatMatchTime(m.utcDate)}</span>
+                          )}
+                          <span className="match-away"><Flag name={m.away} />{m.away}</span>
+                          <span />
                         </div>
                       );
                     })}
@@ -463,14 +467,13 @@ export default function ResultadosPage() {
                       const gains = getGains(matchPoints(m));
                       return (
                         <div key={m.id} className="match-card">
-                          <div className="match-row match-row--played">
+                          <div className="match-card-info">
                             <span className="match-home"><Flag name={m.home} />{m.home}</span>
                             <span className="match-score">
                               {m.homeGoals} – {m.awayGoals}
                               {m.penalties && <span className="pens-badge">pen.</span>}
                             </span>
                             <span className="match-away"><Flag name={m.away} />{m.away}</span>
-                            <button className="match-delete" onClick={() => handleDelete(m.id)} title="Eliminar">✕</button>
                           </div>
                           {gains.length > 0 && (
                             <div className="match-gains">
@@ -486,6 +489,7 @@ export default function ResultadosPage() {
                               ))}
                             </div>
                           )}
+                          <button className="match-delete" onClick={() => handleDelete(m.id)} title="Eliminar">✕</button>
                         </div>
                       );
                     })}
