@@ -50,7 +50,7 @@ const ROUND_OPTIONS: { key: string; label: string; phase: Phase; matchday: numbe
   { key: "J1",            label: "J1 — Fase de grupos",   phase: "groups",   matchday: 1 },
   { key: "J2",            label: "J2 — Fase de grupos",   phase: "groups",   matchday: 2 },
   { key: "J3",            label: "J3 — Fase de grupos",   phase: "groups",   matchday: 3 },
-  { key: "Dieciseisavos", label: "Dieciseisavos (Ronda 32)", phase: "knockout", matchday: null },
+  { key: "Dieciseisavos", label: "Dieciseisavos de Final", phase: "knockout", matchday: null },
   { key: "Octavos",       label: "Octavos de Final",       phase: "knockout", matchday: null },
   { key: "Cuartos",       label: "Cuartos de Final",       phase: "knockout", matchday: null },
   { key: "Semis",         label: "Semifinales",            phase: "knockout", matchday: null },
