@@ -14,7 +14,7 @@ import {
 import { db } from "@/lib/firebase";
 import { getStoredUser, clearUser, USERS } from "@/lib/auth";
 import { TEAM_NAMES, teamName } from "@/lib/teams";
-import { buildTeamTotals, Phase, Match } from "@/lib/scoring";
+import { buildTeamTotals, matchPoints, Phase, Match } from "@/lib/scoring";
 import { fetchAllMatches, ApiAllMatch } from "@/lib/football-api";
 import { buildStaticSchedule } from "@/lib/static-schedule";
 import Flag from "@/components/Flag";
@@ -199,6 +199,17 @@ export default function ResultadosPage() {
     return { activeRounds, perRound };
   }, [allApiMatches, manualMatches, rankings]);
 
+  function getGains(mPts: Record<string, number>) {
+    return rankings
+      .filter((r) => r.bet?.confirmed)
+      .map((r) => ({
+        user: r.user,
+        uid: r.uid,
+        gain: (r.bet!.favorites ?? []).reduce((s, id) => s + (mPts[teamName(id)] ?? 0), 0)
+             - (r.bet!.antiFavorites ?? []).reduce((s, id) => s + (mPts[teamName(id)] ?? 0), 0),
+      }));
+  }
+
   function handleLogout() {
     clearUser();
     router.push("/login");
@@ -349,23 +360,41 @@ export default function ResultadosPage() {
                     <h3 className="matches-phase-label">
                       {formatMatchDay(dayMatches[0].utcDate)} · {dayMatches.length} partido{dayMatches.length !== 1 ? "s" : ""}
                     </h3>
-                    {dayMatches.map((m) => (
-                      <div className={`match-row${m.played ? " match-row--played" : ""}`} key={m.id}>
-                        <span className="match-home"><Flag name={m.home} />{m.home}</span>
-                        {m.played ? (
-                          <span className="match-score">
-                            {m.homeGoals} – {m.awayGoals}
-                            {m.penalties && <span className="pens-badge">pen.</span>}
-                          </span>
-                        ) : m.id.startsWith("static-") ? (
-                          <span className="match-time">Pendiente</span>
-                        ) : (
-                          <span className="match-time">{formatMatchTime(m.utcDate)}</span>
-                        )}
-                        <span className="match-away"><Flag name={m.away} />{m.away}</span>
-                        <span />
-                      </div>
-                    ))}
+                    {dayMatches.map((m) => {
+                      const mPts = m.played ? matchPoints({ id: m.id, home: m.home, away: m.away, homeGoals: m.homeGoals ?? 0, awayGoals: m.awayGoals ?? 0, phase: m.phase, penalties: m.penalties, played: true }) : null;
+                      const gains = mPts ? getGains(mPts) : [];
+                      return (
+                        <div key={m.id} className={m.played ? "match-card" : ""}>
+                          <div className={`match-row${m.played ? " match-row--played" : ""}`}>
+                            <span className="match-home"><Flag name={m.home} />{m.home}</span>
+                            {m.played ? (
+                              <span className="match-score">
+                                {m.homeGoals} – {m.awayGoals}
+                                {m.penalties && <span className="pens-badge">pen.</span>}
+                              </span>
+                            ) : m.id.startsWith("static-") ? (
+                              <span className="match-time">Pendiente</span>
+                            ) : (
+                              <span className="match-time">{formatMatchTime(m.utcDate)}</span>
+                            )}
+                            <span className="match-away"><Flag name={m.away} />{m.away}</span>
+                            <span />
+                          </div>
+                          {m.played && gains.length > 0 && (
+                            <div className="match-gains">
+                              {gains.map(({ user, uid, gain }) => (
+                                <div key={uid} className="match-gain-row">
+                                  <span className={uid === currentUser?.toLowerCase() ? "me-label" : ""}>{user}</span>
+                                  <span className={`match-gain-pts${gain > 0 ? " pts-pos" : gain < 0 ? " pts-neg" : ""}`}>
+                                    {gain > 0 ? `+${gain}` : `${gain}`}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 ))}
               </div>
@@ -428,17 +457,34 @@ export default function ResultadosPage() {
                 {manualMatches.length > 0 && (
                   <div className="matches-list" style={{ marginTop: 16 }}>
                     <h3 className="matches-phase-label">Partidos manuales</h3>
-                    {manualMatches.map((m) => (
-                      <div className="match-row" key={m.id}>
-                        <span className="match-home"><Flag name={m.home} />{m.home}</span>
-                        <span className="match-score">
-                          {m.homeGoals} – {m.awayGoals}
-                          {m.penalties && <span className="pens-badge">pen.</span>}
-                        </span>
-                        <span className="match-away"><Flag name={m.away} />{m.away}</span>
-                        <button className="match-delete" onClick={() => handleDelete(m.id)} title="Eliminar">✕</button>
-                      </div>
-                    ))}
+                    {manualMatches.map((m) => {
+                      const gains = getGains(matchPoints(m));
+                      return (
+                        <div key={m.id} className="match-card">
+                          <div className="match-row match-row--played">
+                            <span className="match-home"><Flag name={m.home} />{m.home}</span>
+                            <span className="match-score">
+                              {m.homeGoals} – {m.awayGoals}
+                              {m.penalties && <span className="pens-badge">pen.</span>}
+                            </span>
+                            <span className="match-away"><Flag name={m.away} />{m.away}</span>
+                            <button className="match-delete" onClick={() => handleDelete(m.id)} title="Eliminar">✕</button>
+                          </div>
+                          {gains.length > 0 && (
+                            <div className="match-gains">
+                              {gains.map(({ user, uid, gain }) => (
+                                <div key={uid} className="match-gain-row">
+                                  <span className={uid === currentUser?.toLowerCase() ? "me-label" : ""}>{user}</span>
+                                  <span className={`match-gain-pts${gain > 0 ? " pts-pos" : gain < 0 ? " pts-neg" : ""}`}>
+                                    {gain > 0 ? `+${gain}` : `${gain}`}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </>
