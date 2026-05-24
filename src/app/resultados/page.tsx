@@ -363,6 +363,7 @@ export default function ResultadosPage() {
                     {dayMatches.map((m) => {
                       const mPts = m.played ? matchPoints({ id: m.id, home: m.home, away: m.away, homeGoals: m.homeGoals ?? 0, awayGoals: m.awayGoals ?? 0, phase: m.phase, penalties: m.penalties, played: true }) : null;
                       const gains = mPts ? getGains(mPts) : [];
+                      const confirmed = rankings.filter((r) => r.bet?.confirmed);
                       return m.played ? (
                         <div key={m.id} className="match-card">
                           <div className="match-card-info">
@@ -397,6 +398,17 @@ export default function ResultadosPage() {
                             <span className="match-time">{formatMatchTime(m.utcDate)}</span>
                           )}
                           <span className="match-away"><Flag name={m.away} />{m.away}</span>
+                          {confirmed.length > 0 && (
+                            <div className="match-gains">
+                              {confirmed.map(({ user, uid }, i) => (
+                                <span key={uid}>
+                                  {i > 0 && <span className="gains-sep"> / </span>}
+                                  <span className={uid === currentUser?.toLowerCase() ? "me-label" : ""}>{user}</span>
+                                  {" "}<span className="match-gain-pts">—</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
