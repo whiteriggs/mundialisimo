@@ -1413,6 +1413,7 @@ a {
   background: var(--bg-3);
   border-radius: 8px;
   font-size: 13px;
+  border-left: 3px solid var(--accent);
 }
 
 .match-card-info {
