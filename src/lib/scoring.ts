@@ -9,6 +9,7 @@ export type Match = {
   phase: Phase;
   penalties: boolean;
   played: boolean;
+  matchday?: number | null;
 };
 
 /**

@@ -53,6 +53,7 @@ const EMPTY_FORM = {
   awayGoals: 0,
   phase: "groups" as Phase,
   penalties: false,
+  matchday: 1 as number,
 };
 
 export default function ResultadosPage() {
@@ -139,18 +140,17 @@ export default function ResultadosPage() {
   }).sort((a, b) => b.total - a.total);
 
   const roundData = useMemo(() => {
-    const MANUAL_LABEL: Record<Phase, string> = {
-      groups: "Grupos", knockout: "Elim.", third: "3er P.",
-    };
-
     // Partidos API jugados → rondas reales (J1/J2/J3/Octavos/…)
     const played = allApiMatches.filter((m) => m.played);
     const roundsSet = new Set(played.map(matchRound));
     const apiRounds = ROUND_ORDER.filter((r) => roundsSet.has(r));
 
-    // Partidos manuales jugados → rondas sintéticas por fase
-    const manualRoundsSet = new Set(manualMatches.filter((m) => m.played).map((m) => MANUAL_LABEL[m.phase]));
-    const manualRounds = ["Grupos", "Elim.", "3er P."].filter((r) => manualRoundsSet.has(r));
+    // Partidos manuales jugados → rondas por matchday (J1/J2/J3) o por fase
+    const manualRoundOf = (m: Match) =>
+      m.phase === "groups" && m.matchday ? `J${m.matchday}` :
+      m.phase === "knockout" ? "Elim." : "3er P.";
+    const manualRoundsSet = new Set(manualMatches.filter((m) => m.played).map(manualRoundOf));
+    const manualRounds = [...ROUND_ORDER, "Elim.", "3er P."].filter((r) => manualRoundsSet.has(r) && !apiRounds.includes(r));
 
     const activeRounds = [...apiRounds, ...manualRounds.filter((r) => !apiRounds.includes(r))];
 
@@ -166,10 +166,8 @@ export default function ResultadosPage() {
     }
     // Totales de equipo por ronda (manuales)
     for (const round of manualRounds) {
-      const phase = (Object.entries(MANUAL_LABEL) as [Phase, string][]).find(([, v]) => v === round)?.[0];
-      const rm = manualMatches.filter((m) => m.played && MANUAL_LABEL[m.phase] === round);
+      const rm = manualMatches.filter((m) => m.played && manualRoundOf(m) === round);
       roundTotals[round] = buildTeamTotals(rm);
-      void phase;
     }
 
     // Puntos acumulativos por usuario y ronda
@@ -208,6 +206,7 @@ export default function ResultadosPage() {
         phase: form.phase,
         penalties: form.phase === "knockout" ? form.penalties : false,
         played: true,
+        matchday: form.phase === "groups" ? form.matchday : null,
       };
       const docRef = await addDoc(collection(db, "matches"), newMatch);
       setManualMatches((prev) => [...prev, { id: docRef.id, ...newMatch }]);
@@ -428,6 +427,16 @@ export default function ResultadosPage() {
                         <option value="third">3er / 4º puesto</option>
                       </select>
                     </div>
+                    {form.phase === "groups" && (
+                      <div className="login-field">
+                        <label>Jornada</label>
+                        <select value={form.matchday} onChange={(e) => setForm((f) => ({ ...f, matchday: Number(e.target.value) }))}>
+                          <option value={1}>J1</option>
+                          <option value={2}>J2</option>
+                          <option value={3}>J3</option>
+                        </select>
+                      </div>
+                    )}
                     {form.phase === "knockout" && (
                       <label className="penalties-check">
                         <input type="checkbox" checked={form.penalties} onChange={(e) => setForm((f) => ({ ...f, penalties: e.target.checked }))} />
