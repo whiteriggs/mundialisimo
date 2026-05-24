@@ -382,13 +382,15 @@ export default function ResultadosPage() {
                           </div>
                           {m.played && gains.length > 0 && (
                             <div className="match-gains">
-                              {gains.map(({ user, uid, gain }) => (
-                                <div key={uid} className="match-gain-row">
+                              {gains.map(({ user, uid, gain }, i) => (
+                                <span key={uid}>
+                                  {i > 0 && <span className="gains-sep"> / </span>}
                                   <span className={uid === currentUser?.toLowerCase() ? "me-label" : ""}>{user}</span>
+                                  {" "}
                                   <span className={`match-gain-pts${gain > 0 ? " pts-pos" : gain < 0 ? " pts-neg" : ""}`}>
-                                    {gain > 0 ? `+${gain}` : `${gain}`}
+                                    ({gain > 0 ? `+${gain}` : `${gain}`})
                                   </span>
-                                </div>
+                                </span>
                               ))}
                             </div>
                           )}
@@ -472,13 +474,15 @@ export default function ResultadosPage() {
                           </div>
                           {gains.length > 0 && (
                             <div className="match-gains">
-                              {gains.map(({ user, uid, gain }) => (
-                                <div key={uid} className="match-gain-row">
+                              {gains.map(({ user, uid, gain }, i) => (
+                                <span key={uid}>
+                                  {i > 0 && <span className="gains-sep"> / </span>}
                                   <span className={uid === currentUser?.toLowerCase() ? "me-label" : ""}>{user}</span>
+                                  {" "}
                                   <span className={`match-gain-pts${gain > 0 ? " pts-pos" : gain < 0 ? " pts-neg" : ""}`}>
-                                    {gain > 0 ? `+${gain}` : `${gain}`}
+                                    ({gain > 0 ? `+${gain}` : `${gain}`})
                                   </span>
-                                </div>
+                                </span>
                               ))}
                             </div>
                           )}
