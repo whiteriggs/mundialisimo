@@ -32,9 +32,9 @@ const PHASE_LABELS: Record<Phase, string> = {
   knockout: "Eliminatoria",
 };
 
-const ROUND_ORDER = ["J1", "J2", "J3", "R32", "Octavos", "Cuartos", "Semis", "3er Puesto", "Final"];
+const ROUND_ORDER = ["J1", "J2", "J3", "Dieciseisavos", "Octavos", "Cuartos", "Semis", "3er Puesto", "Final"];
 const STAGE_TO_ROUND: Record<string, string> = {
-  LAST_32: "R32",
+  LAST_32: "Dieciseisavos",
   LAST_16: "Octavos",
   QUARTER_FINALS: "Cuartos",
   SEMI_FINALS: "Semis",
@@ -46,14 +46,25 @@ function matchRound(m: ApiAllMatch): string {
   return STAGE_TO_ROUND[m.stage] ?? m.stage;
 }
 
+const ROUND_OPTIONS: { key: string; label: string; phase: Phase; matchday: number | null }[] = [
+  { key: "J1",            label: "J1 — Fase de grupos",   phase: "groups",   matchday: 1 },
+  { key: "J2",            label: "J2 — Fase de grupos",   phase: "groups",   matchday: 2 },
+  { key: "J3",            label: "J3 — Fase de grupos",   phase: "groups",   matchday: 3 },
+  { key: "Dieciseisavos", label: "Dieciseisavos (Ronda 32)", phase: "knockout", matchday: null },
+  { key: "Octavos",       label: "Octavos de Final",       phase: "knockout", matchday: null },
+  { key: "Cuartos",       label: "Cuartos de Final",       phase: "knockout", matchday: null },
+  { key: "Semis",         label: "Semifinales",            phase: "knockout", matchday: null },
+  { key: "Final",         label: "Final",                  phase: "knockout", matchday: null },
+  { key: "3er Puesto",    label: "3er / 4º Puesto",        phase: "third",    matchday: null },
+];
+
 const EMPTY_FORM = {
   home: "",
   away: "",
   homeGoals: 0,
   awayGoals: 0,
-  phase: "groups" as Phase,
+  roundKey: "J1",
   penalties: false,
-  matchday: 1 as number,
 };
 
 export default function ResultadosPage() {
@@ -145,10 +156,13 @@ export default function ResultadosPage() {
     const roundsSet = new Set(played.map(matchRound));
     const apiRounds = ROUND_ORDER.filter((r) => roundsSet.has(r));
 
-    // Partidos manuales jugados → rondas por matchday (J1/J2/J3) o por fase
-    const manualRoundOf = (m: Match) =>
-      m.phase === "groups" && m.matchday ? `J${m.matchday}` :
-      m.phase === "knockout" ? "Elim." : "3er P.";
+    // Partidos manuales jugados → rondas por roundKey o por matchday/fase (legado)
+    const manualRoundOf = (m: Match) => {
+      if (m.roundKey) return m.roundKey;
+      if (m.phase === "groups" && m.matchday) return `J${m.matchday}`;
+      if (m.phase === "knockout") return "Elim.";
+      return "3er P.";
+    };
     const manualRoundsSet = new Set(manualMatches.filter((m) => m.played).map(manualRoundOf));
     const manualRounds = [...ROUND_ORDER, "Elim.", "3er P."].filter((r) => manualRoundsSet.has(r) && !apiRounds.includes(r));
 
@@ -196,15 +210,17 @@ export default function ResultadosPage() {
     setSaving(true);
     setFormError(null);
     try {
+      const roundOpt = ROUND_OPTIONS.find((r) => r.key === form.roundKey)!;
       const newMatch: Omit<Match, "id"> = {
         home: form.home,
         away: form.away,
         homeGoals: form.homeGoals,
         awayGoals: form.awayGoals,
-        phase: form.phase,
-        penalties: form.phase === "knockout" ? form.penalties : false,
+        phase: roundOpt.phase,
+        penalties: roundOpt.phase === "knockout" ? form.penalties : false,
         played: true,
-        matchday: form.phase === "groups" ? form.matchday : null,
+        matchday: roundOpt.matchday,
+        roundKey: form.roundKey,
       };
       const docRef = await addDoc(collection(db, "matches"), newMatch);
       setManualMatches((prev) => [...prev, { id: docRef.id, ...newMatch }]);
@@ -391,24 +407,12 @@ export default function ResultadosPage() {
                   </div>
                   <div className="match-form-meta">
                     <div className="login-field">
-                      <label>Fase</label>
-                      <select value={form.phase} onChange={(e) => setForm((f) => ({ ...f, phase: e.target.value as Phase, penalties: false }))}>
-                        <option value="groups">Grupos</option>
-                        <option value="knockout">Eliminatoria</option>
-                        <option value="third">3er / 4º puesto</option>
+                      <label>Ronda</label>
+                      <select value={form.roundKey} onChange={(e) => setForm((f) => ({ ...f, roundKey: e.target.value, penalties: false }))}>
+                        {ROUND_OPTIONS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
                       </select>
                     </div>
-                    {form.phase === "groups" && (
-                      <div className="login-field">
-                        <label>Jornada</label>
-                        <select value={form.matchday} onChange={(e) => setForm((f) => ({ ...f, matchday: Number(e.target.value) }))}>
-                          <option value={1}>J1</option>
-                          <option value={2}>J2</option>
-                          <option value={3}>J3</option>
-                        </select>
-                      </div>
-                    )}
-                    {form.phase === "knockout" && (
+                    {ROUND_OPTIONS.find((r) => r.key === form.roundKey)?.phase === "knockout" && (
                       <label className="penalties-check">
                         <input type="checkbox" checked={form.penalties} onChange={(e) => setForm((f) => ({ ...f, penalties: e.target.checked }))} />
                         Decidido por penaltis

@@ -10,6 +10,7 @@ export type Match = {
   penalties: boolean;
   played: boolean;
   matchday?: number | null;
+  roundKey?: string;
 };
 
 /**
