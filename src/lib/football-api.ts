@@ -249,6 +249,7 @@ export type ApiAllMatch = {
   utcDate: string;
   status: string;
   stage: string;
+  matchday: number | null | undefined;
   home: string;
   away: string;
   homeGoals: number | null;
@@ -296,5 +297,6 @@ export async function fetchAllMatches(): Promise<ApiAllMatch[]> {
       phase: stageToPhase(m.stage),
       penalties: m.score?.duration === "PENALTY_SHOOTOUT",
       played: m.status === "FINISHED",
+      matchday: m.matchday ?? null,
     }));
 }

@@ -35,14 +35,14 @@ export function buildStaticSchedule(): ApiAllMatch[] {
           status: "SCHEDULED", stage: "GROUP_STAGE",
           home: teams[a], away: teams[b],
           homeGoals: null, awayGoals: null,
-          phase: "groups", penalties: false, played: false,
+          phase: "groups", penalties: false, played: false, matchday: null,
         },
         {
           id: `static-${n++}`, utcDate: isoDate(base, offset),
           status: "SCHEDULED", stage: "GROUP_STAGE",
           home: teams[c], away: teams[d],
           homeGoals: null, awayGoals: null,
-          phase: "groups", penalties: false, played: false,
+          phase: "groups", penalties: false, played: false, matchday: null,
         }
       );
     });

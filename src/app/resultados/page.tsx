@@ -2,7 +2,7 @@
 
 import NavBar from "@/components/NavBar";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   collection,
@@ -31,6 +31,20 @@ const PHASE_LABELS: Record<Phase, string> = {
   third: "3er/4º puesto",
   knockout: "Eliminatoria",
 };
+
+const ROUND_ORDER = ["J1", "J2", "J3", "R32", "Octavos", "Cuartos", "Semis", "3er Puesto", "Final"];
+const STAGE_TO_ROUND: Record<string, string> = {
+  LAST_32: "R32",
+  LAST_16: "Octavos",
+  QUARTER_FINALS: "Cuartos",
+  SEMI_FINALS: "Semis",
+  THIRD_PLACE: "3er Puesto",
+  FINAL: "Final",
+};
+function matchRound(m: ApiAllMatch): string {
+  if (m.phase === "groups") return `J${m.matchday ?? "?"}` ;
+  return STAGE_TO_ROUND[m.stage] ?? m.stage;
+}
 
 const EMPTY_FORM = {
   home: "",
@@ -121,8 +135,42 @@ export default function ResultadosPage() {
     const antiPts = bet?.confirmed
       ? (bet.antiFavorites ?? []).reduce((s, id) => s + (teamTotals[teamName(id)] ?? 0), 0)
       : 0;
-    return { user: u, uid, total: favPts - antiPts, favPts, antiPts, confirmed: bet?.confirmed ?? false };
+    return { user: u, uid, total: favPts - antiPts, favPts, antiPts, confirmed: bet?.confirmed ?? false, bet };
   }).sort((a, b) => b.total - a.total);
+
+  const roundData = useMemo(() => {
+    const played = allApiMatches.filter((m) => m.played);
+    const roundsSet = new Set(played.map(matchRound));
+    const activeRounds = ROUND_ORDER.filter((r) => roundsSet.has(r));
+    if (activeRounds.length === 0) return null;
+
+    // Totales de equipo por ronda
+    const roundTotals: Record<string, Record<string, number>> = {};
+    for (const round of activeRounds) {
+      const rm = played.filter((m) => matchRound(m) === round).map((m) => ({
+        id: m.id, home: m.home, away: m.away,
+        homeGoals: m.homeGoals ?? 0, awayGoals: m.awayGoals ?? 0,
+        phase: m.phase, penalties: m.penalties, played: true,
+      }) as Match);
+      roundTotals[round] = buildTeamTotals(rm);
+    }
+
+    // Puntos acumulativos por usuario y ronda
+    const cumulative: Record<string, Record<string, number>> = {};
+    for (const r of rankings) {
+      cumulative[r.uid] = {};
+      let acc = 0;
+      for (const round of activeRounds) {
+        if (!r.bet?.confirmed) { cumulative[r.uid][round] = NaN; continue; }
+        const rt = roundTotals[round];
+        const fav = (r.bet.favorites ?? []).reduce((s, id) => s + (rt[teamName(id)] ?? 0), 0);
+        const anti = (r.bet.antiFavorites ?? []).reduce((s, id) => s + (rt[teamName(id)] ?? 0), 0);
+        acc += fav - anti;
+        cumulative[r.uid][round] = acc;
+      }
+    }
+    return { activeRounds, cumulative };
+  }, [allApiMatches, rankings]);
 
   function handleLogout() {
     clearUser();
@@ -253,6 +301,38 @@ export default function ResultadosPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Evolución jornada a jornada */}
+          {roundData && (
+            <div className="results-section">
+              <h2 className="results-title">Evolución por jornada</h2>
+              <div className="evolution-scroll">
+                <table className="evolution-table">
+                  <thead>
+                    <tr>
+                      <th className="ev-name">Participante</th>
+                      {roundData.activeRounds.map((r) => <th key={r} className="ev-round">{r}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rankings.map((r) => (
+                      <tr key={r.uid} className={r.uid === currentUser?.toLowerCase() ? "row-me" : ""}>
+                        <td className="ev-name">{r.user}{r.uid === currentUser?.toLowerCase() ? <span className="me-badge"> (tú)</span> : ""}</td>
+                        {roundData.activeRounds.map((round) => {
+                          const pts = roundData.cumulative[r.uid]?.[round];
+                          return (
+                            <td key={round} className="ev-round">
+                              {!r.confirmed ? "—" : isNaN(pts) ? "—" : pts >= 0 ? `+${pts}` : `${pts}`}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* Calendario completo */}
           {matchesByDay.size > 0 && (

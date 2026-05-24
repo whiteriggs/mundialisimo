@@ -79,6 +79,7 @@ async function main() {
         phase: stageToPhase(m.stage),
         penalties: m.score?.duration === "PENALTY_SHOOTOUT",
         played: m.status === "FINISHED",
+        matchday: m.matchday ?? null,
       }));
 
     mkdirSync(join(__dirname, "../public"), { recursive: true });

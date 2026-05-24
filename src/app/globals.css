@@ -1152,6 +1152,53 @@ a {
   background: var(--bg-2);
 }
 
+/* ── Evolución por jornada ──────────────────────────────────────── */
+.evolution-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.evolution-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.evolution-table th,
+.evolution-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.evolution-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.evolution-table th.ev-name,
+.evolution-table td.ev-name {
+  text-align: left;
+  color: var(--text);
+  min-width: 110px;
+}
+
+.evolution-table td.ev-round {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.evolution-table tbody tr:hover td {
+  background: var(--bg-2);
+}
+/* ──────────────────────────────────────────────────────────────── */
+
 .row-me td {
   background: rgba(78, 163, 255, 0.06);
 }
