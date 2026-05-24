@@ -139,20 +139,37 @@ export default function ResultadosPage() {
   }).sort((a, b) => b.total - a.total);
 
   const roundData = useMemo(() => {
+    const MANUAL_LABEL: Record<Phase, string> = {
+      groups: "Grupos", knockout: "Elim.", third: "3er P.",
+    };
+
+    // Partidos API jugados → rondas reales (J1/J2/J3/Octavos/…)
     const played = allApiMatches.filter((m) => m.played);
     const roundsSet = new Set(played.map(matchRound));
-    const activeRounds = ROUND_ORDER.filter((r) => roundsSet.has(r));
-    if (activeRounds.length === 0) return null;
+    const apiRounds = ROUND_ORDER.filter((r) => roundsSet.has(r));
 
-    // Totales de equipo por ronda
+    // Partidos manuales jugados → rondas sintéticas por fase
+    const manualRoundsSet = new Set(manualMatches.filter((m) => m.played).map((m) => MANUAL_LABEL[m.phase]));
+    const manualRounds = ["Grupos", "Elim.", "3er P."].filter((r) => manualRoundsSet.has(r));
+
+    const activeRounds = [...apiRounds, ...manualRounds.filter((r) => !apiRounds.includes(r))];
+
+    // Totales de equipo por ronda (API)
     const roundTotals: Record<string, Record<string, number>> = {};
-    for (const round of activeRounds) {
+    for (const round of apiRounds) {
       const rm = played.filter((m) => matchRound(m) === round).map((m) => ({
         id: m.id, home: m.home, away: m.away,
         homeGoals: m.homeGoals ?? 0, awayGoals: m.awayGoals ?? 0,
         phase: m.phase, penalties: m.penalties, played: true,
       }) as Match);
       roundTotals[round] = buildTeamTotals(rm);
+    }
+    // Totales de equipo por ronda (manuales)
+    for (const round of manualRounds) {
+      const phase = (Object.entries(MANUAL_LABEL) as [Phase, string][]).find(([, v]) => v === round)?.[0];
+      const rm = manualMatches.filter((m) => m.played && MANUAL_LABEL[m.phase] === round);
+      roundTotals[round] = buildTeamTotals(rm);
+      void phase;
     }
 
     // Puntos acumulativos por usuario y ronda
@@ -170,7 +187,7 @@ export default function ResultadosPage() {
       }
     }
     return { activeRounds, cumulative };
-  }, [allApiMatches, rankings]);
+  }, [allApiMatches, manualMatches, rankings]);
 
   function handleLogout() {
     clearUser();
@@ -303,9 +320,11 @@ export default function ResultadosPage() {
           </div>
 
           {/* Evolución jornada a jornada */}
-          {roundData && (
-            <div className="results-section">
-              <h2 className="results-title">Evolución por jornada</h2>
+          <div className="results-section">
+            <h2 className="results-title">Evolución por jornada</h2>
+            {roundData.activeRounds.length === 0 ? (
+              <p className="muted" style={{ padding: "12px 0" }}>Aparecerá aquí cuando haya resultados.</p>
+            ) : (
               <div className="evolution-scroll">
                 <table className="evolution-table">
                   <thead>
@@ -331,8 +350,8 @@ export default function ResultadosPage() {
                   </tbody>
                 </table>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Calendario completo */}
           {matchesByDay.size > 0 && (
