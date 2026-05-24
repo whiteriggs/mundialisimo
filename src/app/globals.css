@@ -1368,8 +1368,7 @@ a {
 }
 
 .match-row {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr auto;
+  display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
@@ -1379,7 +1378,8 @@ a {
 }
 
 .match-home {
-  text-align: right;
+  display: flex;
+  align-items: center;
 }
 
 .match-score {

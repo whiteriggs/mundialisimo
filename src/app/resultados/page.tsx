@@ -397,7 +397,6 @@ export default function ResultadosPage() {
                             <span className="match-time">{formatMatchTime(m.utcDate)}</span>
                           )}
                           <span className="match-away"><Flag name={m.away} />{m.away}</span>
-                          <span />
                         </div>
                       );
                     })}
