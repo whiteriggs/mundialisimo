@@ -170,21 +170,19 @@ export default function ResultadosPage() {
       roundTotals[round] = buildTeamTotals(rm);
     }
 
-    // Puntos acumulativos por usuario y ronda
-    const cumulative: Record<string, Record<string, number>> = {};
+    // Puntos por jornada (no acumulados)
+    const perRound: Record<string, Record<string, number>> = {};
     for (const r of rankings) {
-      cumulative[r.uid] = {};
-      let acc = 0;
+      perRound[r.uid] = {};
       for (const round of activeRounds) {
-        if (!r.bet?.confirmed) { cumulative[r.uid][round] = NaN; continue; }
+        if (!r.bet?.confirmed) { perRound[r.uid][round] = NaN; continue; }
         const rt = roundTotals[round];
         const fav = (r.bet.favorites ?? []).reduce((s, id) => s + (rt[teamName(id)] ?? 0), 0);
         const anti = (r.bet.antiFavorites ?? []).reduce((s, id) => s + (rt[teamName(id)] ?? 0), 0);
-        acc += fav - anti;
-        cumulative[r.uid][round] = acc;
+        perRound[r.uid][round] = fav - anti;
       }
     }
-    return { activeRounds, cumulative };
+    return { activeRounds, perRound };
   }, [allApiMatches, manualMatches, rankings]);
 
   function handleLogout() {
@@ -285,71 +283,44 @@ export default function ResultadosPage() {
             </div>
           )}
 
-          {/* Rankings */}
+          {/* Rankings + evolución por jornada */}
           <div className="results-section">
-            <table className="ranking-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Participante</th>
-                  <th>Puntos</th>
-                  <th className="col-detail">Favoritos</th>
-                  <th className="col-detail">Antifav.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rankings.map((r, i) => (
-                  <tr
-                    key={r.uid}
-                    className={`${r.uid === currentUser?.toLowerCase() ? "row-me" : ""} ${!r.confirmed ? "row-pending" : ""}`}
-                  >
-                    <td className="col-rank">{r.confirmed ? i + 1 : "—"}</td>
-                    <td>
-                      {r.user}
-                      {r.uid === currentUser?.toLowerCase() ? <span className="me-badge"> (tú)</span> : ""}
-                      {!r.confirmed ? <span className="pending-label"> · sin confirmar</span> : ""}
-                    </td>
-                    <td className="col-pts">{r.confirmed ? r.total : "—"}</td>
-                    <td className="col-detail">{r.confirmed ? `+${r.favPts}` : "—"}</td>
-                    <td className="col-detail">{r.confirmed ? `−${r.antiPts}` : "—"}</td>
+            <div className="ranking-scroll">
+              <table className="ranking-table">
+                <thead>
+                  <tr>
+                    <th className="col-rank">#</th>
+                    <th className="col-name">Participante</th>
+                    <th className="col-pts">Total</th>
+                    {roundData.activeRounds.map((r) => <th key={r} className="col-round">{r}</th>)}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Evolución jornada a jornada */}
-          <div className="results-section">
-            <h2 className="results-title">Evolución por jornada</h2>
-            {roundData.activeRounds.length === 0 ? (
-              <p className="muted" style={{ padding: "12px 0" }}>Aparecerá aquí cuando haya resultados.</p>
-            ) : (
-              <div className="evolution-scroll">
-                <table className="evolution-table">
-                  <thead>
-                    <tr>
-                      <th className="ev-name">Participante</th>
-                      {roundData.activeRounds.map((r) => <th key={r} className="ev-round">{r}</th>)}
+                </thead>
+                <tbody>
+                  {rankings.map((r, i) => (
+                    <tr
+                      key={r.uid}
+                      className={`${r.uid === currentUser?.toLowerCase() ? "row-me" : ""} ${!r.confirmed ? "row-pending" : ""}`}
+                    >
+                      <td className="col-rank">{r.confirmed ? i + 1 : "—"}</td>
+                      <td className="col-name">
+                        {r.user}
+                        {r.uid === currentUser?.toLowerCase() ? <span className="me-badge"> (tú)</span> : ""}
+                        {!r.confirmed ? <span className="pending-label"> · sin confirmar</span> : ""}
+                      </td>
+                      <td className="col-pts">{r.confirmed ? r.total : "—"}</td>
+                      {roundData.activeRounds.map((round) => {
+                        const pts = roundData.perRound[r.uid]?.[round];
+                        return (
+                          <td key={round} className="col-round">
+                            {!r.confirmed ? "—" : isNaN(pts) ? "—" : pts > 0 ? `+${pts}` : `${pts}`}
+                          </td>
+                        );
+                      })}
                     </tr>
-                  </thead>
-                  <tbody>
-                    {rankings.map((r) => (
-                      <tr key={r.uid} className={r.uid === currentUser?.toLowerCase() ? "row-me" : ""}>
-                        <td className="ev-name">{r.user}{r.uid === currentUser?.toLowerCase() ? <span className="me-badge"> (tú)</span> : ""}</td>
-                        {roundData.activeRounds.map((round) => {
-                          const pts = roundData.cumulative[r.uid]?.[round];
-                          return (
-                            <td key={round} className="ev-round">
-                              {!r.confirmed ? "—" : isNaN(pts) ? "—" : pts >= 0 ? `+${pts}` : `${pts}`}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Calendario completo */}

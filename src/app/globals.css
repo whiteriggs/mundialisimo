@@ -1126,10 +1126,18 @@ a {
 }
 
 /* Ranking table */
+.ranking-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .ranking-table {
-  width: 100%;
-  border-collapse: collapse;
+  width: auto;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 14px;
+  white-space: nowrap;
 }
 
 .ranking-table th {
@@ -1141,15 +1149,25 @@ a {
   color: var(--text-dim);
   padding: 6px 12px;
   border-bottom: 1px solid var(--line);
+  background: var(--cell-bg, var(--bg-1));
 }
 
 .ranking-table td {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(255,255,255,0.04);
+  background: var(--cell-bg, var(--bg-1));
+}
+
+.ranking-table tbody tr {
+  --cell-bg: var(--bg-1);
+}
+
+.ranking-table tbody tr.row-me {
+  --cell-bg: rgba(78, 163, 255, 0.06);
 }
 
 .ranking-table tbody tr:hover {
-  background: var(--bg-2);
+  --cell-bg: var(--bg-2);
 }
 
 /* ── Evolución por jornada ──────────────────────────────────────── */
@@ -1199,8 +1217,8 @@ a {
 }
 /* ──────────────────────────────────────────────────────────────── */
 
-.row-me td {
-  background: rgba(78, 163, 255, 0.06);
+.row-me {
+  /* handled via --cell-bg CSS variable */
 }
 
 .row-pending {
@@ -1208,25 +1226,47 @@ a {
 }
 
 .col-rank {
+  position: sticky;
+  left: 0;
+  z-index: 2;
   width: 36px;
+  min-width: 36px;
   font-weight: 700;
   color: var(--text-dim);
+}
+
+.col-name {
+  position: sticky;
+  left: 60px; /* 36px + 24px padding */
+  z-index: 2;
+  min-width: 120px;
 }
 
 .col-pts {
+  position: sticky;
+  left: 204px; /* 60 + 120 + 24 */
+  z-index: 2;
   font-weight: 700;
   font-size: 16px;
   color: var(--gold);
+  box-shadow: 2px 0 6px rgba(0,0,0,0.2);
 }
 
-.col-detail {
-  color: var(--text-dim);
+.col-round {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
   font-size: 13px;
+  min-width: 48px;
+  color: var(--text);
 }
 
-@media (max-width: 560px) {
-  .col-detail { display: none; }
+.ranking-table thead .col-round {
+  color: var(--text-dim);
+  font-weight: 600;
 }
+
+.col-detail { display: none; }
 
 .me-badge {
   font-size: 11px;
