@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { getStoredUser, clearUser, USERS } from "@/lib/auth";
+import { getStoredUser, clearUser, getUsers } from "@/lib/auth";
 import { TEAMS, teamName } from "@/lib/teams";
 import Flag from "@/components/Flag";
 
@@ -32,6 +32,7 @@ export default function ApuestasPage() {
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [bets, setBets] = useState<BetDoc[]>([]);
+  const [allUsers, setAllUsers] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,7 +42,10 @@ export default function ApuestasPage() {
 
     async function load() {
       try {
-        const snap = await getDocs(collection(db, "bets"));
+        const [snap, users] = await Promise.all([
+          getDocs(collection(db, "bets")),
+          getUsers(),
+        ]);
         const data: BetDoc[] = snap.docs.map((d) => {
           const raw = d.data() as Partial<Omit<BetDoc, "user">>;
           return {
@@ -57,6 +61,7 @@ export default function ApuestasPage() {
           return a.user.localeCompare(b.user, "es");
         });
         setBets(data);
+        setAllUsers(users.map((u) => u.toLowerCase()));
       } finally {
         setLoading(false);
       }
@@ -64,9 +69,8 @@ export default function ApuestasPage() {
     load();
   }, [router]);
 
-  // Show all 7 users, including those who haven't saved yet
+  // Show all users, including those who haven't saved yet
   const betMap = Object.fromEntries(bets.map((b) => [b.user, b]));
-  const allUsers = USERS.map((u) => u.toLowerCase());
 
   function handleLogout() {
     clearUser();
