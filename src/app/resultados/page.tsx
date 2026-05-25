@@ -12,7 +12,7 @@ import {
   doc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { getStoredUser, clearUser, USERS } from "@/lib/auth";
+import { getStoredUser, clearUser, getUsers } from "@/lib/auth";
 import { TEAM_NAMES, teamName } from "@/lib/teams";
 import { buildTeamTotals, matchPoints, Phase, Match } from "@/lib/scoring";
 import { fetchAllMatches, ApiAllMatch } from "@/lib/football-api";
@@ -77,6 +77,7 @@ export default function ResultadosPage() {
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [userList, setUserList] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -88,14 +89,16 @@ export default function ResultadosPage() {
 
     async function load() {
       try {
-        const [apiAll, manualSnap, betSnap] = await Promise.all([
+        const [apiAll, manualSnap, betSnap, users] = await Promise.all([
           fetchAllMatches().catch((err) => {
             setApiError(err.message);
             return [] as ApiAllMatch[];
           }),
           getDocs(collection(db, "matches")),
           getDocs(collection(db, "bets")),
+          getUsers(),
         ]);
+        setUserList(users);
 
         setAllApiMatches(apiAll.length > 0 ? apiAll : buildStaticSchedule());
         const finished: Match[] = apiAll
@@ -138,7 +141,7 @@ export default function ResultadosPage() {
 
   const teamTotals = buildTeamTotals([...matches, ...manualMatches]);
 
-  const rankings = USERS.map((u) => {
+  const rankings = userList.map((u) => {
     const uid = u.toLowerCase();
     const bet = bets.find((b) => b.user === uid);
     const favPts = bet?.confirmed
