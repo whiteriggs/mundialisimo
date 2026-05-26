@@ -224,9 +224,13 @@ export default function ApuestaPage() {
             <div className="hero-eyebrow">Tu apuesta</div>
             <h2 className="hero-name">Hola, {user}</h2>
             <p className="lead">
-              {confirmed
-                ? "Tu apuesta está confirmada. Puedes editarla hasta el inicio del Mundial."
-                : "Elige tus favoritos y antifavoritos y confirma tu apuesta."}
+              {isClosed
+                ? confirmed
+                  ? "Tu apuesta está confirmada. Las apuestas están cerradas."
+                  : "Las apuestas están cerradas desde el inicio del Mundial."
+                : confirmed
+                  ? "Tu apuesta está confirmada. Puedes editarla hasta el inicio del Mundial."
+                  : "Elige tus favoritos y antifavoritos y confirma tu apuesta."}
             </p>
           </div>
         </div>
