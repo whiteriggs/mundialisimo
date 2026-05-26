@@ -1,10 +1,92 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#0b0d10"/>
-  <text
-    x="256" y="365"
-    font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
-    font-weight="900"
-    font-size="370"
-    fill="#4ea3ff"
-    text-anchor="middle">M</text>
+  <defs>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF2A8" />
+      <stop offset="30%" stop-color="#FDB931" />
+      <stop offset="70%" stop-color="#C58000" />
+      <stop offset="100%" stop-color="#8B5A00" />
+    </linearGradient>
+    <linearGradient id="goldLight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFDF73" />
+      <stop offset="100%" stop-color="#D49000" />
+    </linearGradient>
+    <linearGradient id="greenBase" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#144A29" />
+      <stop offset="50%" stop-color="#248A4C" />
+      <stop offset="100%" stop-color="#144A29" />
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FDB931" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#FDB931" stop-opacity="0" />
+    </radialGradient>
+    <clipPath id="rounded">
+      <rect width="512" height="512" rx="96" />
+    </clipPath>
+  </defs>
+
+  <rect width="512" height="512" rx="96" fill="#0b0d10" />
+
+  <g clip-path="url(#rounded)">
+    <!-- BACKGROUND FLAGS -->
+    <g opacity="0.3" transform="rotate(-45 256 256)">
+      <!-- 2022: Argentina -->
+      <rect x="-150" y="-100" width="812" height="50" fill="#75AADB" />
+      <rect x="-150" y="-50" width="812" height="50" fill="#FFFFFF" />
+      <rect x="-150" y="0" width="812" height="50" fill="#75AADB" />
+
+      <!-- 2018: France -->
+      <rect x="-150" y="50" width="270" height="150" fill="#002395" />
+      <rect x="120" y="50" width="270" height="150" fill="#FFFFFF" />
+      <rect x="390" y="50" width="272" height="150" fill="#ED2939" />
+
+      <!-- 2014: Germany -->
+      <rect x="-150" y="200" width="812" height="50" fill="#222222" />
+      <rect x="-150" y="250" width="812" height="50" fill="#DD0000" />
+      <rect x="-150" y="300" width="812" height="50" fill="#FFCE00" />
+
+      <!-- 2010: Spain -->
+      <rect x="-150" y="350" width="812" height="37.5" fill="#AA151B" />
+      <rect x="-150" y="387.5" width="812" height="75" fill="#F1BF00" />
+      <rect x="-150" y="462.5" width="812" height="37.5" fill="#AA151B" />
+
+      <!-- 2006: Italy -->
+      <rect x="-150" y="500" width="270" height="150" fill="#009246" />
+      <rect x="120" y="500" width="270" height="150" fill="#FFFFFF" />
+      <rect x="390" y="500" width="272" height="150" fill="#CE2B37" />
+    </g>
+  </g>
+
+  <!-- Radial glow behind trophy -->
+  <circle cx="256" cy="270" r="180" fill="url(#glow)" />
+
+  <!-- TROPHY -->
+  <g transform="translate(0, 10)">
+    <!-- Base Rings -->
+    <rect x="200" y="380" width="112" height="15" rx="5" fill="url(#greenBase)" />
+    <rect x="190" y="400" width="132" height="20" rx="5" fill="url(#goldLight)" />
+    <rect x="180" y="425" width="152" height="15" rx="5" fill="url(#greenBase)" />
+    <path d="M 180,440 C 180,460 200,465 256,465 C 312,465 332,460 332,440 Z" fill="url(#gold)" />
+
+    <!-- Globe -->
+    <circle cx="256" cy="145" r="55" fill="url(#gold)" />
+    <path d="M 230,120 C 250,110 270,130 250,150 C 230,170 210,140 230,120 Z" fill="#FFF2A8" opacity="0.6" />
+    <path d="M 275,150 C 290,140 300,160 285,170 C 270,180 260,160 275,150 Z" fill="#FFF2A8" opacity="0.5" />
+    <path d="M 230,170 C 240,165 250,175 240,185 C 230,195 220,180 230,170 Z" fill="#8B5A00" opacity="0.4" />
+    
+    <ellipse cx="230" cy="115" rx="12" ry="8" transform="rotate(-30 230 115)" fill="#ffffff" opacity="0.4" />
+
+    <!-- Arms/Body -->
+    <path d="M 210,380
+             C 220,290 190,210 200,155
+             C 210,180 230,195 256,195
+             C 282,195 302,180 312,155
+             C 322,210 292,290 302,380
+             Z" fill="url(#gold)" />
+    
+    <!-- Inner body shadow -->
+    <path d="M 240,380 C 245,300 230,230 240,190 C 250,195 262,195 272,190 C 282,230 267,300 272,380 Z" fill="#8B5A00" opacity="0.5" />
+  </g>
+
+  <!-- 2026 text -->
+  <text x="256" y="458" font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="20" fill="#8B5A00" text-anchor="middle">2026</text>
 </svg>
