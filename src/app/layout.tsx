@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     title: "Mundialisimo",
   },
   icons: {
-    apple: "/icons/icon.svg?v=2",
+    apple: "/icons/apple-touch-icon.png",
   },
 };
 
