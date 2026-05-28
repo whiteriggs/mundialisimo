@@ -228,11 +228,10 @@ export default function AdminPage() {
       const favPts  = data.favorites.reduce((s, id) => s + (TEAMS.find(t => t.id === id)?.price ?? 0), 0);
       const antiPts = data.antiFavorites.reduce((s, id) => s + (TEAMS.find(t => t.id === id)?.price ?? 0), 0);
       const sfTeam  = data.superFavorite ? TEAMS.find(t => t.id === data.superFavorite) : null;
-      const total   = favPts + antiPts + (sfTeam?.price ?? 0);
       const favNames  = data.favorites.map(id => TEAMS.find(t => t.id === id)?.name ?? id).join(", ");
       const antiNames = data.antiFavorites.map(id => TEAMS.find(t => t.id === id)?.name ?? id).join(", ");
       const netScore  = favPts - antiPts;
-      return `${uname}:\n  Favoritos: ${favNames || "ninguno"}\n  Antifavoritos: ${antiNames || "ninguno"}\n  Superfavorito: ${sfTeam ? sfTeam.name : "ninguno"}\n  Puntuación neta: ${netScore}${total < 15 || total > 22 ? `\n  ⚠️ APUESTA FUERA DE RANGO` : ""}`;
+      return `${uname}:\n  Favoritos: ${favNames || "ninguno"}\n  Antifavoritos: ${antiNames || "ninguno"}\n  Superfavorito: ${sfTeam ? sfTeam.name : "ninguno"}\n  Puntuación neta: ${netScore}`;
     }).join("\n\n");
     const matchesInfo = playedMatches.length === 0
       ? "Aún no se han jugado partidos (análisis pre-torneo)."
