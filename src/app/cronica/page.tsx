@@ -46,7 +46,7 @@ export default function CronicaPage() {
           <h1 style={{ marginBottom: "0.25rem" }}>Crónica de la Porra</h1>
           {generatedDate && (
             <p className="muted" style={{ marginBottom: "1.5rem", fontSize: "0.85rem" }}>
-              Generada el {generatedDate} por {chronicle?.generatedBy}
+              Generada el {generatedDate}
             </p>
           )}
 
