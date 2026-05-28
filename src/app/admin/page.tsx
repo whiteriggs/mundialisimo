@@ -22,6 +22,26 @@ const antiBounds      = { min: 4, max: 6 };
 const ticketBounds    = { min: 15, max: 22 };
 const groupLabels     = Object.keys(GROUP_POOL);
 
+// Old positional ID → team name (for one-time migration)
+const OLD_ID_TO_NAME: Record<string, string> = {
+  'A-1': 'México',      'A-2': 'Sudáfrica',     'A-3': 'Rep. Corea',    'A-4': 'Rep. Checa',
+  'B-1': 'Canadá',      'B-2': 'Bosnia y Herz.', 'B-3': 'Catar',         'B-4': 'Suiza',
+  'C-1': 'Brasil',      'C-2': 'Marruecos',      'C-3': 'Haítí',         'C-4': 'Escocia',
+  'D-1': 'EE.UU.',      'D-2': 'Paraguay',       'D-3': 'Australia',     'D-4': 'Turquía',
+  'E-1': 'Alemania',    'E-2': 'Costa Marfil',   'E-3': 'Ecuador',       'E-4': 'Curazao',
+  'F-1': 'Países Bajos', 'F-2': 'Japón',          'F-3': 'Suecia',        'F-4': 'Túnez',
+  'G-1': 'Bélgica',     'G-2': 'Egipto',         'G-3': 'Irán',          'G-4': 'Nueva Zelanda',
+  'H-1': 'España',      'H-2': 'Uruguay',        'H-3': 'Arabia Saudí',  'H-4': 'Cabo Verde',
+  'I-1': 'Francia',     'I-2': 'Noruega',        'I-3': 'Senegal',       'I-4': 'Irak',
+  'J-1': 'Argentina',   'J-2': 'Austria',        'J-3': 'Argelia',       'J-4': 'Jordania',
+  'K-1': 'Portugal',    'K-2': 'Colombia',       'K-3': 'RD Congo',      'K-4': 'Uzbekistán',
+  'L-1': 'Inglaterra',  'L-2': 'Croacia',        'L-3': 'Ghana',         'L-4': 'Panamá',
+};
+
+function translateId(id: string): string {
+  return /^[A-L]-[1-4]$/.test(id) ? (OLD_ID_TO_NAME[id] ?? id) : id;
+}
+
 function hasDuplicateGroup(ids: string[]) {
   const groups = ids
     .map((id) => TEAMS.find((t) => t.id === id)?.group)
@@ -57,6 +77,10 @@ export default function AdminPage() {
   const [betSaving, setBetSaving]     = useState(false);
   const [betMsg, setBetMsg]           = useState<string | null>(null);
   const [betLoaded, setBetLoaded]     = useState(false);
+
+  // ── Migración state ───────────────────────────────────────────
+  const [migrating, setMigrating]     = useState(false);
+  const [migrateMsg, setMigrateMsg]   = useState<string | null>(null);
 
   // ── Auth guard ────────────────────────────────────────────────
   useEffect(() => {
@@ -194,6 +218,34 @@ export default function AdminPage() {
     setTimeout(() => setBetMsg(null), 4000);
   }
 
+  async function handleMigrateBets() {
+    if (!confirm("Migrar todas las apuestas al nuevo sistema de IDs (posición → nombre). Es seguro e idempotente.")) return;
+    setMigrating(true);
+    setMigrateMsg(null);
+    let count = 0;
+    try {
+      const users = await getUsers();
+      for (const user of users) {
+        const snap = await getDoc(doc(db, "bets", user.toLowerCase()));
+        if (!snap.exists()) continue;
+        const data = snap.data() as { favorites?: string[]; antiFavorites?: string[]; superFavorite?: string | null; [k: string]: unknown };
+        await setDoc(doc(db, "bets", user.toLowerCase()), {
+          ...data,
+          favorites:     (data.favorites     ?? []).map(translateId),
+          antiFavorites: (data.antiFavorites ?? []).map(translateId),
+          superFavorite: data.superFavorite ? translateId(data.superFavorite) : null,
+        });
+        count++;
+      }
+      setMigrateMsg(`Migración completada: ${count} apuestas actualizadas.`);
+    } catch (e) {
+      setMigrateMsg(`Error: ${String(e)}`);
+    } finally {
+      setMigrating(false);
+    }
+    setTimeout(() => setMigrateMsg(null), 8000);
+  }
+
   function toggleTeam(teamId: string, isFavorite: boolean) {
     if (isFavorite) {
       setFavorites((c) => c.includes(teamId) ? c.filter((id) => id !== teamId) : [...c, teamId]);
@@ -318,6 +370,19 @@ export default function AdminPage() {
         {tab === "apuestas" && (
           <div className="admin-panel card">
             <h2>Editar apuesta</h2>
+
+            {/* Migración de IDs */}
+            <div className="admin-panel card" style={{ marginBottom: "1.5rem", background: "var(--bg-3)" }}>
+              <h3 style={{ marginBottom: "0.5rem" }}>Migración de IDs (una sola vez)</h3>
+              <p className="muted" style={{ marginBottom: "0.75rem" }}>
+                Convierte los IDs posicionales (H-2) a nombres de equipo (Uruguay) en todas las apuestas guardadas.
+                Operación segura e idempotente: se puede ejecutar varias veces sin problema.
+              </p>
+              {migrateMsg && <p className="admin-msg">{migrateMsg}</p>}
+              <button className="btn" onClick={handleMigrateBets} disabled={migrating}>
+                {migrating ? "Migrando…" : "Migrar todas las apuestas"}
+              </button>
+            </div>
             <div className="admin-row">
               <select className="admin-select" value={betUser} onChange={(e) => { setBetUser(e.target.value); setBetLoaded(false); setBetMsg(null); }}>
                 <option value="">— Selecciona usuario —</option>
@@ -359,7 +424,7 @@ export default function AdminPage() {
                           <h3 className="group-label">Grupo {group}</h3>
                           <div className="group-teams">
                             {(GROUP_POOL[group] ?? []).map((tname, idx) => {
-                              const teamId = `${group}-${idx + 1}`;
+                              const teamId = tname;
                               const isFav  = favorites.includes(teamId);
                               const isAnti = antiFavorites.includes(teamId);
                               const team   = TEAMS.find((t) => t.id === teamId);

@@ -27,7 +27,7 @@ const groupPool: Record<string, string[]> = {
 
 const teams: Team[] = Object.entries(groupPool).flatMap(([group, names]) =>
   names.map((name, teamIndex) => ({
-    id: `${group}-${teamIndex + 1}`,
+    id: name,
     name,
     group,
     price: 4 - teamIndex
@@ -189,7 +189,7 @@ export default function ApuestaDemoPage() {
                 <h3 className="group-label">Grupo {group}</h3>
                 <div className="group-teams">
                   {getGroupTeams(group).map((name, idx) => {
-                    const teamId = `${group}-${idx + 1}`;
+                    const teamId = name;
                     const isFav = favorites.includes(teamId);
                     const isAnti = antiFavorites.includes(teamId);
                     const team = teams.find((t) => t.id === teamId);

@@ -22,7 +22,7 @@ export const GROUP_POOL: Record<string, string[]> = {
 
 export const TEAMS: Team[] = Object.entries(GROUP_POOL).flatMap(([group, names]) =>
   names.map((name, idx) => ({
-    id: `${group}-${idx + 1}`,
+    id: name,
     name,
     group,
     price: 4 - idx,
