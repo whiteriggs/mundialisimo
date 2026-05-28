@@ -22,24 +22,14 @@ const antiBounds      = { min: 4, max: 6 };
 const ticketBounds    = { min: 15, max: 22 };
 const groupLabels     = Object.keys(GROUP_POOL);
 
-// Old positional ID → team name (for one-time migration)
-const OLD_ID_TO_NAME: Record<string, string> = {
-  'A-1': 'México',      'A-2': 'Sudáfrica',     'A-3': 'Rep. Corea',    'A-4': 'Rep. Checa',
-  'B-1': 'Canadá',      'B-2': 'Bosnia y Herz.', 'B-3': 'Catar',         'B-4': 'Suiza',
-  'C-1': 'Brasil',      'C-2': 'Marruecos',      'C-3': 'Haítí',         'C-4': 'Escocia',
-  'D-1': 'EE.UU.',      'D-2': 'Paraguay',       'D-3': 'Australia',     'D-4': 'Turquía',
-  'E-1': 'Alemania',    'E-2': 'Costa Marfil',   'E-3': 'Ecuador',       'E-4': 'Curazao',
-  'F-1': 'Países Bajos', 'F-2': 'Japón',          'F-3': 'Suecia',        'F-4': 'Túnez',
-  'G-1': 'Bélgica',     'G-2': 'Egipto',         'G-3': 'Irán',          'G-4': 'Nueva Zelanda',
-  'H-1': 'España',      'H-2': 'Uruguay',        'H-3': 'Arabia Saudí',  'H-4': 'Cabo Verde',
-  'I-1': 'Francia',     'I-2': 'Noruega',        'I-3': 'Senegal',       'I-4': 'Irak',
-  'J-1': 'Argentina',   'J-2': 'Austria',        'J-3': 'Argelia',       'J-4': 'Jordania',
-  'K-1': 'Portugal',    'K-2': 'Colombia',       'K-3': 'RD Congo',      'K-4': 'Uzbekistán',
-  'L-1': 'Inglaterra',  'L-2': 'Croacia',        'L-3': 'Ghana',         'L-4': 'Panamá',
-};
-
+// Build positional ID → team name dynamically from the current GROUP_POOL
+// (safe: run while the code still has the same group order that was used when bets were saved)
+const posToName: Record<string, string> = {};
+for (const [group, names] of Object.entries(GROUP_POOL)) {
+  names.forEach((name, idx) => { posToName[`${group}-${idx + 1}`] = name; });
+}
 function translateId(id: string): string {
-  return /^[A-L]-[1-4]$/.test(id) ? (OLD_ID_TO_NAME[id] ?? id) : id;
+  return /^[A-L]-[1-4]$/.test(id) ? (posToName[id] ?? id) : id;
 }
 
 function hasDuplicateGroup(ids: string[]) {
