@@ -78,6 +78,7 @@ export default function AdminPage() {
   // ── Crónica IA state ──────────────────────────────────────────
   const [chronicleGenerating, setChronicleGenerating] = useState(false);
   const [chronicleMsg, setChronicleMsg]               = useState<string | null>(null);
+  const [chronicleContext, setChronicleContext]        = useState("");
 
   // ── Auth guard ────────────────────────────────────────────────
   useEffect(() => {
@@ -217,7 +218,8 @@ export default function AdminPage() {
 
   function buildChroniclePrompt(
     allBets: Record<string, { favorites: string[]; antiFavorites: string[]; superFavorite: string | null }>,
-    playedMatches: Match[]
+    playedMatches: Match[],
+    extraContext = ""
   ): string {
     const teamInfo = Object.entries(GROUP_POOL)
       .map(([g, names]) => `  Grupo ${g}: ${names.map((n, i) => `${n}(${4 - i}pts)`).join(", ")}`)
@@ -238,7 +240,7 @@ export default function AdminPage() {
           `${m.home} ${m.homeGoals}-${m.awayGoals} ${m.away}${m.penalties ? " (pen.)" : ""}`
         ).join("\n");
     const hasMatches = playedMatches.length > 0;
-    return `Eres el analista oficial —sarcástico, con mala leche cariñosa y muy gracioso— de la Porra del Mundial 2026. Analiza las apuestas y ${hasMatches ? "los resultados ya jugados" : "haz un análisis pre-torneo"} para generar un power ranking en español.\n\nPERFILES DE LOS PARTICIPANTES (úsalos para personalizar los comentarios):\n- Esteban: siempre llega tarde y es un poco gafe. Del Espanyol y un poco del Madrid.\n- Juan: dice que viene y nunca viene. Tiene muchos pájaros en la cabeza.\n- Manuel: viaja más por trabajo que Willy Fog. Pero vive bien.\n- Jordi: le gusta la bici, es una extensión de su cuerpo.\n- Iris: profesora, no hace mucho deporte. Madre de Mariona, mujer de Capde.\n- Capde: muy buena persona, muy trabajador, quizá demasiado. Runner y bici.\n- Javi: el de los gadgets, tiene todos los cacharros habidos y por haber. El único soltero. Tiene un perro llamado Riggs que es lo mejor de su vida.\n- Jorge: extremeño. Trapicheos. Enfermero. A veces es algo bruto.\n- Mariona: niña que juega al fútbol. Con ella sé animosa, divertida y alentadora, nada cruel. No menciones su edad.\n- Adri: niño que juega al basket. Con él sé animoso, divertido y alentador, nada cruel. No menciones su edad.\n- JuanRa: poco conocido, buen tío. Jugaba a fútbol con el grupo. Puede que no participe al final.\n\nREGLAS DE LA PORRA (léelas con atención para no confundir conceptos):\n- Cada participante elige equipos FAVORITOS y ANTIFAVORITOS.\n- Cada equipo tiene un VALOR DE APUESTA (1 a 4): no son puntos de torneo, es solo el coste para incluirlo en la apuesta.\n  · Valor 4 = gran favorito del grupo, Valor 3 = segundo, Valor 2 = tercero, Valor 1 = farolillo rojo.\n- La suma de valores de los FAVORITOS debe estar entre 9 y 12.\n- La suma de valores de los ANTIFAVORITOS debe estar entre 4 y 6.\n- El SUPERFAVORITO es un favorito cuyo valor se usará como desempate final (no altera los totales).\n- IMPORTANTE: los valores que aparecen en las apuestas (ej. "España(4)") son estos valores de apuesta (1-4), NO son puntos ganados en el torneo. NO intentes calcular puntos de torneo a partir de ellos.\n- Los ANTIFAVORITOS deben ser equipos flojos: meter un gigante de antifavorito es un error enorme.\n\nEQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nPARTIDOS JUGADOS:\n${matchesInfo}\n\nAPUESTAS:\n${betsInfo}\n\n${hasMatches ? "Comenta cómo les está yendo a cada uno según los resultados, quién acierta, quién está llorando y quién acertó sin querer." : "Analiza las estrategias pre-torneo: quién ha apostado bien, quién ha metido la pata y quién va a llorar."} Para cada participante, menciona su Puntuación neta (el número ya calculado, no lo recalcules) y coméntalo. Usa SOLO los rasgos del perfil dado, no añadas ni inventes otros. No uses palabrotas ni tacos. Usa emojis, sé divertido pero cruel (salvo con Adri y Mariona). Estructura:\n\n🏆 EL POWER RANKING OFICIAL DE LA PORRA 2026\n\n🥇 1º PUESTO: [nombre]\n[análisis de 3-4 líneas]\n\n🥈 2º PUESTO: [nombre]\n...\n\n🟥 FAROLILLO ROJO: [nombre]\n[crucifixión épica]`;
+    return `Eres el analista oficial —sarcástico, con mala leche cariñosa y muy gracioso— de la Porra del Mundial 2026. Analiza las apuestas y ${hasMatches ? "los resultados ya jugados" : "haz un análisis pre-torneo"} para generar un power ranking en español.\n\nPERFILES DE LOS PARTICIPANTES (úsalos para personalizar los comentarios):\n- Esteban: siempre llega tarde y es un poco gafe. Del Espanyol y un poco del Madrid.\n- Juan: dice que viene y nunca viene. Tiene muchos pájaros en la cabeza.\n- Manuel: viaja más por trabajo que Willy Fog. Pero vive bien.\n- Jordi: le gusta la bici, es una extensión de su cuerpo.\n- Iris: profesora, no hace mucho deporte. Madre de Mariona, mujer de Capde.\n- Capde: muy buena persona, muy trabajador, quizá demasiado. Runner y bici.\n- Javi: el de los gadgets, tiene todos los cacharros habidos y por haber. El único soltero. Tiene un perro llamado Riggs que es lo mejor de su vida.\n- Jorge: extremeño. Trapicheos. Enfermero. A veces es algo bruto.\n- Mariona: niña que juega al fútbol. Con ella sé animosa, divertida y alentadora, nada cruel. No menciones su edad.\n- Adri: niño que juega al basket. Con él sé animoso, divertido y alentador, nada cruel. No menciones su edad.\n- JuanRa: poco conocido, buen tío. Jugaba a fútbol con el grupo. Puede que no participe al final.\n\nREGLAS DE LA PORRA (léelas con atención para no confundir conceptos):\n- Cada participante elige equipos FAVORITOS y ANTIFAVORITOS.\n- Cada equipo tiene un VALOR DE APUESTA (1 a 4): no son puntos de torneo, es solo el coste para incluirlo en la apuesta.\n  · Valor 4 = gran favorito del grupo, Valor 3 = segundo, Valor 2 = tercero, Valor 1 = farolillo rojo.\n- La suma de valores de los FAVORITOS debe estar entre 9 y 12.\n- La suma de valores de los ANTIFAVORITOS debe estar entre 4 y 6.\n- El SUPERFAVORITO es un favorito cuyo valor se usará como desempate final (no altera los totales).\n- IMPORTANTE: los valores que aparecen en las apuestas (ej. "España(4)") son estos valores de apuesta (1-4), NO son puntos ganados en el torneo. NO intentes calcular puntos de torneo a partir de ellos.\n- Los ANTIFAVORITOS deben ser equipos flojos: meter un gigante de antifavorito es un error enorme.\n\nEQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nPARTIDOS JUGADOS:\n${matchesInfo}\n\nAPUESTAS:\n${betsInfo}\n\n${hasMatches ? "Comenta cómo les está yendo a cada uno según los resultados, quién acierta, quién está llorando y quién acertó sin querer." : "Analiza las estrategias pre-torneo: quién ha apostado bien, quién ha metido la pata y quién va a llorar."} Para cada participante, menciona su Puntuación neta (el número ya calculado, no lo recalcules) y coméntalo. Usa SOLO los rasgos del perfil dado, no añadas ni inventes otros. No uses palabrotas ni tacos. Usa emojis, sé divertido pero cruel (salvo con Adri y Mariona). Estructura:\n\n🏆 EL POWER RANKING OFICIAL DE LA PORRA 2026\n\n🥇 1º PUESTO: [nombre]\n[análisis de 3-4 líneas]\n\n🥈 2º PUESTO: [nombre]\n...\n\n🟥 FAROLILLO ROJO: [nombre]\n[crucifixión épica]${extraContext ? `\n\nCONTEXTO ADICIONAL (tenlo en cuenta al escribir la crónica):\n${extraContext}` : ""}`;
   }
 
   async function handleGenerateChronicle() {
@@ -269,7 +271,7 @@ export default function AdminPage() {
         if (data.played) playedMatches.push({ id: d.id, ...data });
       });
 
-      const prompt = buildChroniclePrompt(allBets, playedMatches);
+      const prompt = buildChroniclePrompt(allBets, playedMatches, chronicleContext.trim());
       const text = await generateText(prompt);
       const dateKey = new Date().toISOString().slice(0, 10);
       await setDoc(doc(db, "chronicles", dateKey), { text, generatedAt: new Date(), generatedBy: "Javi" });
@@ -576,6 +578,13 @@ export default function AdminPage() {
               en <code>chronicles/latest</code>. Todos los usuarios lo ven en{" "}
               <a href="/cronica" target="_blank" rel="noreferrer">/cronica</a>.
             </p>
+            <textarea
+              value={chronicleContext}
+              onChange={e => setChronicleContext(e.target.value)}
+              placeholder="Contexto adicional para la crónica (opcional): resultados destacados, anécdotas, lo que quieras…"
+              rows={5}
+              style={{ width: "100%", marginBottom: "1rem", padding: "0.5rem", fontFamily: "inherit", fontSize: "0.9rem", borderRadius: "6px", border: "1px solid #ccc", resize: "vertical" }}
+            />
             {chronicleMsg && <p className="admin-msg">{chronicleMsg}</p>}
             <button className="btn" onClick={handleGenerateChronicle} disabled={chronicleGenerating}>
               {chronicleGenerating ? "Generando… (puede tardar 15-20s)" : "Generar crónica con IA"}
