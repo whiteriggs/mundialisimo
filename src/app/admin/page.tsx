@@ -222,7 +222,7 @@ export default function AdminPage() {
     extraContext = ""
   ): string {
     const teamInfo = Object.entries(GROUP_POOL)
-      .map(([g, names]) => `  Grupo ${g}: ${names.map((n, i) => `${n}(${4 - i}pts)`).join(", ")}`)
+      .map(([g, names]) => `  Grupo ${g}: ${names.map((n, i) => `${n}(${["★★★★","★★★","★★","★"][i]})`).join(", ")}`)
       .join("\n");
     const betsInfo = Object.entries(allBets).map(([uname, data]) => {
       const favPts  = data.favorites.reduce((s, id) => s + (TEAMS.find(t => t.id === id)?.price ?? 0), 0);
