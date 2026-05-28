@@ -270,7 +270,8 @@ export default function AdminPage() {
 
       const prompt = buildChroniclePrompt(allBets, playedMatches);
       const text = await generateText(prompt);
-      await setDoc(doc(db, "chronicles", "latest"), { text, generatedAt: new Date(), generatedBy: "Javi" });
+      const dateKey = new Date().toISOString().slice(0, 10);
+      await setDoc(doc(db, "chronicles", dateKey), { text, generatedAt: new Date(), generatedBy: "Javi" });
       setChronicleMsg(`✓ Crónica generada (${playedMatches.length} partidos, ${Object.keys(allBets).length} apuestas). Ya visible en /cronica.`);
     } catch (e) {
       setChronicleMsg(`Error: ${String(e)}`);

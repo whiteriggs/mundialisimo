@@ -1,28 +1,33 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import NavBar from "@/components/NavBar";
 import { getStoredUser } from "@/lib/auth";
 
-interface Chronicle {
+interface ChronicleEntry {
+  id: string; // YYYY-MM-DD
   text: string;
   generatedAt: { seconds: number } | Date;
-  generatedBy: string;
 }
 
 export default function CronicaPage() {
   const [user, setUser] = useState<string | null>(null);
-  const [chronicle, setChronicle] = useState<Chronicle | null>(null);
+  const [chronicles, setChronicles] = useState<ChronicleEntry[]>([]);
+  const [index, setIndex] = useState(0); // 0 = más reciente
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setUser(getStoredUser());
     async function load() {
       try {
-        const snap = await getDoc(doc(db, "chronicles", "latest"));
-        if (snap.exists()) setChronicle(snap.data() as Chronicle);
+        const snap = await getDocs(collection(db, "chronicles"));
+        const entries: ChronicleEntry[] = snap.docs
+          .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d.id))
+          .map(d => ({ id: d.id, ...(d.data() as Omit<ChronicleEntry, "id">) }))
+          .sort((a, b) => b.id.localeCompare(a.id));
+        setChronicles(entries);
       } finally {
         setLoading(false);
       }
@@ -30,36 +35,53 @@ export default function CronicaPage() {
     load();
   }, []);
 
-  const generatedDate = chronicle?.generatedAt
-    ? (() => {
-        const ts = chronicle.generatedAt;
-        const d = "seconds" in ts ? new Date(ts.seconds * 1000) : new Date(ts);
-        return d.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
-      })()
-    : null;
+  const chronicle = chronicles[index];
+
+  function formatId(id: string) {
+    const [y, m, d] = id.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" });
+  }
 
   return (
     <>
       <NavBar user={user} />
       <main className="page-main">
         <div className="card" style={{ maxWidth: 720, margin: "0 auto" }}>
-          <h1 style={{ marginBottom: "0.25rem" }}>Crónica de la Porra</h1>
-          {generatedDate && (
-            <p className="muted" style={{ marginBottom: "1.5rem", fontSize: "0.85rem" }}>
-              Generada el {generatedDate}
-            </p>
-          )}
+          <h1 style={{ marginBottom: "1rem" }}>Crónica de la Porra</h1>
 
           {loading ? (
             <p className="muted">Cargando…</p>
-          ) : !chronicle ? (
+          ) : chronicles.length === 0 ? (
             <p className="muted">Aún no hay crónica. El admin generará la primera en breve.</p>
           ) : (
-            <div className="chronicle-text">
-              {chronicle.text.split("\n").map((line, i) =>
-                line.trim() ? <p key={i} style={{ margin: "0.3rem 0" }}>{line}</p> : <br key={i} />
-              )}
-            </div>
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.5rem" }}>
+                <button
+                  className="btn"
+                  style={{ padding: "0.25rem 0.75rem" }}
+                  onClick={() => setIndex(i => i + 1)}
+                  disabled={index >= chronicles.length - 1}
+                >
+                  ←
+                </button>
+                <span className="muted" style={{ flex: 1, textAlign: "center", fontSize: "0.85rem" }}>
+                  {formatId(chronicle.id)}{index === 0 ? " · Última" : ""}
+                </span>
+                <button
+                  className="btn"
+                  style={{ padding: "0.25rem 0.75rem" }}
+                  onClick={() => setIndex(i => i - 1)}
+                  disabled={index === 0}
+                >
+                  →
+                </button>
+              </div>
+              <div className="chronicle-text">
+                {chronicle.text.split("\n").map((line, i) =>
+                  line.trim() ? <p key={i} style={{ margin: "0.3rem 0" }}>{line}</p> : <br key={i} />
+                )}
+              </div>
+            </>
           )}
         </div>
       </main>
