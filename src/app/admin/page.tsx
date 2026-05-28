@@ -227,10 +227,10 @@ export default function AdminPage() {
       const antiPts = data.antiFavorites.reduce((s, id) => s + (TEAMS.find(t => t.id === id)?.price ?? 0), 0);
       const sfTeam  = data.superFavorite ? TEAMS.find(t => t.id === data.superFavorite) : null;
       const total   = favPts + antiPts + (sfTeam?.price ?? 0);
-      const favNames  = data.favorites.map(id => { const t = TEAMS.find(t => t.id === id); return t ? `${t.name}(${t.price}pts)` : id; }).join(", ");
-      const antiNames = data.antiFavorites.map(id => { const t = TEAMS.find(t => t.id === id); return t ? `${t.name}(${t.price}pts)` : id; }).join(", ");
+      const favNames  = data.favorites.map(id => TEAMS.find(t => t.id === id)?.name ?? id).join(", ");
+      const antiNames = data.antiFavorites.map(id => TEAMS.find(t => t.id === id)?.name ?? id).join(", ");
       const netScore  = favPts - antiPts;
-      return `${uname}:\n  Favoritos (suma valores: ${favPts}): ${favNames || "ninguno"}\n  Antifavoritos (suma valores: ${antiPts}): ${antiNames || "ninguno"}\n  Superfavorito: ${sfTeam ? `${sfTeam.name} (valor ${sfTeam.price})` : "ninguno"}\n  Puntuación neta (favoritos - antifavoritos): ${netScore}${total < 15 || total > 22 ? `\n  ⚠️ APUESTA FUERA DE RANGO (suma total ${total}, debe ser 15-22)` : ""}`;
+      return `${uname}:\n  Favoritos: ${favNames || "ninguno"}\n  Antifavoritos: ${antiNames || "ninguno"}\n  Superfavorito: ${sfTeam ? sfTeam.name : "ninguno"}\n  Puntuación neta: ${netScore}${total < 15 || total > 22 ? `\n  ⚠️ APUESTA FUERA DE RANGO` : ""}`;
     }).join("\n\n");
     const matchesInfo = playedMatches.length === 0
       ? "Aún no se han jugado partidos (análisis pre-torneo)."
