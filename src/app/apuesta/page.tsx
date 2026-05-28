@@ -236,7 +236,13 @@ export default function ApuestaPage() {
         </div>
       </section>
 
-      <div className={`price-bar ${confirmed ? "price-confirmed" : ticketCost > ticketBounds.max ? "price-over" : ticketCost < ticketBounds.min && (favorites.length > 0 || antiFavorites.length > 0) ? "price-under" : ticketCost >= ticketBounds.min && ticketCost <= ticketBounds.max ? "price-ok" : ""}`}>
+      {confirmed && !isClosed && (ticketCost < ticketBounds.min || ticketCost > ticketBounds.max) && (
+        <div className="deadline-notice ko" style={{ margin: "0 1rem 0" }}>
+          El orden de los grupos ha cambiado y tu apuesta ya no es válida ({ticketCost} pts, rango {ticketBounds.min}–{ticketBounds.max}). Pulsa &quot;Editar apuesta&quot; para ajustarla.
+        </div>
+      )}
+
+      <div className={`price-bar ${confirmed && (ticketCost < ticketBounds.min || ticketCost > ticketBounds.max) ? "price-over" : confirmed ? "price-confirmed" : ticketCost > ticketBounds.max ? "price-over" : ticketCost < ticketBounds.min && (favorites.length > 0 || antiFavorites.length > 0) ? "price-under" : ticketCost >= ticketBounds.min && ticketCost <= ticketBounds.max ? "price-ok" : ""}`}>
         <div className="price-bar-inner">
           <span className="price-bar-total">
             <span className="price-bar-label">{confirmed ? "Apuesta confirmada" : "Apuesta"}</span>
