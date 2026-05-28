@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { generateText } from "@/lib/gemini";
 import { db } from "@/lib/firebase";
 import {
   getStoredUser,
@@ -39,7 +40,7 @@ function hasDuplicateGroup(ids: string[]) {
   return new Set(groups).size !== groups.length;
 }
 
-type Tab = "usuarios" | "contrasenas" | "apuestas";
+type Tab = "usuarios" | "contrasenas" | "apuestas" | "cronica";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -71,6 +72,10 @@ export default function AdminPage() {
   // ── Migración state ───────────────────────────────────────────
   const [migrating, setMigrating]     = useState(false);
   const [migrateMsg, setMigrateMsg]   = useState<string | null>(null);
+
+  // ── Crónica IA state ──────────────────────────────────────────
+  const [chronicleGenerating, setChronicleGenerating] = useState(false);
+  const [chronicleMsg, setChronicleMsg]               = useState<string | null>(null);
 
   // ── Auth guard ────────────────────────────────────────────────
   useEffect(() => {
@@ -208,6 +213,47 @@ export default function AdminPage() {
     setTimeout(() => setBetMsg(null), 4000);
   }
 
+  function buildChroniclePrompt(allBets: Record<string, { favorites: string[]; antiFavorites: string[]; superFavorite: string | null }>): string {
+    const teamInfo = Object.entries(GROUP_POOL)
+      .map(([g, names]) => `  Grupo ${g}: ${names.map((n, i) => `${n}(${4 - i}pts)`).join(", ")}`)
+      .join("\n");
+    const betsInfo = Object.entries(allBets).map(([uname, data]) => {
+      const favPts  = data.favorites.reduce((s, id) => s + (TEAMS.find(t => t.id === id)?.price ?? 0), 0);
+      const antiPts = data.antiFavorites.reduce((s, id) => s + (TEAMS.find(t => t.id === id)?.price ?? 0), 0);
+      const sfTeam  = data.superFavorite ? TEAMS.find(t => t.id === data.superFavorite) : null;
+      const total   = favPts + antiPts + (sfTeam?.price ?? 0);
+      const favNames  = data.favorites.map(id => { const t = TEAMS.find(t => t.id === id); return t ? `${t.name}(${t.price}pts)` : id; }).join(", ");
+      const antiNames = data.antiFavorites.map(id => { const t = TEAMS.find(t => t.id === id); return t ? `${t.name}(${t.price}pts)` : id; }).join(", ");
+      return `${uname}:\n  Favoritos (${favPts}pts): ${favNames || "ninguno"}\n  Antifavoritos (${antiPts}pts): ${antiNames || "ninguno"}\n  Superfavorito: ${sfTeam ? `${sfTeam.name} (precio doble, ${sfTeam.price}pts)` : "ninguno"}\n  Total: ${total}pts${total < 15 || total > 22 ? " ⚠️ FUERA DE RANGO" : " ✓"}`;
+    }).join("\n\n");
+    return `Eres el analista oficial —sarcástico, con mala leche cariñosa y muy gracioso— de la Porra del Mundial 2026. Analiza las apuestas y genera un power ranking en español.\n\nREGLAS DE LA PORRA:\n- Cada jugador elige equipos FAVORITOS (suma de precios: 9-12 puntos) y ANTIFAVORITOS (suma: 4-6 pts)\n- El SUPERFAVORITO vale doble (pero solo se cuentan sus puntos como desempate, no se suma doble al total)\n- Total válido: 15-22 puntos\n- Precio: 4=gran favorito del grupo, 3=segundo, 2=tercero, 1=farolillo rojo\n- Los ANTIFAVORITOS deben ser equipos malos: meter un gigante de antifavorito es un error enorme\n\nEQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nAPUESTAS:\n${betsInfo}\n\nGenera el power ranking con análisis sarcástico de cada participante. Menciona sus decisiones más polémicas y quién lleva la mejor/peor estrategia. Usa emojis, sé divertido pero cruel. Estructura:\n\n🏆 EL POWER RANKING OFICIAL DE LA PORRA 2026\n\n🥇 1º PUESTO: [nombre]\n[análisis de 3-4 líneas]\n\n🥈 2º PUESTO: [nombre]\n...\n\n🟥 FAROLILLO ROJO: [nombre]\n[crucifixión épica]`;
+  }
+
+  async function handleGenerateChronicle() {
+    if (!confirm("Generar nueva crónica con IA. Puede tardar 10-20 segundos.")) return;
+    setChronicleGenerating(true);
+    setChronicleMsg(null);
+    try {
+      const users = await getUsers();
+      const allBets: Record<string, { favorites: string[]; antiFavorites: string[]; superFavorite: string | null }> = {};
+      for (const u of users) {
+        const snap = await getDoc(doc(db, "bets", u.toLowerCase()));
+        if (!snap.exists()) continue;
+        const data = snap.data() as { favorites?: string[]; antiFavorites?: string[]; superFavorite?: string | null };
+        allBets[u] = { favorites: data.favorites ?? [], antiFavorites: data.antiFavorites ?? [], superFavorite: data.superFavorite ?? null };
+      }
+      const prompt = buildChroniclePrompt(allBets);
+      const text = await generateText(prompt);
+      await setDoc(doc(db, "chronicles", "latest"), { text, generatedAt: new Date(), generatedBy: "Javi" });
+      setChronicleMsg("✓ Crónica generada y guardada. Ya visible en /cronica.");
+    } catch (e) {
+      setChronicleMsg(`Error: ${String(e)}`);
+    } finally {
+      setChronicleGenerating(false);
+    }
+    setTimeout(() => setChronicleMsg(null), 12000);
+  }
+
   async function handleMigrateBets() {
     if (!confirm("Migrar todas las apuestas al nuevo sistema de IDs (posición → nombre). Es seguro e idempotente.")) return;
     setMigrating(true);
@@ -302,6 +348,7 @@ export default function AdminPage() {
           <button className={`admin-tab ${tab === "usuarios" ? "active" : ""}`} onClick={() => setTab("usuarios")}>Usuarios</button>
           <button className={`admin-tab ${tab === "contrasenas" ? "active" : ""}`} onClick={() => setTab("contrasenas")}>Contraseñas</button>
           <button className={`admin-tab ${tab === "apuestas" ? "active" : ""}`} onClick={() => setTab("apuestas")}>Apuestas</button>
+          <button className={`admin-tab ${tab === "cronica" ? "active" : ""}`} onClick={() => setTab("cronica")}>Crónica IA</button>
         </div>
 
         {/* ── TAB: Usuarios ─────────────────────────────────────── */}
@@ -489,6 +536,22 @@ export default function AdminPage() {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* ── TAB: Crónica IA ───────────────────────────────────── */}
+        {tab === "cronica" && (
+          <div className="admin-panel card">
+            <h2>Crónica IA</h2>
+            <p className="muted" style={{ marginBottom: "1rem" }}>
+              Lee todas las apuestas de Firebase, las manda a Gemini y guarda el power ranking sarcástico
+              en <code>chronicles/latest</code>. Todos los usuarios lo ven en{" "}
+              <a href="/cronica" target="_blank" rel="noreferrer">/cronica</a>.
+            </p>
+            {chronicleMsg && <p className="admin-msg">{chronicleMsg}</p>}
+            <button className="btn" onClick={handleGenerateChronicle} disabled={chronicleGenerating}>
+              {chronicleGenerating ? "Generando… (puede tardar 15-20s)" : "Generar crónica con IA"}
+            </button>
           </div>
         )}
       </div>

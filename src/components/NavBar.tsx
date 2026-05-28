@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { href: "/resultados", label: "Resultados" },
   { href: "/apuestas", label: "Apuestas" },
   { href: "/eliminatorias", label: "Eliminatorias" },
+  { href: "/cronica", label: "Crónica" },
 ];
 
 export default function NavBar({ user }: { user: string | null }) {
