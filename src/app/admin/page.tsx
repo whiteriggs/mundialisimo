@@ -4,8 +4,10 @@ import NavBar from "@/components/NavBar";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { generateText } from "@/lib/gemini";
+import { fetchAllMatches } from "@/lib/football-api";
+import { Match } from "@/lib/scoring";
 import { db } from "@/lib/firebase";
 import {
   getStoredUser,
@@ -213,7 +215,10 @@ export default function AdminPage() {
     setTimeout(() => setBetMsg(null), 4000);
   }
 
-  function buildChroniclePrompt(allBets: Record<string, { favorites: string[]; antiFavorites: string[]; superFavorite: string | null }>): string {
+  function buildChroniclePrompt(
+    allBets: Record<string, { favorites: string[]; antiFavorites: string[]; superFavorite: string | null }>,
+    playedMatches: Match[]
+  ): string {
     const teamInfo = Object.entries(GROUP_POOL)
       .map(([g, names]) => `  Grupo ${g}: ${names.map((n, i) => `${n}(${4 - i}pts)`).join(", ")}`)
       .join("\n");
@@ -226,7 +231,13 @@ export default function AdminPage() {
       const antiNames = data.antiFavorites.map(id => { const t = TEAMS.find(t => t.id === id); return t ? `${t.name}(${t.price}pts)` : id; }).join(", ");
       return `${uname}:\n  Favoritos (${favPts}pts): ${favNames || "ninguno"}\n  Antifavoritos (${antiPts}pts): ${antiNames || "ninguno"}\n  Superfavorito: ${sfTeam ? `${sfTeam.name} (precio doble, ${sfTeam.price}pts)` : "ninguno"}\n  Total: ${total}pts${total < 15 || total > 22 ? " ⚠️ FUERA DE RANGO" : " ✓"}`;
     }).join("\n\n");
-    return `Eres el analista oficial —sarcástico, con mala leche cariñosa y muy gracioso— de la Porra del Mundial 2026. Analiza las apuestas y genera un power ranking en español.\n\nREGLAS DE LA PORRA:\n- Cada jugador elige equipos FAVORITOS (suma de precios: 9-12 puntos) y ANTIFAVORITOS (suma: 4-6 pts)\n- El SUPERFAVORITO vale doble (pero solo se cuentan sus puntos como desempate, no se suma doble al total)\n- Total válido: 15-22 puntos\n- Precio: 4=gran favorito del grupo, 3=segundo, 2=tercero, 1=farolillo rojo\n- Los ANTIFAVORITOS deben ser equipos malos: meter un gigante de antifavorito es un error enorme\n\nEQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nAPUESTAS:\n${betsInfo}\n\nGenera el power ranking con análisis sarcástico de cada participante. Menciona sus decisiones más polémicas y quién lleva la mejor/peor estrategia. Usa emojis, sé divertido pero cruel. Estructura:\n\n🏆 EL POWER RANKING OFICIAL DE LA PORRA 2026\n\n🥇 1º PUESTO: [nombre]\n[análisis de 3-4 líneas]\n\n🥈 2º PUESTO: [nombre]\n...\n\n🟥 FAROLILLO ROJO: [nombre]\n[crucifixión épica]`;
+    const matchesInfo = playedMatches.length === 0
+      ? "Aún no se han jugado partidos (análisis pre-torneo)."
+      : playedMatches.map(m =>
+          `${m.home} ${m.homeGoals}-${m.awayGoals} ${m.away}${m.penalties ? " (pen.)" : ""}`
+        ).join("\n");
+    const hasMatches = playedMatches.length > 0;
+    return `Eres el analista oficial —sarcástico, con mala leche cariñosa y muy gracioso— de la Porra del Mundial 2026. Analiza las apuestas y ${hasMatches ? "los resultados ya jugados" : "haz un análisis pre-torneo"} para generar un power ranking en español.\n\nREGLAS DE LA PORRA:\n- Cada jugador elige equipos FAVORITOS (suma de precios: 9-12 puntos) y ANTIFAVORITOS (suma: 4-6 pts)\n- El SUPERFAVORITO vale doble (pero solo se cuentan sus puntos como desempate, no se suma doble al total)\n- Total válido: 15-22 puntos\n- Precio: 4=gran favorito del grupo, 3=segundo, 2=tercero, 1=farolillo rojo\n- Los ANTIFAVORITOS deben ser equipos malos: meter un gigante de antifavorito es un error enorme\n\nEQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nPARTIDOS JUGADOS:\n${matchesInfo}\n\nAPUESTAS:\n${betsInfo}\n\n${hasMatches ? "Comenta cómo les está yendo a cada uno según los resultados, quién acierta, quién está llorando y quién acertó sin querer." : "Analiza las estrategias pre-torneo: quién ha apostado bien, quién ha metido la pata y quién va a llorar."} Usa emojis, sé divertido pero cruel. Estructura:\n\n🏆 EL POWER RANKING OFICIAL DE LA PORRA 2026\n\n🥇 1º PUESTO: [nombre]\n[análisis de 3-4 líneas]\n\n🥈 2º PUESTO: [nombre]\n...\n\n🟥 FAROLILLO ROJO: [nombre]\n[crucifixión épica]`;
   }
 
   async function handleGenerateChronicle() {
@@ -242,10 +253,25 @@ export default function AdminPage() {
         const data = snap.data() as { favorites?: string[]; antiFavorites?: string[]; superFavorite?: string | null };
         allBets[u] = { favorites: data.favorites ?? [], antiFavorites: data.antiFavorites ?? [], superFavorite: data.superFavorite ?? null };
       }
-      const prompt = buildChroniclePrompt(allBets);
+
+      // Read played matches: API + manual Firestore
+      const playedMatches: Match[] = [];
+      try {
+        const apiMatches = await fetchAllMatches();
+        apiMatches.filter(m => m.played).forEach(m => {
+          playedMatches.push({ id: m.id, home: m.home, away: m.away, homeGoals: m.homeGoals ?? 0, awayGoals: m.awayGoals ?? 0, phase: m.phase, penalties: m.penalties ?? false, played: true });
+        });
+      } catch { /* API unavailable, continue */ }
+      const manualSnap = await getDocs(collection(db, "matches"));
+      manualSnap.docs.forEach(d => {
+        const data = d.data() as Omit<Match, "id">;
+        if (data.played) playedMatches.push({ id: d.id, ...data });
+      });
+
+      const prompt = buildChroniclePrompt(allBets, playedMatches);
       const text = await generateText(prompt);
       await setDoc(doc(db, "chronicles", "latest"), { text, generatedAt: new Date(), generatedBy: "Javi" });
-      setChronicleMsg("✓ Crónica generada y guardada. Ya visible en /cronica.");
+      setChronicleMsg(`✓ Crónica generada (${playedMatches.length} partidos, ${Object.keys(allBets).length} apuestas). Ya visible en /cronica.`);
     } catch (e) {
       setChronicleMsg(`Error: ${String(e)}`);
     } finally {
