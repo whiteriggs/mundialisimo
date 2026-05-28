@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import NavBar from "@/components/NavBar";
-import { getStoredUser } from "@/lib/auth";
+import { getStoredUser, clearUser } from "@/lib/auth";
 
 interface ChronicleEntry {
   id: string; // YYYY-MM-DD
@@ -13,13 +14,16 @@ interface ChronicleEntry {
 }
 
 export default function CronicaPage() {
+  const router = useRouter();
   const [user, setUser] = useState<string | null>(null);
   const [chronicles, setChronicles] = useState<ChronicleEntry[]>([]);
   const [index, setIndex] = useState(0); // 0 = más reciente
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setUser(getStoredUser());
+    const u = getStoredUser();
+    if (!u) { router.push("/login"); return; }
+    setUser(u);
     async function load() {
       try {
         const snap = await getDocs(collection(db, "chronicles"));
@@ -33,7 +37,12 @@ export default function CronicaPage() {
       }
     }
     load();
-  }, []);
+  }, [router]);
+
+  function handleLogout() {
+    clearUser();
+    router.push("/login");
+  }
 
   const chronicle = chronicles[index];
 
@@ -43,12 +52,30 @@ export default function CronicaPage() {
   }
 
   return (
-    <>
-      <NavBar user={user} />
-      <main className="page-main">
-        <div className="card" style={{ maxWidth: 720, margin: "0 auto" }}>
-          <h1 style={{ marginBottom: "1rem" }}>Crónica de la Porra</h1>
+    <main className="app-shell">
+      <header className="topbar">
+        <div className="brand">
+          <span className="dot" />
+          <h1>Mundialisimo</h1>
+          <span className="sub">Crónica</span>
+        </div>
+        <NavBar user={user} />
+        <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
+      </header>
 
+      <section className="hero">
+        <div className="hero-inner">
+          <div className="hero-crest placeholder">📰</div>
+          <div className="hero-text">
+            <div className="hero-eyebrow">Mundial 2026 · Análisis IA</div>
+            <h2 className="hero-name">Crónica de la Porra</h2>
+            <p className="lead">El power ranking sarcástico generado con Gemini.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="content-section">
+        <div className="card" style={{ maxWidth: 720, margin: "0 auto" }}>
           {loading ? (
             <p className="muted">Cargando…</p>
           ) : chronicles.length === 0 ? (
@@ -84,7 +111,7 @@ export default function CronicaPage() {
             </>
           )}
         </div>
-      </main>
-    </>
+      </section>
+    </main>
   );
 }
