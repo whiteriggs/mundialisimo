@@ -15,13 +15,13 @@ const groupPool: Record<string, string[]> = {
   B: ["Canadá", "Bosnia y Herz.", "Catar", "Suiza"],
   C: ["Brasil", "Marruecos", "Haití", "Escocia"],
   D: ["EE.UU.", "Paraguay", "Australia", "Turquía"],
-  E: ["Alemania", "Costa Marfil", "Ecuador", "Curazao"],
+  E: ["Alemania", "Curazao", "Costa Marfil", "Ecuador"],
   F: ["Países Bajos", "Japón", "Suecia", "Túnez"],
   G: ["Bélgica", "Egipto", "Irán", "Nueva Zelanda"],
-  H: ["España", "Uruguay", "Arabia Saudí", "Cabo Verde"],
-  I: ["Francia", "Noruega", "Senegal", "Irak"],
-  J: ["Argentina", "Austria", "Argelia", "Jordania"],
-  K: ["Portugal", "Colombia", "RD Congo", "Uzbekistán"],
+  H: ["España", "Cabo Verde", "Arabia Saudí", "Uruguay"],
+  I: ["Francia", "Senegal", "Irak", "Noruega"],
+  J: ["Argentina", "Argelia", "Austria", "Jordania"],
+  K: ["Portugal", "RD Congo", "Uzbekistán", "Colombia"],
   L: ["Inglaterra", "Croacia", "Ghana", "Panamá"]
 };
 
