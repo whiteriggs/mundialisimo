@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import NavBar from "@/components/NavBar";
 import {
   getUsers,
   hasUserPassword,
@@ -106,6 +107,7 @@ export default function Home() {
           <h1>Mundialísimo</h1>
           <span className="sub">Porra del Mundial 2026</span>
         </div>
+        {alreadyIn && <NavBar user={alreadyIn} />}
       </header>
 
       <div className="home-layout">
