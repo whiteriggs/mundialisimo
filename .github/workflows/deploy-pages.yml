@@ -38,6 +38,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           NEXT_PUBLIC_FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
           NEXT_PUBLIC_GEMINI_API_KEY: ${{ secrets.NEXT_PUBLIC_GEMINI_API_KEY }}
+          NEXT_PUBLIC_GNEWS_API_KEY: ${{ secrets.NEXT_PUBLIC_GNEWS_API_KEY }}
         run: npm run build:pages
 
       - name: Upload Pages artifact
