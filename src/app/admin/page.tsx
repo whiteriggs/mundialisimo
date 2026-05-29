@@ -79,6 +79,8 @@ export default function AdminPage() {
   const [chronicleGenerating, setChronicleGenerating] = useState(false);
   const [chronicleMsg, setChronicleMsg]               = useState<string | null>(null);
   const [chronicleContext, setChronicleContext]        = useState("");
+  const [chroniclePreview, setChroniclePreview]        = useState<string | null>(null);
+  const [chroniclePublishing, setChroniclePublishing]  = useState(false);
 
   // ── Auth guard ────────────────────────────────────────────────
   useEffect(() => {
@@ -272,15 +274,28 @@ export default function AdminPage() {
 
       const prompt = buildChroniclePrompt(allBets, playedMatches, chronicleContext.trim());
       const text = await generateText(prompt);
-      const dateKey = new Date().toISOString().slice(0, 10);
-      await setDoc(doc(db, "chronicles", dateKey), { text, generatedAt: new Date(), generatedBy: "Javi" });
-      setChronicleMsg(`✓ Crónica generada (${playedMatches.length} partidos, ${Object.keys(allBets).length} apuestas). Ya visible en /cronica.`);
+      setChroniclePreview(text);
+      setChronicleMsg(null);
     } catch (e) {
       setChronicleMsg(`Error: ${String(e)}`);
     } finally {
       setChronicleGenerating(false);
     }
-    setTimeout(() => setChronicleMsg(null), 12000);
+  }
+
+  async function handlePublishChronicle() {
+    if (!chroniclePreview) return;
+    setChroniclePublishing(true);
+    try {
+      const dateKey = new Date().toISOString().slice(0, 10);
+      await setDoc(doc(db, "chronicles", dateKey), { text: chroniclePreview, generatedAt: new Date(), generatedBy: "Javi" });
+      setChronicleMsg("✓ Crónica publicada. Ya visible en /cronica.");
+      setChroniclePreview(null);
+    } catch (e) {
+      setChronicleMsg(`Error al publicar: ${String(e)}`);
+    } finally {
+      setChroniclePublishing(false);
+    }
   }
 
   async function handleMigrateBets() {
@@ -585,9 +600,28 @@ export default function AdminPage() {
               style={{ width: "100%", marginBottom: "1rem", padding: "0.5rem", fontFamily: "inherit", fontSize: "0.9rem", borderRadius: "6px", border: "1px solid #ccc", resize: "vertical" }}
             />
             {chronicleMsg && <p className="admin-msg">{chronicleMsg}</p>}
-            <button className="btn" onClick={handleGenerateChronicle} disabled={chronicleGenerating}>
-              {chronicleGenerating ? "Generando… (puede tardar 15-20s)" : "Generar crónica con IA"}
-            </button>
+            {!chroniclePreview ? (
+              <button className="btn" onClick={handleGenerateChronicle} disabled={chronicleGenerating}>
+                {chronicleGenerating ? "Generando… (puede tardar 15-20s)" : "Generar crónica con IA"}
+              </button>
+            ) : (
+              <>
+                <div style={{ whiteSpace: "pre-wrap", background: "#f6f6f6", border: "1px solid #ddd", borderRadius: "6px", padding: "1rem", marginBottom: "1rem", fontSize: "0.9rem", maxHeight: "400px", overflowY: "auto" }}>
+                  {chroniclePreview}
+                </div>
+                <div style={{ display: "flex", gap: "0.75rem" }}>
+                  <button className="btn" onClick={handlePublishChronicle} disabled={chroniclePublishing}>
+                    {chroniclePublishing ? "Publicando…" : "Publicar crónica"}
+                  </button>
+                  <button className="btn" onClick={handleGenerateChronicle} disabled={chronicleGenerating} style={{ background: "#888" }}>
+                    {chronicleGenerating ? "Generando…" : "Regenerar"}
+                  </button>
+                  <button className="btn" onClick={() => { setChroniclePreview(null); setChronicleMsg(null); }} style={{ background: "#c0392b" }}>
+                    Cancelar
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
