@@ -606,7 +606,7 @@ export default function AdminPage() {
               </button>
             ) : (
               <>
-                <div style={{ whiteSpace: "pre-wrap", background: "#f6f6f6", border: "1px solid #ddd", borderRadius: "6px", padding: "1rem", marginBottom: "1rem", fontSize: "0.9rem", maxHeight: "400px", overflowY: "auto" }}>
+                <div style={{ whiteSpace: "pre-wrap", background: "#1a1a2e", color: "#e8e8f0", border: "1px solid #444", borderRadius: "6px", padding: "1rem", marginBottom: "1rem", fontSize: "0.9rem", maxHeight: "400px", overflowY: "auto" }}>
                   {chroniclePreview}
                 </div>
                 <div style={{ display: "flex", gap: "0.75rem" }}>
