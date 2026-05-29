@@ -14,8 +14,8 @@ export async function fetchTeamNews(teams: string[], max = 8): Promise<NewsArtic
   if (!apiKey) return [];
   if (teams.length === 0) return [];
 
-  const query = teams.map(t => `"${t}"`).join(" OR ");
-  const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=es&max=${max}&apikey=${apiKey}`;
+  const query = teams.join(" OR ");
+  const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=es&max=${max}&sortby=publishedAt&apikey=${apiKey}`;
 
   try {
     const res = await fetch(url);
