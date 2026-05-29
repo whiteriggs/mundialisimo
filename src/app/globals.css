@@ -60,7 +60,7 @@ a {
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  background: var(--gold);
+  background: var(--build-dot, var(--gold));
   box-shadow: 0 0 14px rgba(246, 192, 80, 0.65);
   flex: 0 0 auto;
   align-self: center;

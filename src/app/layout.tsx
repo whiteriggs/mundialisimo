@@ -3,6 +3,8 @@ import "./globals.css";
 import PwaRegister from "@/components/PwaRegister";
 
 const bp = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const buildRun = parseInt(process.env.NEXT_PUBLIC_BUILD_RUN ?? "0");
+const dotHue = (buildRun * 37) % 360;
 
 export const metadata: Metadata = {
   title: "Mundialisimo 2026",
@@ -35,6 +37,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
+      <head>
+        <style>{`:root { --build-dot: hsl(${dotHue}, 80%, 55%); }`}</style>
+      </head>
       <body>
         <PwaRegister />
         {children}
