@@ -25,6 +25,14 @@ const ALL_RULES = [
     ],
   },
   {
+    title: "Precio de los equipos",
+    items: [
+      "Cada equipo tiene un precio según su clasificación FIFA en el grupo (1.º cuesta más, 4.º menos).",
+      "La suma del precio de tus favoritos menos el de tus antifavoritos debe estar entre 15 y 22 puntos.",
+      "Esto obliga a equilibrar: no puedes coger solo los mejores favoritos sin asumir antifavoritos caros.",
+    ],
+  },
+  {
     title: "Puntuación por partido",
     items: [
       "Grupos y 3er puesto: +1 por gol, +5 por empate, +10 por victoria.",
