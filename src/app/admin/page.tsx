@@ -8,7 +8,6 @@ import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { generateText } from "@/lib/gemini";
 import { fetchAllMatches } from "@/lib/football-api";
 import { Match, buildTeamTotals, calcUserScore } from "@/lib/scoring";
-import { fetchTeamNews } from "@/lib/gnews";
 import { db } from "@/lib/firebase";
 import {
   getStoredUser,
@@ -223,7 +222,6 @@ export default function AdminPage() {
     allBets: Record<string, { favorites: string[]; antiFavorites: string[]; superFavorite: string | null }>,
     playedMatches: Match[],
     leaderboard: { uname: string; score: number }[],
-    newsArticles: import("@/lib/gnews").NewsArticle[],
     extraContext = ""
   ): string {
     const teamInfo = Object.entries(GROUP_POOL)
@@ -241,10 +239,7 @@ export default function AdminPage() {
           `${m.home} ${m.homeGoals}-${m.awayGoals} ${m.away}${m.penalties ? " (pen.)" : ""}`
         ).join("\n");
     const hasMatches = playedMatches.length > 0;
-    const newsInfo = newsArticles.length === 0
-      ? "No hay noticias reales disponibles hoy. INVENTA tú mismo un titular realista de prensa deportiva (1-2 frases) para cada uno de los equipos que aparecen en QUIÉN TIENE CADA EQUIPO, como si fuera una noticia pre-Mundial publicada hoy. Luego coméntala con ironía y menciona a los participantes de la porra que tienen ese equipo."
-      : newsArticles.map((a, i) => `  ${i + 1}. [${a.team}] ${a.title}${a.description ? ` — ${a.description}` : ""} (${a.source})`).join("\n");
-    // Build team → participants lookup for news-driven commentary
+    // Build team → participants lookup
     const teamOwners: Record<string, { favs: string[]; antis: string[] }> = {};
     Object.entries(allBets).forEach(([uname, data]) => {
       data.favorites.forEach(id => {
@@ -268,9 +263,9 @@ export default function AdminPage() {
     const leaderboardInfo = leaderboard.length === 0
       ? "Sin partidos jugados aún, todos a 0 puntos."
       : leaderboard.map((e, i) => `  ${i + 1}. ${e.uname}: ${e.score} pts`).join("\n");
-    return `Eres el analista oficial —sarcástico, con mala leche cariñosa y muy gracioso— de la Porra del Mundial 2026.${!hasMatches ? " MODO ACTIVO: CRÓNICA PRE-MUNDIAL DE NOTICIAS. Tu tarea es comentar las noticias deportivas recientes (sección NOTICIAS RECIENTES), conectarlas con los participantes de la porra usando la tabla QUIÉN TIENE CADA EQUIPO, y producir una crónica periodística sarcástica. PROHIBIDO generar un ranking por persona o analizar apuestas individuales." : " Analiza los resultados ya jugados para generar un power ranking."}\n\nPARTICIPANTES: Esteban, Juan, Manuel, Jordi, Iris, Capde, Javi, Jorge, JuanRa, Ester, Mariona (niña, sé siempre animosa con ella), Adri (niño, sé siempre animoso con él). Con el resto puedes ser sarcástico. No menciones la edad de Mariona ni de Adri. No uses palabrotas.
+    return `Eres el analista oficial —sarcástico, con mala leche cariñosa y muy gracioso— de la Porra del Mundial 2026.${!hasMatches ? " MODO ACTIVO: CRÓNICA PRE-MUNDIAL. Usa el CONTEXTO ADICIONAL (resultados de amistosos, datos, anécdotas) para comentar y conectar con los participantes. Produce una crónica periodística sarcástica. PROHIBIDO generar un ranking por persona o analizar apuestas individuales." : " Analiza los resultados ya jugados para generar un power ranking."}\n\nPARTICIPANTES: Esteban, Juan, Manuel, Jordi, Iris, Capde, Javi, Jorge, JuanRa, Ester, Mariona (niña, sé siempre animosa con ella), Adri (niño, sé siempre animoso con él). Con el resto puedes ser sarcástico. No menciones la edad de Mariona ni de Adri. No uses palabrotas.
 
-REGLAS DE LA PORRA (léelas para no confundir conceptos):\n- Cada participante elige equipos FAVORITOS y ANTIFAVORITOS.\n- Cada equipo tiene un VALOR DE APUESTA (1 a 4): no son puntos de torneo, es solo el coste para incluirlo en la apuesta.\n  · Valor 4 = gran favorito del grupo, Valor 3 = segundo, Valor 2 = tercero, Valor 1 = farolillo rojo.\n- El SUPERFAVORITO es un favorito cuyo valor se usará como desempate final (no altera los totales).\n- IMPORTANTE: los valores que aparecen en las apuestas (ej. "España(4)") son estos valores de apuesta (1-4), NO son puntos ganados en el torneo. NO intentes calcular puntos de torneo a partir de ellos.\n- Los ANTIFAVORITOS deben ser equipos flojos: meter un gigante de antifavorito es un error enorme.\n\nEQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nCLASIFICACIÓN ACTUAL (puntos reales del torneo, ordenada de mayor a menor):\n${leaderboardInfo}\n\nPARTIDOS JUGADOS:\n${matchesInfo}\n\nQUIÉN TIENE CADA EQUIPO (para cruzar noticias con participantes):\n${teamOwnersInfo}\n\nNOTICIAS RECIENTES DE LOS EQUIPOS (comenta cada una):\n${newsInfo}\n\nAPUESTAS (solo referencia, no analices):\n${betsInfo}\n\n${hasMatches ? "Comenta cómo les está yendo a cada uno según los resultados, quién acierta, quién está llorando y quién acertó sin querer." : "Comenta noticia a noticia (sección NOTICIAS) con ironía y mala leche. Para cada noticia: explica qué ha pasado y luego haz un comentario sarcástico mencionando a los participantes que tienen ese equipo según la tabla QUIÉN TIENE CADA EQUIPO. Si nadie tiene ese equipo en su porra, coméntalo igualmente pero sin mencionar a nadie en concreto. NO hagas un ranking por persona ni analices apuestas individualmente: ya está hecho. La unidad de la crónica es la NOTICIA, no la persona."} Usa emojis, sé divertido.\n\nEstructura (pre-torneo):\n\n🌍 CRÓNICA PRE-MUNDIAL\n\n[Íntro breve y sarcástica, 2-3 frases]\n\n📰 [TITULAR NOTICIA 1]\n[Comentario sarcástico + quién de la porra se ve afectado]\n\n📰 [TITULAR NOTICIA 2]\n...\n\n🏁 VEREDICTO ANTES DEL PITAZO\n[Cierre corto y cruel]${extraContext ? `\n\nCONTEXTO ADICIONAL (tenlo en cuenta al escribir la crónica):\n${extraContext}` : ""}`;
+REGLAS DE LA PORRA (léelas para no confundir conceptos):\n- Cada participante elige equipos FAVORITOS y ANTIFAVORITOS.\n- Cada equipo tiene un VALOR DE APUESTA (1 a 4): no son puntos de torneo, es solo el coste para incluirlo en la apuesta.\n  · Valor 4 = gran favorito del grupo, Valor 3 = segundo, Valor 2 = tercero, Valor 1 = farolillo rojo.\n- El SUPERFAVORITO es un favorito cuyo valor se usará como desempate final (no altera los totales).\n- IMPORTANTE: los valores que aparecen en las apuestas (ej. "España(4)") son estos valores de apuesta (1-4), NO son puntos ganados en el torneo. NO intentes calcular puntos de torneo a partir de ellos.\n- Los ANTIFAVORITOS deben ser equipos flojos: meter un gigante de antifavorito es un error enorme.\n\nEQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nCLASIFICACIÓN ACTUAL (puntos reales del torneo, ordenada de mayor a menor):\n${leaderboardInfo}\n\nPARTIDOS JUGADOS:\n${matchesInfo}\n\nQUIÉN TIENE CADA EQUIPO:\n${teamOwnersInfo}\n\nAPUESTAS (solo referencia, no analices):\n${betsInfo}\n\n${hasMatches ? "Comenta cómo les está yendo a cada uno según los resultados, quién acierta, quién está llorando y quién acertó sin querer." : "Usa el CONTEXTO ADICIONAL como base. Comenta cada resultado o hecho con ironía y mala leche, mencionando a los participantes que tienen ese equipo según QUIÉN TIENE CADA EQUIPO. NO hagas un ranking por persona ni analices apuestas individualmente. La unidad es el hecho deportivo, no la persona."} Usa emojis, sé divertido.\n\nEstructura (pre-torneo):\n\n🌍 CRÓNICA PRE-MUNDIAL\n\n[Íntro breve y sarcástica, 2-3 frases]\n\n⚽ [RESULTADO/HECHO 1 del contexto]\n[Comentario sarcástico + quién de la porra se ve afectado]\n\n⚽ [RESULTADO/HECHO 2]\n...\n\n🏁 VEREDICTO ANTES DEL PITAZO\n[Cierre corto y cruel]${extraContext ? `\n\nCONTEXTO ADICIONAL (tenlo en cuenta al escribir la crónica):\n${extraContext}` : ""}`;
   }
 
   async function handleGenerateChronicle() {
@@ -310,19 +305,10 @@ REGLAS DE LA PORRA (léelas para no confundir conceptos):\n- Cada participante e
         }))
         .sort((a, b) => b.score - a.score);
 
-      // Fetch recent news for top teams (★★★★ and ★★★) across all bets
-      const topTeams = Array.from(
-        new Set(
-          Object.values(allBets).flatMap(d => [...d.favorites, ...d.antiFavorites])
-            .filter(id => (TEAMS.find(t => t.id === id)?.price ?? 0) >= 3)
-        )
-      ).slice(0, 10);
-      const newsArticles = await fetchTeamNews(topTeams);
-
-      const prompt = buildChroniclePrompt(allBets, playedMatches, leaderboard, newsArticles, chronicleContext.trim());
+      const prompt = buildChroniclePrompt(allBets, playedMatches, leaderboard, chronicleContext.trim());
       const text = await generateText(prompt);
       setChroniclePreview(text);
-      setChronicleMsg(`${newsArticles.length} noticias cargadas de GNews.`);
+      setChronicleMsg("Crónica generada correctamente.");
     } catch (e) {
       setChronicleMsg(`Error: ${String(e)}`);
     } finally {
