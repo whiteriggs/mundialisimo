@@ -1,7 +1,7 @@
 import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "./firebase";
 
-export const USERS = ["Juan", "Javi", "Jordi", "Jorge", "Esteban", "Manuel", "JuanRa"];
+export const USERS = ["Juan", "Javi", "Jordi", "Jorge", "Esteban", "Manuel", "JuanRa", "Adri", "Capde", "Iris", "Mariona", "Ester"];
 
 export async function getUsers(): Promise<string[]> {
   try {
