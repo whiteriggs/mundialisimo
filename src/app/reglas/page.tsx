@@ -79,7 +79,7 @@ export default function ReglasPage() {
       </section>
 
       <div className="page-content">
-        <div className="home-rules">
+        <div className="home-rules" style={{ maxWidth: "640px", margin: "0 auto" }}>
           {ALL_RULES.map((section) => (
             <div key={section.title} className="home-rule-section">
               <h3>{section.title}</h3>
