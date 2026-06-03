@@ -1,7 +1,8 @@
 "use client";
 
-import { getStoredUser } from "@/lib/auth";
+import { getStoredUser, clearUser } from "@/lib/auth";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import NavBar from "@/components/NavBar";
 
 const ALL_RULES = [
@@ -42,25 +43,42 @@ const ALL_RULES = [
 ];
 
 export default function ReglasPage() {
+  const router = useRouter();
   const [user, setUser] = useState<string | null>(null);
 
   useEffect(() => {
     setUser(getStoredUser());
   }, []);
 
+  function handleLogout() {
+    clearUser();
+    router.push("/login");
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
         <div className="brand">
           <span className="dot" />
-          <h1>Mundialísimo</h1>
-          <span className="sub">Porra del Mundial 2026</span>
+          <h1>Mundialisimo</h1>
+          <span className="sub">Reglas</span>
         </div>
         <NavBar user={user} />
+        <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
       </header>
 
+      <section className="hero">
+        <div className="hero-inner">
+          <div className="hero-crest placeholder">📋</div>
+          <div className="hero-text">
+            <div className="hero-eyebrow">Porra del Mundial 2026</div>
+            <h2 className="hero-name">Reglas</h2>
+            <p className="lead">Cómo funciona la porra, los precios, la puntuación y los desempates.</p>
+          </div>
+        </div>
+      </section>
+
       <div className="page-content">
-        <h2 className="page-title">Reglas</h2>
         <div className="home-rules">
           {ALL_RULES.map((section) => (
             <div key={section.title} className="home-rule-section">
