@@ -8,37 +8,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getStoredUser, clearUser } from "@/lib/auth";
 import Flag from "@/components/Flag";
-
-type Team = {
-  id: string;
-  name: string;
-  group: string;
-  price: number;
-};
-
-const groupPool: Record<string, string[]> = {
-  A: ["México", "Sudáfrica", "Rep. Corea", "Rep. Checa"],
-  B: ["Canadá", "Bosnia y Herz.", "Catar", "Suiza"],
-  C: ["Brasil", "Marruecos", "Haití", "Escocia"],
-  D: ["EE.UU.", "Paraguay", "Australia", "Turquía"],
-  E: ["Alemania", "Curazao", "Costa Marfil", "Ecuador"],
-  F: ["Países Bajos", "Japón", "Suecia", "Túnez"],
-  G: ["Bélgica", "Egipto", "Irán", "Nueva Zelanda"],
-  H: ["España", "Cabo Verde", "Arabia Saudí", "Uruguay"],
-  I: ["Francia", "Senegal", "Irak", "Noruega"],
-  J: ["Argentina", "Argelia", "Austria", "Jordania"],
-  K: ["Portugal", "RD Congo", "Uzbekistán", "Colombia"],
-  L: ["Inglaterra", "Croacia", "Ghana", "Panamá"]
-};
-
-const teams: Team[] = Object.entries(groupPool).flatMap(([group, names]) =>
-  names.map((name, teamIndex) => ({
-    id: name,
-    name,
-    group,
-    price: 4 - teamIndex
-  }))
-);
+import { TEAMS as teams, GROUP_POOL as groupPool } from "@/lib/teams";
 
 const favoriteBounds = { min: 9, max: 12 };
 const antiBounds = { min: 4, max: 6 };

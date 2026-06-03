@@ -67,10 +67,9 @@ export function buildTeamTotals(matches: Match[]): Record<string, number> {
 export function calcUserScore(
   favorites: string[],
   antiFavorites: string[],
-  teamTotals: Record<string, number>,
-  idToName: (id: string) => string
+  teamTotals: Record<string, number>
 ): number {
   const sum = (ids: string[]) =>
-    ids.reduce((acc, id) => acc + (teamTotals[idToName(id)] ?? 0), 0);
+    ids.reduce((acc, id) => acc + (teamTotals[id] ?? 0), 0);
   return sum(favorites) - sum(antiFavorites);
 }

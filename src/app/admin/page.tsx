@@ -25,16 +25,6 @@ const antiBounds      = { min: 4, max: 6 };
 const ticketBounds    = { min: 15, max: 22 };
 const groupLabels     = Object.keys(GROUP_POOL);
 
-// Build positional ID → team name dynamically from the current GROUP_POOL
-// (safe: run while the code still has the same group order that was used when bets were saved)
-const posToName: Record<string, string> = {};
-for (const [group, names] of Object.entries(GROUP_POOL)) {
-  names.forEach((name, idx) => { posToName[`${group}-${idx + 1}`] = name; });
-}
-function translateId(id: string): string {
-  return /^[A-L]-[1-4]$/.test(id) ? (posToName[id] ?? id) : id;
-}
-
 function hasDuplicateGroup(ids: string[]) {
   const groups = ids
     .map((id) => TEAMS.find((t) => t.id === id)?.group)
@@ -70,10 +60,6 @@ export default function AdminPage() {
   const [betSaving, setBetSaving]     = useState(false);
   const [betMsg, setBetMsg]           = useState<string | null>(null);
   const [betLoaded, setBetLoaded]     = useState(false);
-
-  // ── Migración state ───────────────────────────────────────────
-  const [migrating, setMigrating]     = useState(false);
-  const [migrateMsg, setMigrateMsg]   = useState<string | null>(null);
 
   // ── Crónica IA state ──────────────────────────────────────────
   const [chronicleGenerating, setChronicleGenerating] = useState(false);
@@ -203,6 +189,7 @@ export default function AdminPage() {
       await setDoc(doc(db, "bets", betUser.toLowerCase()), {
         favorites: [],
         antiFavorites: [],
+        superFavorite: null,
         confirmed: false,
         updatedAt: new Date(),
       });
@@ -314,7 +301,7 @@ REGLAS DE LA PORRA (léelas para no confundir conceptos):\n- Cada participante e
       const leaderboard = Object.entries(allBets)
         .map(([uname, data]) => ({
           uname,
-          score: calcUserScore(data.favorites, data.antiFavorites, teamTotals, id => id),
+          score: calcUserScore(data.favorites, data.antiFavorites, teamTotals),
         }))
         .sort((a, b) => b.score - a.score);
 
@@ -344,34 +331,6 @@ REGLAS DE LA PORRA (léelas para no confundir conceptos):\n- Cada participante e
     }
   }
 
-  async function handleMigrateBets() {
-    if (!confirm("Migrar todas las apuestas al nuevo sistema de IDs (posición → nombre). Es seguro e idempotente.")) return;
-    setMigrating(true);
-    setMigrateMsg(null);
-    let count = 0;
-    try {
-      const users = await getUsers();
-      for (const user of users) {
-        const snap = await getDoc(doc(db, "bets", user.toLowerCase()));
-        if (!snap.exists()) continue;
-        const data = snap.data() as { favorites?: string[]; antiFavorites?: string[]; superFavorite?: string | null; [k: string]: unknown };
-        await setDoc(doc(db, "bets", user.toLowerCase()), {
-          ...data,
-          favorites:     (data.favorites     ?? []).map(translateId),
-          antiFavorites: (data.antiFavorites ?? []).map(translateId),
-          superFavorite: data.superFavorite ? translateId(data.superFavorite) : null,
-        });
-        count++;
-      }
-      setMigrateMsg(`Migración completada: ${count} apuestas actualizadas.`);
-    } catch (e) {
-      setMigrateMsg(`Error: ${String(e)}`);
-    } finally {
-      setMigrating(false);
-    }
-    setTimeout(() => setMigrateMsg(null), 8000);
-  }
-
   function toggleTeam(teamId: string, isFavorite: boolean) {
     if (isFavorite) {
       setFavorites((c) => c.includes(teamId) ? c.filter((id) => id !== teamId) : [...c, teamId]);
@@ -399,6 +358,7 @@ REGLAS DE LA PORRA (léelas para no confundir conceptos):\n- Cada participante e
     { ok: !hasDuplicateGroup(antiFavorites), text: "No repetir grupo en antifavoritos" },
     { ok: !overlap, text: "Un equipo no puede estar en ambos bloques" },
     { ok: ticketCost >= ticketBounds.min && ticketCost <= ticketBounds.max, text: `Coste entre ${ticketBounds.min} y ${ticketBounds.max} pts (actual ${ticketCost} pts)` },
+    { ok: superFavorite !== null, text: "Marca un favorito como campeón (★)" },
   ];
   const allValidBet = validationsBet.every((r) => r.ok);
 
@@ -498,18 +458,6 @@ REGLAS DE LA PORRA (léelas para no confundir conceptos):\n- Cada participante e
           <div className="admin-panel card">
             <h2>Editar apuesta</h2>
 
-            {/* Migración de IDs */}
-            <div className="admin-panel card" style={{ marginBottom: "1.5rem", background: "var(--bg-3)" }}>
-              <h3 style={{ marginBottom: "0.5rem" }}>Migración de IDs (una sola vez)</h3>
-              <p className="muted" style={{ marginBottom: "0.75rem" }}>
-                Convierte los IDs posicionales (H-2) a nombres de equipo (Uruguay) en todas las apuestas guardadas.
-                Operación segura e idempotente: se puede ejecutar varias veces sin problema.
-              </p>
-              {migrateMsg && <p className="admin-msg">{migrateMsg}</p>}
-              <button className="btn" onClick={handleMigrateBets} disabled={migrating}>
-                {migrating ? "Migrando…" : "Migrar todas las apuestas"}
-              </button>
-            </div>
             <div className="admin-row">
               <select className="admin-select" value={betUser} onChange={(e) => { setBetUser(e.target.value); setBetLoaded(false); setBetMsg(null); }}>
                 <option value="">— Selecciona usuario —</option>
