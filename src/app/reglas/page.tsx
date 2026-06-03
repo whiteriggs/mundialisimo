@@ -79,9 +79,9 @@ export default function ReglasPage() {
       </section>
 
       <div className="page-content">
-        <div className="home-rules" style={{ alignItems: "center" }}>
+        <div className="home-rules" style={{ width: "fit-content", maxWidth: "100%", margin: "0 auto" }}>
           {ALL_RULES.map((section) => (
-            <div key={section.title} className="home-rule-section" style={{ width: "fit-content", maxWidth: "100%" }}>
+            <div key={section.title} className="home-rule-section">
               <h3>{section.title}</h3>
               <ul>
                 {section.items.map((item) => (
