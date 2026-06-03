@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import UfwcChampion from "@/components/UfwcChampion";
 
 const NAV_LINKS = [
   { href: "/apuesta", label: "Mi apuesta" },
@@ -19,7 +20,7 @@ export default function NavBar({ user }: { user: string | null }) {
   const pathname = rawPathname?.replace(/\/$/, "") || "/";
   const isActive = (href: string) => pathname === href;
   return (
-    <nav className="topbar-nav">
+    <nav className="topbar-nav" style={{ flex: 1 }}>
       {NAV_LINKS.map(({ href, label }) => (
         <Link
           key={href}
@@ -37,6 +38,9 @@ export default function NavBar({ user }: { user: string | null }) {
           Admin
         </Link>
       )}
+      <span style={{ marginLeft: "auto", paddingLeft: 12 }}>
+        <UfwcChampion compact />
+      </span>
     </nav>
   );
 }

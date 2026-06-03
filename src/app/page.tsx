@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import NavBar from "@/components/NavBar";
+import UfwcChampion from "@/components/UfwcChampion";
 import {
   getUsers,
   hasUserPassword,
@@ -128,6 +129,11 @@ export default function Home() {
               Elige tus favoritos y antifavoritos. Cada partido cuenta. Gana quien
               mejor lea el torneo, no solo el campeón.
             </p>
+            {!alreadyIn && (
+              <div style={{ marginTop: "1rem" }}>
+                <UfwcChampion />
+              </div>
+            )}
           </div>
 
           <div className="home-rules">
