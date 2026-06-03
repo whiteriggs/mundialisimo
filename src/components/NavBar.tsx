@@ -20,27 +20,27 @@ export default function NavBar({ user }: { user: string | null }) {
   const pathname = rawPathname?.replace(/\/$/, "") || "/";
   const isActive = (href: string) => pathname === href;
   return (
-    <nav className="topbar-nav" style={{ flex: 1 }}>
-      {NAV_LINKS.map(({ href, label }) => (
-        <Link
-          key={href}
-          href={href}
-          className={isActive(href) ? "nav-active" : undefined}
-        >
-          {label}
-        </Link>
-      ))}
-      {user === "Javi" && (
-        <Link
-          href="/admin"
-          className={isActive("/admin") ? "nav-active" : undefined}
-        >
-          Admin
-        </Link>
-      )}
-      <span style={{ marginLeft: "auto", paddingLeft: 12 }}>
-        <UfwcChampion compact />
-      </span>
-    </nav>
+    <>
+      <nav className="topbar-nav" style={{ flex: 1, justifyContent: "center" }}>
+        {NAV_LINKS.map(({ href, label }) => (
+          <Link
+            key={href}
+            href={href}
+            className={isActive(href) ? "nav-active" : undefined}
+          >
+            {label}
+          </Link>
+        ))}
+        {user === "Javi" && (
+          <Link
+            href="/admin"
+            className={isActive("/admin") ? "nav-active" : undefined}
+          >
+            Admin
+          </Link>
+        )}
+      </nav>
+      <UfwcChampion compact />
+    </>
   );
 }
