@@ -21,7 +21,7 @@ export default function NavBar({ user }: { user: string | null }) {
   const isActive = (href: string) => pathname === href;
   return (
     <>
-      <nav className="topbar-nav" style={{ flex: 1, justifyContent: "center" }}>
+      <nav className="topbar-nav">
         {NAV_LINKS.map(({ href, label }) => (
           <Link
             key={href}

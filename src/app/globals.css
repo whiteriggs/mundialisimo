@@ -941,6 +941,8 @@ a {
 /* ── Topbar nav ─────────────────────────────── */
 .topbar-nav {
   display: flex;
+  flex: 1;
+  justify-content: center;
   gap: 18px;
   font-size: 13px;
   font-weight: 500;
@@ -974,19 +976,26 @@ a {
   .topbar-nav {
     order: 3;
     width: 100%;
-    flex-wrap: wrap;
-    justify-content: center;
-    row-gap: 6px;
-    column-gap: 6px;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
     padding: 8px 0 10px;
+    gap: 6px;
     border-top: 1px solid var(--line);
     margin-top: 6px;
+  }
+
+  .topbar-nav::-webkit-scrollbar {
+    display: none;
   }
 
   .topbar-nav a {
     font-size: 12px;
     padding: 5px 9px;
     white-space: nowrap;
+    flex: 0 0 auto;
   }
 }
 
