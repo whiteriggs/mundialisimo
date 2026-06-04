@@ -974,22 +974,18 @@ a {
   .topbar-nav {
     order: 3;
     width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding: 6px 0 10px;
-    gap: 2px;
+    flex-wrap: wrap;
+    justify-content: center;
+    row-gap: 6px;
+    column-gap: 6px;
+    padding: 8px 0 10px;
     border-top: 1px solid var(--line);
     margin-top: 6px;
   }
 
-  .topbar-nav::-webkit-scrollbar {
-    display: none;
-  }
-
   .topbar-nav a {
     font-size: 12px;
-    padding: 4px 7px;
+    padding: 5px 9px;
     white-space: nowrap;
   }
 }
