@@ -965,7 +965,7 @@ a {
   font-weight: 600;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 960px) {
   .topbar {
     flex-wrap: wrap;
     padding-bottom: 0;
