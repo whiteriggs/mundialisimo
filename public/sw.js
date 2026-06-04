@@ -1,4 +1,4 @@
-const CACHE = 'mundialisimo-v4';
+const CACHE = 'mundialisimo-v5';
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -14,6 +14,12 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  // Only cache same-origin requests. Cross-origin resources (e.g. the UFWC
+  // data on whiteriggs.github.io) must always go straight to the network so a
+  // flaky/opaque response never gets stuck in the PWA cache.
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
 
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {

@@ -3,25 +3,53 @@
 import { useEffect, useState } from "react";
 
 const UFWC_BASE = "https://whiteriggs.github.io/UFCC";
+const CACHE_KEY = "ufwc.champion";
+
+type Cached = { name: string; flag: string };
+
+function readCache(): Cached | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? (JSON.parse(raw) as Cached) : null;
+  } catch {
+    return null;
+  }
+}
 
 export default function UfwcChampion({ compact = false }: { compact?: boolean }) {
   const [name, setName] = useState<string | null>(null);
   const [flag, setFlag] = useState("🏆");
 
+  // Render the last known champion immediately so the pill never blanks out
+  // across navigations if a single cross-origin fetch fails on mobile.
+  useEffect(() => {
+    const cached = readCache();
+    if (cached) {
+      setName(cached.name);
+      setFlag(cached.flag);
+    }
+  }, []);
+
   useEffect(() => {
     let alive = true;
     Promise.all([
-      fetch(`${UFWC_BASE}/data-ufwc/stats.json`).then((r) => r.json()),
-      fetch(`${UFWC_BASE}/data-ufwc/clubs.json`).then((r) => r.json()),
+      fetch(`${UFWC_BASE}/data-ufwc/stats.json`, { cache: "no-store" }).then((r) => r.json()),
+      fetch(`${UFWC_BASE}/data-ufwc/clubs.json`, { cache: "no-store" }).then((r) => r.json()),
     ])
       .then(([stats, clubs]) => {
         if (!alive) return;
         const champ: string = stats.current_champion;
+        const champFlag: string = clubs[champ] || "🏆";
         setName(champ);
-        setFlag(clubs[champ] || "🏆");
+        setFlag(champFlag);
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ name: champ, flag: champFlag }));
+        } catch {
+          /* almacenamiento no disponible — ignoramos */
+        }
       })
       .catch(() => {
-        /* si falla la red, no mostramos nada */
+        /* si falla la red, mantenemos el valor cacheado (si lo hay) */
       });
     return () => {
       alive = false;
