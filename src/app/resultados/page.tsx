@@ -1,58 +1,22 @@
 "use client";
 
 import NavBar from "@/components/NavBar";
-import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import {
-  collection,
-  getDocs,
-  addDoc,
-  deleteDoc,
-  doc,
-} from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { groupCollection } from "@/lib/db";
 import { getStoredUser, clearUser, getUsers } from "@/lib/auth";
-import { TEAM_NAMES, teamName, teamCode } from "@/lib/teams";
-import { buildTeamTotals, matchPoints, Phase, Match } from "@/lib/scoring";
+import { teamName, teamCode } from "@/lib/teams";
+import { buildTeamTotals, matchPoints, Match } from "@/lib/scoring";
 import { fetchAllMatches, ApiAllMatch } from "@/lib/football-api";
 import { buildStaticSchedule } from "@/lib/static-schedule";
-import { tvChannelsFor } from "@/lib/tv-channels";
-import Flag from "@/components/Flag";
 
 type BetDoc = {
   user: string;
   favorites: string[];
   antiFavorites: string[];
   confirmed: boolean;
-};
-
-const PHASE_LABELS: Record<Phase, string> = {
-  groups: "Grupos",
-  third: "3er/4º puesto",
-  knockout: "Eliminatoria",
-};
-
-const ROUND_OPTIONS: { key: string; label: string; phase: Phase; matchday: number | null }[] = [
-  { key: "J1",            label: "J1 — Fase de grupos",   phase: "groups",   matchday: 1 },
-  { key: "J2",            label: "J2 — Fase de grupos",   phase: "groups",   matchday: 2 },
-  { key: "J3",            label: "J3 — Fase de grupos",   phase: "groups",   matchday: 3 },
-  { key: "Dieciseisavos", label: "Dieciseisavos de Final", phase: "knockout", matchday: null },
-  { key: "Octavos",       label: "Octavos de Final",       phase: "knockout", matchday: null },
-  { key: "Cuartos",       label: "Cuartos de Final",       phase: "knockout", matchday: null },
-  { key: "Semis",         label: "Semifinales",            phase: "knockout", matchday: null },
-  { key: "Final",         label: "Final",                  phase: "knockout", matchday: null },
-  { key: "3er Puesto",    label: "3er / 4º Puesto",        phase: "third",    matchday: null },
-];
-
-const EMPTY_FORM = {
-  home: "",
-  away: "",
-  homeGoals: 0,
-  awayGoals: 0,
-  roundKey: "J1",
-  penalties: false,
 };
 
 export default function ResultadosPage() {
@@ -64,12 +28,7 @@ export default function ResultadosPage() {
   const [bets, setBets] = useState<BetDoc[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [form, setForm] = useState(EMPTY_FORM);
   const [userList, setUserList] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [tab, setTab] = useState<"resultados" | "clasificacion">("resultados");
 
   useEffect(() => {
     const user = getStoredUser();
@@ -175,63 +134,7 @@ export default function ResultadosPage() {
     router.push("/login");
   }
 
-  async function handleAddMatch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.home || !form.away || form.home === form.away) return;
-    setSaving(true);
-    setFormError(null);
-    try {
-      const roundOpt = ROUND_OPTIONS.find((r) => r.key === form.roundKey)!;
-      const newMatch: Omit<Match, "id"> = {
-        home: form.home,
-        away: form.away,
-        homeGoals: form.homeGoals,
-        awayGoals: form.awayGoals,
-        phase: roundOpt.phase,
-        penalties: roundOpt.phase === "knockout" ? form.penalties : false,
-        played: true,
-        matchday: roundOpt.matchday,
-        roundKey: form.roundKey,
-      };
-      const docRef = await addDoc(collection(db, "matches"), newMatch);
-      setManualMatches((prev) => [...prev, { id: docRef.id, ...newMatch }]);
-      setForm(EMPTY_FORM);
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Error al guardar.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function handleDelete(id: string) {
-    try {
-      await deleteDoc(doc(db, "matches", id));
-      setManualMatches((prev) => prev.filter((m) => m.id !== id));
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : "Error al eliminar.");
-    }
-  }
-
   const playedMatches = matches.filter((m) => m.played);
-
-  function formatMatchDay(utcDate: string): string {
-    return new Date(utcDate).toLocaleDateString("es-ES", {
-      weekday: "short", day: "numeric", month: "short"
-    });
-  }
-
-  function formatMatchTime(utcDate: string): string {
-    return new Date(utcDate).toLocaleTimeString("es-ES", {
-      hour: "2-digit", minute: "2-digit"
-    });
-  }
-
-  const matchesByDay = allApiMatches.reduce<Map<string, ApiAllMatch[]>>((acc, m) => {
-    const day = m.utcDate.slice(0, 10);
-    if (!acc.has(day)) acc.set(day, []);
-    acc.get(day)!.push(m);
-    return acc;
-  }, new Map());
 
   return (
     <main className="app-shell">
@@ -239,7 +142,7 @@ export default function ResultadosPage() {
         <div className="brand">
           <span className="dot" />
           <h1>Mundialisimo</h1>
-          <span className="sub">Resultados</span>
+          <span className="sub">Clasificación</span>
         </div>
         <NavBar user={currentUser} />
         <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
@@ -250,15 +153,11 @@ export default function ResultadosPage() {
           <div className="hero-crest placeholder">⚽</div>
           <div className="hero-text">
             <div className="hero-eyebrow">Porra Mundial 2026</div>
-            <h2 className="hero-name">{tab === "resultados" ? "Resultados" : "Clasificación"}</h2>
+            <h2 className="hero-name">Clasificación</h2>
             <p className="lead">
-              {tab === "resultados"
-                ? (playedMatches.length === 0
-                    ? "El Mundial empieza el 11 de junio. Aquí verás el calendario, horarios y resultados."
-                    : `${playedMatches.length} partido${playedMatches.length !== 1 ? "s" : ""} jugado${playedMatches.length !== 1 ? "s" : ""} · datos de football-data.org`)
-                : (playedMatches.length === 0
-                    ? "La clasificación se actualizará automáticamente con cada partido."
-                    : "Puntuación total y desglose partido a partido.")}
+              {playedMatches.length === 0
+                ? "La clasificación se actualizará automáticamente con cada partido."
+                : "Puntuación total y desglose partido a partido."}
             </p>
           </div>
         </div>
@@ -274,224 +173,58 @@ export default function ResultadosPage() {
             </div>
           )}
 
-          {/* Selector de pestañas */}
-          <div className="results-section">
-            <div className="tabs" role="tablist">
-              <button
-                role="tab"
-                aria-selected={tab === "resultados"}
-                className={`tab ${tab === "resultados" ? "tab-active" : ""}`}
-                onClick={() => setTab("resultados")}
-              >
-                Resultados
-              </button>
-              <button
-                role="tab"
-                aria-selected={tab === "clasificacion"}
-                className={`tab ${tab === "clasificacion" ? "tab-active" : ""}`}
-                onClick={() => setTab("clasificacion")}
-              >
-                Clasificación
-              </button>
-            </div>
-          </div>
-
           {/* Clasificación: total + desglose por partido */}
-          {tab === "clasificacion" && (
-            <div className="results-section">
-              <div className="standings-wrap">
-                <table className="standings-table">
-                  <thead>
-                    <tr>
-                      <th className="st-rank">#</th>
-                      <th className="st-name">Participante</th>
-                      <th className="st-total">Total</th>
-                      {roundData.columns.map((m) => (
-                        <th key={m.id} className="st-match">
-                          <span className="st-match-teams">{teamCode(m.home)}-{teamCode(m.away)}</span>
-                          <span className="st-match-score">{m.homeGoals}–{m.awayGoals}{m.penalties ? "p" : ""}</span>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rankings.map((r, i) => (
-                      <tr
-                        key={r.uid}
-                        className={`${r.uid === currentUser?.toLowerCase() ? "row-me" : ""} ${!r.confirmed ? "row-pending" : ""}`}
-                      >
-                        <td className="st-rank">{r.confirmed ? i + 1 : "—"}</td>
-                        <td className="st-name">
-                          {r.user}
-                          {r.uid === currentUser?.toLowerCase() ? <span className="me-badge"> (tú)</span> : ""}
-                          {!r.confirmed ? <span className="pending-label"> · sin confirmar</span> : ""}
-                        </td>
-                        <td className="st-total">{r.confirmed ? r.total : "—"}</td>
-                        {roundData.columns.map((m, ci) => {
-                          const pts = roundData.perMatch[r.uid]?.[ci];
-                          return (
-                            <td
-                              key={m.id}
-                              className={`st-match-cell${!r.confirmed || isNaN(pts) ? "" : pts > 0 ? " pts-pos" : pts < 0 ? " pts-neg" : ""}`}
-                            >
-                              {!r.confirmed || isNaN(pts) ? "—" : pts > 0 ? `+${pts}` : `${pts}`}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {roundData.columns.length === 0 && (
-                <p className="muted" style={{ marginTop: 12 }}>
-                  Aún no hay partidos jugados. El desglose por partido aparecerá aquí en cuanto empiece el Mundial.
-                </p>
-              )}
-            </div>
-          )}
-
-          {tab === "resultados" && (
-          <>
-          {/* Calendario completo */}
-          {matchesByDay.size > 0 && (
-            <div className="results-section">
-              <h2 className="results-title">Partidos</h2>
-              <div className="matches-list">
-                {Array.from(matchesByDay.entries()).map(([day, dayMatches]) => (
-                  <div key={day}>
-                    <h3 className="matches-phase-label">
-                      {formatMatchDay(dayMatches[0].utcDate)} · {dayMatches.length} partido{dayMatches.length !== 1 ? "s" : ""}
-                    </h3>
-                    {dayMatches.map((m) => {
-                      return m.played ? (
-                        <div key={m.id} className="match-card">
-                          <div className="match-card-info">
-                            <span className="match-home"><Flag name={m.home} />{m.home}</span>
-                            <span className="match-score">
-                              {m.homeGoals} – {m.awayGoals}
-                              {m.penalties && <span className="pens-badge">pen.</span>}
-                            </span>
-                            <span className="match-away"><Flag name={m.away} />{m.away}</span>
-                          </div>
-                        </div>
-                      ) : (
-                        <div key={m.id} className="match-row">
-                          <span className="match-teams">
-                            <span className="match-home"><Flag name={m.home} />{m.home}</span>
-                            <span className="match-vs">vs.</span>
-                            <span className="match-away"><Flag name={m.away} />{m.away}</span>
-                          </span>
-                          {m.id.startsWith("static-") ? (
-                            <span className="match-time">Pendiente</span>
-                          ) : (
-                            <span className="match-time">{formatMatchTime(m.utcDate)}</span>
-                          )}
-                          {m.id.startsWith("static-") ? (
-                            <span className="match-tv" />
-                          ) : (
-                            <div className="match-tv">
-                              {tvChannelsFor(m).map((ch) => (
-                                <a
-                                  key={ch.name}
-                                  className={`tv-chip tv-${ch.kind}`}
-                                  href={ch.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  title={`${ch.name} · ${ch.kind === "gratis" ? "Gratis" : "De pago"}`}
-                                >
-                                  {ch.name}
-                                </a>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Manual entry section */}
           <div className="results-section">
-            <button
-              className="toggle-form-btn"
-              onClick={() => setShowForm((v) => !v)}
-            >
-              {showForm ? "▲ Ocultar entrada manual" : "▼ Añadir resultado a mano"}
-            </button>
-
-            {showForm && (
-              <>
-                <form className="match-form card" style={{ marginTop: 12 }} onSubmit={handleAddMatch}>
-                  <div className="match-form-teams">
-                    <div className="login-field">
-                      <label>Local</label>
-                      <select value={form.home} onChange={(e) => setForm((f) => ({ ...f, home: e.target.value }))} required>
-                        <option value="">— Equipo —</option>
-                        {TEAM_NAMES.map((n) => <option key={n} value={n}>{n}</option>)}
-                      </select>
-                    </div>
-                    <div className="match-form-score">
-                      <input type="number" min={0} max={30} value={form.homeGoals} onChange={(e) => setForm((f) => ({ ...f, homeGoals: Number(e.target.value) }))} />
-                      <span className="score-sep">–</span>
-                      <input type="number" min={0} max={30} value={form.awayGoals} onChange={(e) => setForm((f) => ({ ...f, awayGoals: Number(e.target.value) }))} />
-                    </div>
-                    <div className="login-field">
-                      <label>Visitante</label>
-                      <select value={form.away} onChange={(e) => setForm((f) => ({ ...f, away: e.target.value }))} required>
-                        <option value="">— Equipo —</option>
-                        {TEAM_NAMES.map((n) => <option key={n} value={n}>{n}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="match-form-meta">
-                    <div className="login-field">
-                      <label>Ronda</label>
-                      <select value={form.roundKey} onChange={(e) => setForm((f) => ({ ...f, roundKey: e.target.value, penalties: false }))}>
-                        {ROUND_OPTIONS.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
-                      </select>
-                    </div>
-                    {ROUND_OPTIONS.find((r) => r.key === form.roundKey)?.phase === "knockout" && (
-                      <label className="penalties-check">
-                        <input type="checkbox" checked={form.penalties} onChange={(e) => setForm((f) => ({ ...f, penalties: e.target.checked }))} />
-                        Decidido por penaltis
-                      </label>
-                    )}
-                  </div>
-                  <button className="btn" type="submit" disabled={saving || !form.home || !form.away || form.home === form.away}>
-                    {saving ? "Guardando…" : "Añadir partido"}
-                  </button>
-                  {formError && <p className="login-error">{formError}</p>}
-                </form>
-
-                {manualMatches.length > 0 && (
-                  <div className="matches-list" style={{ marginTop: 16 }}>
-                    <h3 className="matches-phase-label">Partidos manuales</h3>
-                    {manualMatches.map((m) => {
-                      return (
-                        <div key={m.id} className="match-card">
-                          <div className="match-card-info">
-                            <span className="match-home"><Flag name={m.home} />{m.home}</span>
-                            <span className="match-score">
-                              {m.homeGoals} – {m.awayGoals}
-                              {m.penalties && <span className="pens-badge">pen.</span>}
-                            </span>
-                            <span className="match-away"><Flag name={m.away} />{m.away}</span>
-                          </div>
-                          <button className="match-delete" onClick={() => handleDelete(m.id)} title="Eliminar">✕</button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
+            <div className="standings-wrap">
+              <table className="standings-table">
+                <thead>
+                  <tr>
+                    <th className="st-rank">#</th>
+                    <th className="st-name">Participante</th>
+                    <th className="st-total">Total</th>
+                    {roundData.columns.map((m) => (
+                      <th key={m.id} className="st-match">
+                        <span className="st-match-teams">{teamCode(m.home)}-{teamCode(m.away)}</span>
+                        <span className="st-match-score">{m.homeGoals}–{m.awayGoals}{m.penalties ? "p" : ""}</span>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rankings.map((r, i) => (
+                    <tr
+                      key={r.uid}
+                      className={`${r.uid === currentUser?.toLowerCase() ? "row-me" : ""} ${!r.confirmed ? "row-pending" : ""}`}
+                    >
+                      <td className="st-rank">{r.confirmed ? i + 1 : "—"}</td>
+                      <td className="st-name">
+                        {r.user}
+                        {r.uid === currentUser?.toLowerCase() ? <span className="me-badge"> (tú)</span> : ""}
+                        {!r.confirmed ? <span className="pending-label"> · sin confirmar</span> : ""}
+                      </td>
+                      <td className="st-total">{r.confirmed ? r.total : "—"}</td>
+                      {roundData.columns.map((m, ci) => {
+                        const pts = roundData.perMatch[r.uid]?.[ci];
+                        return (
+                          <td
+                            key={m.id}
+                            className={`st-match-cell${!r.confirmed || isNaN(pts) ? "" : pts > 0 ? " pts-pos" : pts < 0 ? " pts-neg" : ""}`}
+                          >
+                            {!r.confirmed || isNaN(pts) ? "—" : pts > 0 ? `+${pts}` : `${pts}`}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {roundData.columns.length === 0 && (
+              <p className="muted" style={{ marginTop: 12 }}>
+                Aún no hay partidos jugados. El desglose por partido aparecerá aquí en cuanto empiece el Mundial.
+              </p>
             )}
           </div>
-          </>
-          )}
         </>
       )}
     </main>

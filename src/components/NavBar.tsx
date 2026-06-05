@@ -82,10 +82,9 @@ const ICON = {
 } as const;
 
 const NAV_LINKS: { href: string; label: string; icon: keyof typeof ICON }[] = [
-  { href: "/apuesta", label: "Mi apuesta", icon: "apuesta" },
-  { href: "/grupos", label: "Grupos", icon: "grupos" },
-  { href: "/resultados", label: "Resultados", icon: "resultados" },
-  { href: "/apuestas", label: "Apuestas", icon: "apuestas" },
+  { href: "/resultados", label: "Clasificación", icon: "resultados" },
+  { href: "/apuesta", label: "Apuestas", icon: "apuesta" },
+  { href: "/grupos", label: "Grupos/Resultados", icon: "grupos" },
   { href: "/eliminatorias", label: "Eliminatorias", icon: "eliminatorias" },
   { href: "/cronica", label: "Crónica", icon: "cronica" },
   { href: "/reglas", label: "Reglas", icon: "reglas" },

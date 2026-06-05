@@ -1,19 +1,36 @@
 "use client";
 
 import NavBar from "@/components/NavBar";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getDoc, setDoc } from "firebase/firestore";
-import { groupDoc } from "@/lib/db";
-import { getStoredUser, clearUser } from "@/lib/auth";
+import { getDoc, setDoc, getDocs } from "firebase/firestore";
+import { groupDoc, groupCollection } from "@/lib/db";
+import { getStoredUser, clearUser, getUsers } from "@/lib/auth";
 import Flag from "@/components/Flag";
-import { TEAMS as teams, GROUP_POOL as groupPool } from "@/lib/teams";
+import { TEAMS as teams, GROUP_POOL as groupPool, teamName } from "@/lib/teams";
 
 const favoriteBounds = { min: 9, max: 12 };
 const antiBounds = { min: 4, max: 6 };
 const ticketBounds = { min: 15, max: 22 };
 const DEADLINE = new Date("2026-06-11T00:00:00");
+
+type BetDoc = {
+  user: string;
+  favorites: string[];
+  antiFavorites: string[];
+  superFavorite?: string | null;
+  confirmed: boolean;
+};
+
+function betCost(favorites: string[], antiFavorites: string[]) {
+  const price = (id: string) => teams.find((t) => t.id === id)?.price ?? 0;
+  return favorites.reduce((s, id) => s + price(id), 0) -
+    antiFavorites.reduce((s, id) => s + price(id), 0);
+}
+
+function cap(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 function hasDuplicateGroup(ids: string[]) {
   const groups = ids
@@ -31,9 +48,39 @@ export default function ApuestaPage() {
   const [antiFavorites, setAntiFavorites] = useState<string[]>([]);
   const [confirmed, setConfirmed] = useState(false);
   const [superFavorite, setSuperFavorite] = useState<string | null>(null);
+  const [tab, setTab] = useState<"mia" | "todas">("mia");
+  const [allBets, setAllBets] = useState<BetDoc[]>([]);
+  const [allUsers, setAllUsers] = useState<string[]>([]);
 
   const groupLabels = Object.keys(groupPool);
   const isClosed = new Date() >= DEADLINE;
+
+  async function loadAllBets() {
+    try {
+      const [snap, users] = await Promise.all([
+        getDocs(groupCollection("bets")),
+        getUsers(),
+      ]);
+      const data: BetDoc[] = snap.docs.map((d) => {
+        const raw = d.data() as Partial<Omit<BetDoc, "user">>;
+        return {
+          user: d.id,
+          favorites: raw.favorites ?? [],
+          antiFavorites: raw.antiFavorites ?? [],
+          superFavorite: raw.superFavorite ?? null,
+          confirmed: raw.confirmed ?? false,
+        };
+      });
+      data.sort((a, b) => {
+        if (a.confirmed !== b.confirmed) return a.confirmed ? -1 : 1;
+        return a.user.localeCompare(b.user, "es");
+      });
+      setAllBets(data);
+      setAllUsers(users.map((u) => u.toLowerCase()));
+    } catch {
+      // ignore
+    }
+  }
 
   useEffect(() => {
     const storedUser = getStoredUser();
@@ -62,6 +109,7 @@ export default function ApuestaPage() {
     }
 
     loadBet();
+    loadAllBets();
   }, [router]);
 
   // Auto-clear superFavorite if team removed from favorites
@@ -137,6 +185,7 @@ export default function ApuestaPage() {
         updatedAt: new Date()
       });
       setConfirmed(true);
+      loadAllBets();
     } finally {
       setSaving(false);
     }
@@ -154,6 +203,7 @@ export default function ApuestaPage() {
         updatedAt: new Date()
       });
       setConfirmed(false);
+      loadAllBets();
     } finally {
       setSaving(false);
     }
@@ -191,10 +241,12 @@ export default function ApuestaPage() {
         <div className="hero-inner">
           <div className="hero-crest placeholder">⚽</div>
           <div className="hero-text">
-            <div className="hero-eyebrow">Tu apuesta</div>
-            <h2 className="hero-name">Hola, {user}</h2>
+            <div className="hero-eyebrow">{tab === "mia" ? "Tu apuesta" : "Porra Mundial 2026"}</div>
+            <h2 className="hero-name">{tab === "mia" ? `Hola, ${user}` : "Apuestas de todos"}</h2>
             <p className="lead">
-              {isClosed
+              {tab === "todas"
+                ? "Solo se muestran apuestas confirmadas."
+                : isClosed
                 ? confirmed
                   ? "Tu apuesta está confirmada. Las apuestas están cerradas."
                   : "Las apuestas están cerradas desde el inicio del Mundial."
@@ -206,6 +258,30 @@ export default function ApuestaPage() {
         </div>
       </section>
 
+      {/* Selector de pestañas */}
+      <div className="results-section">
+        <div className="tabs" role="tablist">
+          <button
+            role="tab"
+            aria-selected={tab === "mia"}
+            className={`tab ${tab === "mia" ? "tab-active" : ""}`}
+            onClick={() => setTab("mia")}
+          >
+            Mi apuesta
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === "todas"}
+            className={`tab ${tab === "todas" ? "tab-active" : ""}`}
+            onClick={() => { setTab("todas"); loadAllBets(); }}
+          >
+            Todas las apuestas
+          </button>
+        </div>
+      </div>
+
+      {tab === "mia" && (
+      <>
       {confirmed && !isClosed && (ticketCost < ticketBounds.min || ticketCost > ticketBounds.max) && (
         <div className="deadline-notice ko" style={{ margin: "0 1rem 0" }}>
           El orden de los grupos ha cambiado y tu apuesta ya no es válida ({ticketCost} pts, rango {ticketBounds.min}–{ticketBounds.max}). Pulsa &quot;Editar apuesta&quot; para ajustarla.
@@ -347,6 +423,75 @@ export default function ApuestaPage() {
           </p>
         </article>
       </div>
+      </>
+      )}
+
+      {tab === "todas" && (
+        <div className="bets-grid">
+          {allUsers.map((uid) => {
+            const bet = allBets.find((b) => b.user === uid);
+            const displayName = cap(uid);
+            const isMe = user?.toLowerCase() === uid;
+
+            if (!bet || !bet.confirmed) {
+              return (
+                <div className="bet-card bet-card--pending" key={uid}>
+                  <div className="bet-card-header">
+                    <span className="bet-card-name">{displayName}{isMe ? " (tú)" : ""}</span>
+                    <span className="status-badge status-pending">Sin confirmar</span>
+                  </div>
+                  <p className="muted" style={{ margin: "12px 0 0" }}>Apuesta no confirmada todavía.</p>
+                </div>
+              );
+            }
+
+            const cost = betCost(bet.favorites, bet.antiFavorites);
+
+            return (
+              <div className="bet-card" key={uid}>
+                <div className="bet-card-header">
+                  <span className="bet-card-name">{displayName}{isMe ? " (tú)" : ""}</span>
+                  <span className="status-badge status-confirmed">Confirmada · {cost} pts</span>
+                </div>
+
+                <div className="bet-card-section">
+                  <h4 className="bet-card-label">Favoritos ({bet.favorites.length})</h4>
+                  <ul className="bet-team-list fav-list">
+                    {bet.favorites.map((id) => {
+                      const team = teams.find((t) => t.id === id);
+                      const isSuper = bet.superFavorite === id;
+                      return (
+                        <li key={id} className={isSuper ? "bet-team-super" : ""}>
+                          {isSuper && <span className="super-star">★</span>}
+                          <span className="bet-team-name"><Flag name={teamName(id)} />{teamName(id)}</span>
+                          <span className="bet-team-group">Gr. {team?.group}</span>
+                          <span className="bet-team-price">+{team?.price} pts</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+
+                <div className="bet-card-section">
+                  <h4 className="bet-card-label">Antifavoritos ({bet.antiFavorites.length})</h4>
+                  <ul className="bet-team-list anti-list">
+                    {bet.antiFavorites.map((id) => {
+                      const team = teams.find((t) => t.id === id);
+                      return (
+                        <li key={id}>
+                          <span className="bet-team-name"><Flag name={teamName(id)} />{teamName(id)}</span>
+                          <span className="bet-team-group">Gr. {team?.group}</span>
+                          <span className="bet-team-price">−{team?.price} pts</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </main>
   );
 }
