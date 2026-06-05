@@ -24,76 +24,94 @@ type BHalf = BMatch[][][];
 
 const TBD: BMatch = { home: "Por determinar", away: "Por determinar", isTbd: true };
 
+// TBD con fecha (rondas cuyos equipos aún no se conocen pero sí la fecha).
+const tbd = (date: string): BMatch => ({ ...TBD, date });
+
 // ─────────────────────────────────────────────────────────────────
-//  Official bracket — source: marca.com cuadro-final.html
-//  Left half: R32 pairs → R16 → QF → SF  (left side of draw)
-//  Right half: SF → QF → R16 → R32 pairs (right side, mirrored)
+//  Cuadro oficial — fuente: FIFA / Wikipedia (2026 knockout stage).
+//  Números de partido FIFA (M73–M104) entre paréntesis.
+//  R32 (dieciseisavos): cruces por grupos.
+//  R16 (octavos): "Gan. X/Y" = ganador del cruce de dieciseisavos.
+//  Left half: R32 → R16 → QF → SF  (lado izquierdo del cuadro)
+//  Right half: SF → QF → R16 → R32 (lado derecho, espejado)
 // ─────────────────────────────────────────────────────────────────
 
 // Left half column order in DOM: R32, R16, QF, SF
 const LEFT_HALF: BHalf = [
-  // R32 — 4 pairs × 2 matches (feed into R16-1…R16-4)
+  // R32 — 4 pares × 2 partidos
   [
     [
-      { home: "2º Gr. A",  away: "2º Gr. B",         date: "28 jun" },
-      { home: "1º Gr. E",  away: "M.3º A/B/C/D/F",  date: "29 jun" },
+      { home: "1º Gr. E", away: "M.3º A/B/C/D/F", date: "29 jun" }, // M74
+      { home: "1º Gr. I", away: "M.3º C/D/F/G/H", date: "30 jun" }, // M77
     ],
     [
-      { home: "1º Gr. C",  away: "2º Gr. F",         date: "29 jun" },
-      { home: "2º Gr. E",  away: "2º Gr. I",         date: "30 jun" },
+      { home: "2º Gr. A", away: "2º Gr. B", date: "28 jun" }, // M73
+      { home: "1º Gr. F", away: "2º Gr. C", date: "29 jun" }, // M75
     ],
     [
-      { home: "1º Gr. F",  away: "2º Gr. C",         date: "30 jun" },
-      { home: "1º Gr. I",  away: "M.3º C/D/F/G/H",  date: "30 jun" },
+      { home: "2º Gr. K", away: "2º Gr. L", date: "2 jul" }, // M83
+      { home: "1º Gr. H", away: "2º Gr. J", date: "2 jul" }, // M84
     ],
     [
-      { home: "1º Gr. A",  away: "M.3º C/E/F/H/I",  date: "1 jul"  },
-      { home: "1º Gr. L",  away: "M.3º E/H/I/J/K",  date: "1 jul"  },
+      { home: "1º Gr. D", away: "M.3º B/E/F/I/J", date: "1 jul" }, // M81
+      { home: "1º Gr. G", away: "M.3º A/E/H/I/J", date: "1 jul" }, // M82
     ],
   ],
-  // R16 — 2 pairs × 2 matches
+  // R16 — 2 pares × 2 partidos
   [
-    [TBD, TBD],
-    [TBD, TBD],
+    [
+      { home: "Gan. 1ºE/3º", away: "Gan. 1ºI/3º", date: "4 jul" }, // M89 = W74 vs W77
+      { home: "Gan. 2ºA/2ºB", away: "Gan. 1ºF/2ºC", date: "4 jul" }, // M90 = W73 vs W75
+    ],
+    [
+      { home: "Gan. 2ºK/2ºL", away: "Gan. 1ºH/2ºJ", date: "6 jul" }, // M93 = W83 vs W84
+      { home: "Gan. 1ºD/3º", away: "Gan. 1ºG/3º", date: "6 jul" }, // M94 = W81 vs W82
+    ],
   ],
-  // QF — 1 pair × 2 matches
+  // QF — 1 par × 2 partidos
   [
-    [TBD, TBD],
+    [tbd("9 jul"), tbd("10 jul")], // M97, M98
   ],
-  // SF — 1 single match
+  // SF — 1 partido
   [
-    [TBD],
+    [tbd("14 jul")], // M101
   ],
 ];
 
 // Right half column order in DOM: SF, QF, R16, R32
 const RIGHT_HALF: BHalf = [
   // SF
-  [[TBD]],
+  [[tbd("15 jul")]], // M102
   // QF
-  [[TBD, TBD]],
-  // R16 — 2 pairs × 2 matches
+  [[tbd("11 jul"), tbd("11 jul")]], // M99, M100
+  // R16 — 2 pares × 2 partidos
   [
-    [TBD, TBD],
-    [TBD, TBD],
+    [
+      { home: "Gan. 1ºC/2ºF", away: "Gan. 2ºE/2ºI", date: "5 jul" }, // M91 = W76 vs W78
+      { home: "Gan. 1ºA/3º", away: "Gan. 1ºL/3º", date: "5 jul" }, // M92 = W79 vs W80
+    ],
+    [
+      { home: "Gan. 1ºJ/2ºH", away: "Gan. 2ºD/2ºG", date: "7 jul" }, // M95 = W86 vs W88
+      { home: "Gan. 1ºB/3º", away: "Gan. 1ºK/3º", date: "7 jul" }, // M96 = W85 vs W87
+    ],
   ],
-  // R32 — 4 pairs × 2 matches (feed into R16-5…R16-8)
+  // R32 — 4 pares × 2 partidos
   [
     [
-      { home: "1º Gr. G",  away: "M.3º A/E/H/I/J",  date: "1 jul"  },
-      { home: "1º Gr. D",  away: "M.3º B/E/F/I/J",  date: "2 jul"  },
+      { home: "1º Gr. C", away: "2º Gr. F", date: "29 jun" }, // M76
+      { home: "2º Gr. E", away: "2º Gr. I", date: "30 jun" }, // M78
     ],
     [
-      { home: "1º Gr. H",  away: "2º Gr. J",         date: "2 jul"  },
-      { home: "2º Gr. K",  away: "2º Gr. L",         date: "3 jul"  },
+      { home: "1º Gr. A", away: "M.3º C/E/F/H/I", date: "30 jun" }, // M79
+      { home: "1º Gr. L", away: "M.3º E/H/I/J/K", date: "1 jul" }, // M80
     ],
     [
-      { home: "1º Gr. B",  away: "M.3º E/F/G/I/J",  date: "3 jul"  },
-      { home: "1º Gr. J",  away: "2º Gr. H",         date: "3 jul"  },
+      { home: "1º Gr. J", away: "2º Gr. H", date: "3 jul" }, // M86
+      { home: "2º Gr. D", away: "2º Gr. G", date: "3 jul" }, // M88
     ],
     [
-      { home: "2º Gr. D",  away: "2º Gr. G",         date: "3 jul"  },
-      { home: "1º Gr. K",  away: "M.3º D/E/I/J/L",  date: "4 jul"  },
+      { home: "1º Gr. B", away: "M.3º E/F/G/I/J", date: "2 jul" }, // M85
+      { home: "1º Gr. K", away: "M.3º D/E/I/J/L", date: "3 jul" }, // M87
     ],
   ],
 ];
@@ -129,17 +147,20 @@ function buildBracketFromApi(matches: ApiKnockoutMatch[]): {
   const sf  = by("SEMI_FINALS");
   const fin = by("FINAL");
 
+  // Para cada ronda: si la API ya trae partidos, usarlos; si no, mantener el
+  // cuadro estático (cruces por grupos + fechas). La API de football-data sólo
+  // publica R32/R16 cuando se sortean, así que antes de eso usamos el estático.
   const left: BHalf = [
-    [[at(r32,0), at(r32,1)], [at(r32,2), at(r32,3)], [at(r32,4), at(r32,5)], [at(r32,6), at(r32,7)]],
-    [[at(r16,0), at(r16,1)], [at(r16,2), at(r16,3)]],
-    [[at(qf,0),  at(qf,1)]],
-    [[at(sf,0)]],
+    r32.length ? [[at(r32,0), at(r32,1)], [at(r32,2), at(r32,3)], [at(r32,4), at(r32,5)], [at(r32,6), at(r32,7)]] : LEFT_HALF[0],
+    r16.length ? [[at(r16,0), at(r16,1)], [at(r16,2), at(r16,3)]] : LEFT_HALF[1],
+    qf.length  ? [[at(qf,0),  at(qf,1)]] : LEFT_HALF[2],
+    sf.length  ? [[at(sf,0)]] : LEFT_HALF[3],
   ];
   const right: BHalf = [
-    [[at(sf,1)]],
-    [[at(qf,2),  at(qf,3)]],
-    [[at(r16,4), at(r16,5)], [at(r16,6), at(r16,7)]],
-    [[at(r32,8), at(r32,9)], [at(r32,10), at(r32,11)], [at(r32,12), at(r32,13)], [at(r32,14), at(r32,15)]],
+    sf.length  ? [[at(sf,1)]] : RIGHT_HALF[0],
+    qf.length  ? [[at(qf,2),  at(qf,3)]] : RIGHT_HALF[1],
+    r16.length ? [[at(r16,4), at(r16,5)], [at(r16,6), at(r16,7)]] : RIGHT_HALF[2],
+    r32.length ? [[at(r32,8), at(r32,9)], [at(r32,10), at(r32,11)], [at(r32,12), at(r32,13)], [at(r32,14), at(r32,15)]] : RIGHT_HALF[3],
   ];
 
   return { left, right, final: fin[0] ?? { ...FINAL_MATCH } };
