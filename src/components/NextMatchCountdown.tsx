@@ -20,7 +20,7 @@ function remainingTo(iso: string): Remaining {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-export default function NextMatchCountdown() {
+export default function NextMatchCountdown({ compact = false }: { compact?: boolean }) {
   const [match, setMatch] = useState<ApiAllMatch | null>(null);
   const [left, setLeft] = useState<Remaining>(null);
 
@@ -60,6 +60,25 @@ export default function NextMatchCountdown() {
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  if (compact) {
+    const time =
+      left.d > 0
+        ? `${left.d}d ${pad(left.h)}:${pad(left.m)}:${pad(left.s)}`
+        : `${pad(left.h)}:${pad(left.m)}:${pad(left.s)}`;
+    return (
+      <div
+        className="next-match-pill"
+        title={`Próximo partido: ${match.home} vs ${match.away} · ${kickoff}`}
+      >
+        <span className="next-match-pill-label">Próximo</span>
+        <Flag name={match.home} />
+        <span className="next-match-pill-vs">vs</span>
+        <Flag name={match.away} />
+        <span className="next-match-pill-time">{time}</span>
+      </div>
+    );
+  }
 
   return (
     <div className="next-match card">

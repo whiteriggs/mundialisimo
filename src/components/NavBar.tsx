@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import UfwcChampion from "@/components/UfwcChampion";
+import NextMatchCountdown from "@/components/NextMatchCountdown";
 import { isGroupAdmin } from "@/lib/group";
 
 const NAV_LINKS = [
@@ -42,6 +43,7 @@ export default function NavBar({ user }: { user: string | null }) {
         )}
       </nav>
       <UfwcChampion compact />
+      <NextMatchCountdown compact />
     </>
   );
 }
