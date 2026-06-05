@@ -1,6 +1,6 @@
 import { getDoc, setDoc, deleteDoc } from "firebase/firestore";
 import { groupDoc } from "./db";
-import { getGroupId, DEFAULT_GROUP } from "./group";
+import { getGroupId, DEFAULT_GROUP, GROUP_ALIASES } from "./group";
 
 // Lista semilla solo para el grupo por defecto (amigos de Javi). Los grupos
 // nuevos empiezan vacíos y su admin va añadiendo jugadores desde el panel.
@@ -71,6 +71,17 @@ export function getStoredUser(): string | null {
   if (typeof window === "undefined") return null;
   const v = localStorage.getItem(userKey());
   if (v) return v;
+  // Migración de sesión tras renombrar el grupo (p.ej. javi -> papisllor):
+  // recuperar la sesión guardada con el id antiguo.
+  const current = getGroupId();
+  for (const [oldId, target] of Object.entries(GROUP_ALIASES)) {
+    if (target !== current) continue;
+    const prev = localStorage.getItem(`mundialisimo_user_${oldId}`);
+    if (prev) {
+      localStorage.setItem(userKey(), prev);
+      return prev;
+    }
+  }
   // Migración suave: sesión antigua global del grupo por defecto.
   if (getGroupId() === DEFAULT_GROUP) {
     const old = localStorage.getItem("mundialisimo_user");

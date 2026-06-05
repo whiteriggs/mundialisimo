@@ -12,12 +12,20 @@ export interface GroupConfig {
 }
 
 export const GROUPS: Record<string, GroupConfig> = {
-  javi: { label: "Papis Llor", admin: "Javi" },
+  papisllor: { label: "Papis Llor", admin: "Javi" },
   brain2store: { label: "Brain2Store", admin: "JN" },
 };
 
-export const DEFAULT_GROUP = "javi";
+export const DEFAULT_GROUP = "papisllor";
 const GROUP_KEY = "mundialisimo_group";
+
+// Alias de ids antiguos -> id actual. Permite que sesiones guardadas y enlaces
+// (?grupo=...) anteriores a un renombrado de grupo sigan funcionando.
+export const GROUP_ALIASES: Record<string, string> = { javi: "papisllor" };
+
+function resolveGroupAlias(id: string): string {
+  return GROUP_ALIASES[id] ?? id;
+}
 
 /**
  * Grupo activo. Se puede fijar con `?grupo=<id>` en la URL (queda persistido en
@@ -28,16 +36,22 @@ export function getGroupId(): string {
   if (typeof window === "undefined") return DEFAULT_GROUP;
   try {
     const q = new URLSearchParams(window.location.search).get("grupo");
-    if (q && GROUPS[q]) {
-      localStorage.setItem(GROUP_KEY, q);
-      return q;
+    if (q) {
+      const resolved = resolveGroupAlias(q);
+      if (GROUPS[resolved]) {
+        localStorage.setItem(GROUP_KEY, resolved);
+        return resolved;
+      }
     }
   } catch {
     /* localStorage/URL no disponible */
   }
   try {
     const stored = localStorage.getItem(GROUP_KEY);
-    if (stored && GROUPS[stored]) return stored;
+    if (stored) {
+      const resolved = resolveGroupAlias(stored);
+      if (GROUPS[resolved]) return resolved;
+    }
   } catch {
     /* localStorage no disponible */
   }
