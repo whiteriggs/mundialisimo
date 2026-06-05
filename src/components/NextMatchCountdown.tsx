@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Flag from "@/components/Flag";
 import { fetchAllMatches, type ApiAllMatch } from "@/lib/football-api";
+import { tvChannelsFor } from "@/lib/tv-channels";
 
 type Remaining = { d: number; h: number; m: number; s: number } | null;
 
@@ -114,6 +115,21 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
           <b>{pad(left.s)}</b>
           <small>seg</small>
         </span>
+      </div>
+      <div className="next-match-tv">
+        <span className="next-match-tv-label">Dónde verlo</span>
+        {tvChannelsFor(match).map((ch) => (
+          <a
+            key={ch.name}
+            className={`tv-chip tv-${ch.kind}`}
+            href={ch.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={`${ch.name} · ${ch.kind === "gratis" ? "Gratis" : "De pago"}`}
+          >
+            {ch.name}
+          </a>
+        ))}
       </div>
     </div>
   );

@@ -1378,11 +1378,22 @@ a {
 .match-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 8px 12px;
   background: var(--bg-2);
   border-radius: 8px;
   font-size: 13px;
+}
+
+.match-tv {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.match-tv .tv-chip {
+  padding: 0.15rem 0.45rem;
+  font-size: 0.68rem;
 }
 
 .match-home {
@@ -2315,6 +2326,51 @@ a {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-dim);
+}
+
+.next-match-tv {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.35rem;
+}
+.next-match-tv-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-right: 0.1rem;
+}
+.tv-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--text);
+  line-height: 1;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.tv-chip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+}
+.tv-chip.tv-gratis::before {
+  background: var(--green);
+}
+.tv-chip.tv-pago::before {
+  background: var(--gold);
+}
+.tv-chip:hover {
+  background: var(--bg-3);
+  border-color: var(--accent);
 }
 
 @media (max-width: 760px) {

@@ -18,6 +18,7 @@ import { TEAM_NAMES, teamName } from "@/lib/teams";
 import { buildTeamTotals, matchPoints, Phase, Match } from "@/lib/scoring";
 import { fetchAllMatches, ApiAllMatch } from "@/lib/football-api";
 import { buildStaticSchedule } from "@/lib/static-schedule";
+import { tvChannelsFor } from "@/lib/tv-channels";
 import Flag from "@/components/Flag";
 
 type BetDoc = {
@@ -402,6 +403,22 @@ export default function ResultadosPage() {
                             <span className="match-time">{formatMatchTime(m.utcDate)}</span>
                           )}
                           <span className="match-away"><Flag name={m.away} />{m.away}</span>
+                          {!m.id.startsWith("static-") && (
+                            <div className="match-tv">
+                              {tvChannelsFor(m).map((ch) => (
+                                <a
+                                  key={ch.name}
+                                  className={`tv-chip tv-${ch.kind}`}
+                                  href={ch.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={`${ch.name} · ${ch.kind === "gratis" ? "Gratis" : "De pago"}`}
+                                >
+                                  {ch.name}
+                                </a>
+                              ))}
+                            </div>
+                          )}
                           {confirmed.length > 0 && (
                             <div className="match-gains">
                               {confirmed.map(({ user, uid }, i) => (
