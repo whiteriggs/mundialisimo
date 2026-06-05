@@ -2410,7 +2410,7 @@ a {
   padding-top: 0;
   background: var(--bg-2);
   border-right: 1px solid var(--line);
-  z-index: 60;
+  z-index: 110;
   overflow-x: hidden;
   overflow-y: auto;
   transition: width 0.18s ease, transform 0.18s ease;
@@ -2506,7 +2506,7 @@ body[data-sidebar="expanded"] .app-shell {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 55;
+    z-index: 105;
   }
 }
 
