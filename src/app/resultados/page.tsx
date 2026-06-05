@@ -12,6 +12,7 @@ import {
   doc,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { groupCollection } from "@/lib/db";
 import { getStoredUser, clearUser, getUsers } from "@/lib/auth";
 import { TEAM_NAMES, teamName } from "@/lib/teams";
 import { buildTeamTotals, matchPoints, Phase, Match } from "@/lib/scoring";
@@ -95,7 +96,7 @@ export default function ResultadosPage() {
             return [] as ApiAllMatch[];
           }),
           getDocs(collection(db, "matches")),
-          getDocs(collection(db, "bets")),
+          getDocs(groupCollection("bets")),
           getUsers(),
         ]);
         setUserList(users);

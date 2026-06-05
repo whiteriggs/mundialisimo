@@ -12,6 +12,7 @@ import {
   storeUser,
   getStoredUser,
 } from "@/lib/auth";
+import { GROUPS, getGroupId, setGroupId } from "@/lib/group";
 
 type Mode = "idle" | "checking" | "register" | "login";
 
@@ -55,6 +56,7 @@ const ALL_RULES = [
 export default function Home() {
   const router = useRouter();
   const [userList, setUserList] = useState<string[]>([]);
+  const [group, setGroup]       = useState<string>(getGroupId());
   const [name, setName]         = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode]         = useState<Mode>("idle");
@@ -66,7 +68,17 @@ export default function Home() {
     getUsers().then(setUserList);
     const stored = getStoredUser();
     if (stored) setAlreadyIn(stored);
-  }, []);
+  }, [group]);
+
+  function handleGroupChange(id: string) {
+    setGroupId(id);
+    setGroup(id);
+    setName("");
+    setPassword("");
+    setError("");
+    setMode("idle");
+    setAlreadyIn(getStoredUser());
+  }
 
   useEffect(() => {
     if (!name) { setMode("idle"); return; }
@@ -177,6 +189,19 @@ export default function Home() {
                 <h3 className="home-login-title">¿Quién eres?</h3>
 
                 <form onSubmit={handleSubmit} className="home-login-form">
+                  <div className="login-field">
+                    <label htmlFor="hl-group">Grupo</label>
+                    <select
+                      id="hl-group"
+                      value={group}
+                      onChange={(e) => handleGroupChange(e.target.value)}
+                    >
+                      {Object.entries(GROUPS).map(([id, cfg]) => (
+                        <option key={id} value={id}>{cfg.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div className="login-field">
                     <label htmlFor="hl-name">Tu nombre</label>
                     <select

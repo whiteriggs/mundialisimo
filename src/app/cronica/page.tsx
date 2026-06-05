@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { getDocs } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { db } from "@/lib/firebase";
+import { groupCollection } from "@/lib/db";
 import NavBar from "@/components/NavBar";
 import { getStoredUser, clearUser } from "@/lib/auth";
 
@@ -26,7 +26,7 @@ export default function CronicaPage() {
     setUser(u);
     async function load() {
       try {
-        const snap = await getDocs(collection(db, "chronicles"));
+        const snap = await getDocs(groupCollection("chronicles"));
         const entries: ChronicleEntry[] = snap.docs
           .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d.id))
           .map(d => ({ id: d.id, ...(d.data() as Omit<ChronicleEntry, "id">) }))

@@ -4,8 +4,8 @@ import NavBar from "@/components/NavBar";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getDocs } from "firebase/firestore";
+import { groupCollection } from "@/lib/db";
 import { getStoredUser, clearUser, getUsers } from "@/lib/auth";
 import { TEAMS, teamName } from "@/lib/teams";
 import Flag from "@/components/Flag";
@@ -43,7 +43,7 @@ export default function ApuestasPage() {
     async function load() {
       try {
         const [snap, users] = await Promise.all([
-          getDocs(collection(db, "bets")),
+          getDocs(groupCollection("bets")),
           getUsers(),
         ]);
         const data: BetDoc[] = snap.docs.map((d) => {

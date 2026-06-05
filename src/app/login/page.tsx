@@ -10,11 +10,13 @@ import {
   verifyUserPassword,
   storeUser,
 } from "@/lib/auth";
+import { GROUPS, getGroupId, setGroupId } from "@/lib/group";
 
 type Mode = "idle" | "checking" | "register" | "login";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [group, setGroup]       = useState<string>(getGroupId());
   const [name, setName]       = useState("");
   const [password, setPassword] = useState("");
   const [mode, setMode]         = useState<Mode>("idle");
@@ -24,7 +26,16 @@ export default function LoginPage() {
 
   useEffect(() => {
     getUsers().then(setUserList);
-  }, []);
+  }, [group]);
+
+  function handleGroupChange(id: string) {
+    setGroupId(id);
+    setGroup(id);
+    setName("");
+    setPassword("");
+    setError("");
+    setMode("idle");
+  }
 
   // When the user picks a name, check Firestore for existing password
   useEffect(() => {
@@ -103,6 +114,20 @@ export default function LoginPage() {
           className="login-form card"
           onSubmit={mode === "register" ? handleRegister : handleLogin}
         >
+          {/* Group selector */}
+          <div className="login-field">
+            <label htmlFor="group">Grupo</label>
+            <select
+              id="group"
+              value={group}
+              onChange={(e) => handleGroupChange(e.target.value)}
+            >
+              {Object.entries(GROUPS).map(([id, cfg]) => (
+                <option key={id} value={id}>{cfg.label}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Name selector */}
           <div className="login-field">
             <label htmlFor="name">Tu nombre</label>

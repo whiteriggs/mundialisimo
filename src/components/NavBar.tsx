@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import UfwcChampion from "@/components/UfwcChampion";
+import { isGroupAdmin } from "@/lib/group";
 
 const NAV_LINKS = [
   { href: "/apuesta", label: "Mi apuesta" },
@@ -31,7 +32,7 @@ export default function NavBar({ user }: { user: string | null }) {
             {label}
           </Link>
         ))}
-        {user === "Javi" && (
+        {isGroupAdmin(user) && (
           <Link
             href="/admin"
             className={isActive("/admin") ? "nav-active" : undefined}

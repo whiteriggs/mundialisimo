@@ -1,34 +1,37 @@
-import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
-import { db } from "./firebase";
+import { getDoc, setDoc, deleteDoc } from "firebase/firestore";
+import { groupDoc } from "./db";
+import { getGroupId, DEFAULT_GROUP } from "./group";
 
+// Lista semilla solo para el grupo por defecto (amigos de Javi). Los grupos
+// nuevos empiezan vacíos y su admin va añadiendo jugadores desde el panel.
 export const USERS = ["Juan", "Javi", "Jordi", "Jorge", "Esteban", "Manuel", "JuanRa", "Adri", "Capde", "Iris", "Mariona", "Ester"];
 
 export async function getUsers(): Promise<string[]> {
   try {
-    const snap = await getDoc(doc(db, "config", "users"));
+    const snap = await getDoc(groupDoc("config", "users"));
     if (snap.exists()) {
       const data = snap.data() as { list?: string[] };
       if (data.list && data.list.length > 0) return data.list;
     }
   } catch { /* ignore */ }
-  return USERS;
+  return getGroupId() === DEFAULT_GROUP ? USERS : [];
 }
 
 export async function addUser(username: string): Promise<void> {
   const current = await getUsers();
   if (current.map((u) => u.toLowerCase()).includes(username.toLowerCase())) return;
-  await setDoc(doc(db, "config", "users"), { list: [...current, username] });
+  await setDoc(groupDoc("config", "users"), { list: [...current, username] });
 }
 
 export async function removeUser(username: string): Promise<void> {
   const current = await getUsers();
-  await setDoc(doc(db, "config", "users"), {
+  await setDoc(groupDoc("config", "users"), {
     list: current.filter((u) => u.toLowerCase() !== username.toLowerCase()),
   });
 }
 
 export async function deleteUserPassword(username: string): Promise<void> {
-  await deleteDoc(doc(db, "userPasswords", username.toLowerCase()));
+  await deleteDoc(groupDoc("userPasswords", username.toLowerCase()));
 }
 
 async function hashPassword(password: string): Promise<string> {
@@ -40,35 +43,50 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 export async function hasUserPassword(username: string): Promise<boolean> {
-  const snap = await getDoc(doc(db, "userPasswords", username.toLowerCase()));
+  const snap = await getDoc(groupDoc("userPasswords", username.toLowerCase()));
   return snap.exists();
 }
 
 export async function createUserPassword(username: string, password: string): Promise<void> {
   const hash = await hashPassword(password);
-  await setDoc(doc(db, "userPasswords", username.toLowerCase()), {
+  await setDoc(groupDoc("userPasswords", username.toLowerCase()), {
     hash,
     createdAt: new Date(),
   });
 }
 
 export async function verifyUserPassword(username: string, password: string): Promise<boolean> {
-  const snap = await getDoc(doc(db, "userPasswords", username.toLowerCase()));
+  const snap = await getDoc(groupDoc("userPasswords", username.toLowerCase()));
   if (!snap.exists()) return false;
   const { hash } = snap.data() as { hash: string };
   return hash === (await hashPassword(password));
 }
 
+// La sesión se guarda por grupo, así "Javi" en un grupo no se cruza con otro.
+function userKey(): string {
+  return `mundialisimo_user_${getGroupId()}`;
+}
+
 export function getStoredUser(): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("mundialisimo_user");
+  const v = localStorage.getItem(userKey());
+  if (v) return v;
+  // Migración suave: sesión antigua global del grupo por defecto.
+  if (getGroupId() === DEFAULT_GROUP) {
+    const old = localStorage.getItem("mundialisimo_user");
+    if (old) {
+      localStorage.setItem(userKey(), old);
+      return old;
+    }
+  }
+  return null;
 }
 
 export function storeUser(name: string): void {
-  localStorage.setItem("mundialisimo_user", name);
+  localStorage.setItem(userKey(), name);
 }
 
 export function clearUser(): void {
-  localStorage.removeItem("mundialisimo_user");
+  localStorage.removeItem(userKey());
 }
 

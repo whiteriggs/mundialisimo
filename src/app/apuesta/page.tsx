@@ -4,8 +4,8 @@ import NavBar from "@/components/NavBar";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getDoc, setDoc } from "firebase/firestore";
+import { groupDoc } from "@/lib/db";
 import { getStoredUser, clearUser } from "@/lib/auth";
 import Flag from "@/components/Flag";
 import { TEAMS as teams, GROUP_POOL as groupPool } from "@/lib/teams";
@@ -45,7 +45,7 @@ export default function ApuestaPage() {
 
     async function loadBet() {
       try {
-        const docRef = doc(db, "bets", storedUser!.toLowerCase());
+        const docRef = groupDoc("bets", storedUser!.toLowerCase());
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
           const data = docSnap.data();
@@ -129,7 +129,7 @@ export default function ApuestaPage() {
     if (!user || !allValid) return;
     setSaving(true);
     try {
-      await setDoc(doc(db, "bets", user.toLowerCase()), {
+      await setDoc(groupDoc("bets", user.toLowerCase()), {
         favorites,
         antiFavorites,
         superFavorite: superFavorite ?? null,
@@ -146,7 +146,7 @@ export default function ApuestaPage() {
     if (!user || isClosed) return;
     setSaving(true);
     try {
-      await setDoc(doc(db, "bets", user.toLowerCase()), {
+      await setDoc(groupDoc("bets", user.toLowerCase()), {
         favorites,
         antiFavorites,
         superFavorite: superFavorite ?? null,

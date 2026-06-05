@@ -4,11 +4,13 @@ import NavBar from "@/components/NavBar";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { doc, getDoc, setDoc, collection, getDocs } from "firebase/firestore";
+import { getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { generateText } from "@/lib/gemini";
 import { fetchAllMatches } from "@/lib/football-api";
 import { Match, buildTeamTotals, calcUserScore } from "@/lib/scoring";
 import { db } from "@/lib/firebase";
+import { groupDoc } from "@/lib/db";
+import { getGroupConfig, isGroupAdmin } from "@/lib/group";
 import {
   getStoredUser,
   clearUser,
@@ -72,7 +74,7 @@ export default function AdminPage() {
   useEffect(() => {
     const user = getStoredUser();
     if (!user) { router.push("/login"); return; }
-    if (user !== "Javi") { router.push("/apuesta"); return; }
+    if (!isGroupAdmin(user)) { router.push("/apuesta"); return; }
     setCurrentUser(user);
     loadUsers();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,7 +139,7 @@ export default function AdminPage() {
     setBetMsg(null);
     setBetLoaded(false);
     try {
-      const snap = await getDoc(doc(db, "bets", betUser.toLowerCase()));
+      const snap = await getDoc(groupDoc("bets", betUser.toLowerCase()));
       if (snap.exists()) {
         const data = snap.data();
         setFavorites(data.favorites ?? []);
@@ -163,7 +165,7 @@ export default function AdminPage() {
     setBetSaving(true);
     setBetMsg(null);
     try {
-      await setDoc(doc(db, "bets", betUser.toLowerCase()), {
+      await setDoc(groupDoc("bets", betUser.toLowerCase()), {
         favorites,
         antiFavorites,
         superFavorite: superFavorite ?? null,
@@ -186,7 +188,7 @@ export default function AdminPage() {
     setBetSaving(true);
     setBetMsg(null);
     try {
-      await setDoc(doc(db, "bets", betUser.toLowerCase()), {
+      await setDoc(groupDoc("bets", betUser.toLowerCase()), {
         favorites: [],
         antiFavorites: [],
         superFavorite: null,
@@ -276,7 +278,7 @@ REGLAS DE LA PORRA (léelas para no confundir conceptos):\n- Cada participante e
       const users = await getUsers();
       const allBets: Record<string, { favorites: string[]; antiFavorites: string[]; superFavorite: string | null }> = {};
       for (const u of users) {
-        const snap = await getDoc(doc(db, "bets", u.toLowerCase()));
+        const snap = await getDoc(groupDoc("bets", u.toLowerCase()));
         if (!snap.exists()) continue;
         const data = snap.data() as { favorites?: string[]; antiFavorites?: string[]; superFavorite?: string | null };
         allBets[u] = { favorites: data.favorites ?? [], antiFavorites: data.antiFavorites ?? [], superFavorite: data.superFavorite ?? null };
@@ -321,7 +323,7 @@ REGLAS DE LA PORRA (léelas para no confundir conceptos):\n- Cada participante e
     setChroniclePublishing(true);
     try {
       const dateKey = new Date().toISOString().slice(0, 10);
-      await setDoc(doc(db, "chronicles", dateKey), { text: chroniclePreview, generatedAt: new Date(), generatedBy: "Javi" });
+      await setDoc(groupDoc("chronicles", dateKey), { text: chroniclePreview, generatedAt: new Date(), generatedBy: currentUser ?? getGroupConfig().admin });
       setChronicleMsg("✓ Crónica publicada. Ya visible en /cronica.");
       setChroniclePreview(null);
     } catch (e) {
@@ -377,7 +379,7 @@ REGLAS DE LA PORRA (léelas para no confundir conceptos):\n- Cada participante e
           <h1>Mundialisimo</h1>
           <span className="sub">{currentUser}</span>
         </div>
-        <NavBar user="Javi" />
+        <NavBar user={currentUser} />
         <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
       </header>
 
