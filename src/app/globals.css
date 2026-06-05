@@ -10,6 +10,8 @@
   --gold: #f6c050;
   --green: #4caf75;
   --red: #e04e4e;
+  --rail-w: 56px;
+  --side-w: 212px;
 }
 
 * {
@@ -2356,5 +2358,153 @@ a {
   font-variant-numeric: tabular-nums;
   color: var(--accent);
 }
+
+/* ── Barra lateral de navegación (estilo VS Code) ───────── */
+.nav-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.nav-toggle:hover {
+  border-color: var(--accent);
+  background: var(--bg-3);
+}
+
+/* El hamburguesa del rail (desktop) va dentro de la sidebar; el de la
+   topbar (.nav-toggle-mobile) solo aparece en pantallas pequeñas. */
+.nav-toggle-rail {
+  margin: 8px 0 4px 8px;
+}
+.nav-toggle-mobile {
+  display: none;
+}
+
+.topbar-extras {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--rail-w);
+  display: flex;
+  flex-direction: column;
+  padding-top: 0;
+  background: var(--bg-2);
+  border-right: 1px solid var(--line);
+  z-index: 50;
+  overflow-x: hidden;
+  overflow-y: auto;
+  transition: width 0.18s ease, transform 0.18s ease;
+}
+body[data-sidebar="expanded"] .sidebar {
+  width: var(--side-w);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+}
+.sidebar-nav a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 9px;
+  border-radius: 8px;
+  color: var(--text-dim);
+  text-decoration: none;
+  white-space: nowrap;
+  font-size: 14px;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.sidebar-nav a:hover {
+  background: var(--bg-3);
+  color: var(--text);
+}
+.sidebar-nav a.nav-active {
+  background: var(--bg-3);
+  color: var(--text);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.nav-icon {
+  font-size: 18px;
+  width: 22px;
+  text-align: center;
+  flex: 0 0 auto;
+}
+.nav-label {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+body[data-sidebar="expanded"] .nav-label {
+  opacity: 1;
+}
+
+.nav-backdrop {
+  display: none;
+}
+
+/* Desplaza el contenido a la derecha del rail (solo si hay sidebar montada) */
+body[data-sidebar] .app-shell {
+  padding-left: var(--rail-w);
+  transition: padding-left 0.18s ease;
+}
+body[data-sidebar="expanded"] .app-shell {
+  padding-left: var(--side-w);
+}
+
+@media (max-width: 760px) {
+  /* En móvil el rail no ocupa espacio: cajón deslizante sobre el contenido */
+  .nav-toggle-mobile {
+    display: inline-flex;
+  }
+  .nav-toggle-rail {
+    display: none;
+  }
+  body[data-sidebar] .app-shell,
+  body[data-sidebar="expanded"] .app-shell {
+    padding-left: 0;
+  }
+  .sidebar {
+    width: var(--side-w);
+    padding-top: 14px;
+    transform: translateX(-100%);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+  }
+  body[data-sidebar="expanded"] .sidebar {
+    width: var(--side-w);
+    transform: translateX(0);
+  }
+  .nav-label {
+    opacity: 1;
+  }
+  body[data-sidebar="expanded"] .nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 45;
+  }
+}
+
 
 
