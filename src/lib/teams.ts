@@ -40,3 +40,23 @@ export function teamById(id: string): Team | undefined {
 export function teamName(id: string): string {
   return teamById(id)?.name ?? id;
 }
+
+// Códigos cortos (3 letras) para encabezados compactos, p. ej. "MEX-SUD".
+export const TEAM_CODES: Record<string, string> = {
+  "México": "MEX", "Sudáfrica": "SUD", "Rep. Corea": "COR", "Rep. Checa": "CHE",
+  "Canadá": "CAN", "Bosnia y Herz.": "BOS", "Catar": "CAT", "Suiza": "SUI",
+  "Brasil": "BRA", "Marruecos": "MAR", "Haití": "HAI", "Escocia": "ESC",
+  "EE.UU.": "USA", "Paraguay": "PAR", "Australia": "AUS", "Turquía": "TUR",
+  "Alemania": "ALE", "Curazao": "CUR", "Costa Marfil": "CMA", "Ecuador": "ECU",
+  "Países Bajos": "PBA", "Japón": "JAP", "Suecia": "SUE", "Túnez": "TUN",
+  "Bélgica": "BEL", "Egipto": "EGI", "Irán": "IRA", "Nueva Zelanda": "NZL",
+  "España": "ESP", "Cabo Verde": "CVE", "Arabia Saudí": "ARA", "Uruguay": "URU",
+  "Francia": "FRA", "Senegal": "SEN", "Irak": "IRK", "Noruega": "NOR",
+  "Argentina": "ARG", "Argelia": "ALG", "Austria": "AUT", "Jordania": "JOR",
+  "Portugal": "POR", "RD Congo": "COD", "Uzbekistán": "UZB", "Colombia": "COL",
+  "Inglaterra": "ING", "Croacia": "CRO", "Ghana": "GHA", "Panamá": "PAN",
+};
+
+export function teamCode(name: string): string {
+  return TEAM_CODES[name] ?? name.slice(0, 3).toUpperCase();
+}

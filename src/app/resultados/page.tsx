@@ -14,7 +14,7 @@ import {
 import { db } from "@/lib/firebase";
 import { groupCollection } from "@/lib/db";
 import { getStoredUser, clearUser, getUsers } from "@/lib/auth";
-import { TEAM_NAMES, teamName } from "@/lib/teams";
+import { TEAM_NAMES, teamName, teamCode } from "@/lib/teams";
 import { buildTeamTotals, matchPoints, Phase, Match } from "@/lib/scoring";
 import { fetchAllMatches, ApiAllMatch } from "@/lib/football-api";
 import { buildStaticSchedule } from "@/lib/static-schedule";
@@ -33,20 +33,6 @@ const PHASE_LABELS: Record<Phase, string> = {
   third: "3er/4º puesto",
   knockout: "Eliminatoria",
 };
-
-const ROUND_ORDER = ["J1", "J2", "J3", "Dieciseisavos", "Octavos", "Cuartos", "Semis", "3er Puesto", "Final"];
-const STAGE_TO_ROUND: Record<string, string> = {
-  LAST_32: "Dieciseisavos",
-  LAST_16: "Octavos",
-  QUARTER_FINALS: "Cuartos",
-  SEMI_FINALS: "Semis",
-  THIRD_PLACE: "3er Puesto",
-  FINAL: "Final",
-};
-function matchRound(m: ApiAllMatch): string {
-  if (m.phase === "groups") return `J${m.matchday ?? "?"}` ;
-  return STAGE_TO_ROUND[m.stage] ?? m.stage;
-}
 
 const ROUND_OPTIONS: { key: string; label: string; phase: Phase; matchday: number | null }[] = [
   { key: "J1",            label: "J1 — Fase de grupos",   phase: "groups",   matchday: 1 },
@@ -83,6 +69,7 @@ export default function ResultadosPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [tab, setTab] = useState<"resultados" | "clasificacion">("resultados");
 
   useEffect(() => {
     const user = getStoredUser();
@@ -156,64 +143,32 @@ export default function ResultadosPage() {
   }).sort((a, b) => b.total - a.total);
 
   const roundData = useMemo(() => {
-    // Partidos API jugados → rondas reales (J1/J2/J3/Octavos/…)
-    const played = allApiMatches.filter((m) => m.played);
-    const roundsSet = new Set(played.map(matchRound));
-    const apiRounds = ROUND_ORDER.filter((r) => roundsSet.has(r));
-
-    // Partidos manuales jugados → rondas por roundKey o por matchday/fase (legado)
-    const manualRoundOf = (m: Match) => {
-      if (m.roundKey) return m.roundKey;
-      if (m.phase === "groups" && m.matchday) return `J${m.matchday}`;
-      if (m.phase === "knockout") return "Elim.";
-      return "3er P.";
-    };
-    const manualRoundsSet = new Set(manualMatches.filter((m) => m.played).map(manualRoundOf));
-    const manualRounds = [...ROUND_ORDER, "Elim.", "3er P."].filter((r) => manualRoundsSet.has(r) && !apiRounds.includes(r));
-
-    const activeRounds = [...apiRounds, ...manualRounds.filter((r) => !apiRounds.includes(r))];
-
-    // Totales de equipo por ronda (API)
-    const roundTotals: Record<string, Record<string, number>> = {};
-    for (const round of apiRounds) {
-      const rm = played.filter((m) => matchRound(m) === round).map((m) => ({
+    // Partidos jugados como columnas (cronológico): API por fecha, luego manuales.
+    const apiPlayed: Match[] = allApiMatches
+      .filter((m) => m.played)
+      .sort((a, b) => a.utcDate.localeCompare(b.utcDate))
+      .map((m) => ({
         id: m.id, home: m.home, away: m.away,
         homeGoals: m.homeGoals ?? 0, awayGoals: m.awayGoals ?? 0,
         phase: m.phase, penalties: m.penalties, played: true,
-      }) as Match);
-      roundTotals[round] = buildTeamTotals(rm);
-    }
-    // Totales de equipo por ronda (manuales)
-    for (const round of manualRounds) {
-      const rm = manualMatches.filter((m) => m.played && manualRoundOf(m) === round);
-      roundTotals[round] = buildTeamTotals(rm);
-    }
-
-    // Puntos por jornada (no acumulados)
-    const perRound: Record<string, Record<string, number>> = {};
-    for (const r of rankings) {
-      perRound[r.uid] = {};
-      for (const round of activeRounds) {
-        if (!r.bet?.confirmed) { perRound[r.uid][round] = NaN; continue; }
-        const rt = roundTotals[round];
-        const fav = (r.bet.favorites ?? []).reduce((s, id) => s + (rt[teamName(id)] ?? 0), 0);
-        const anti = (r.bet.antiFavorites ?? []).reduce((s, id) => s + (rt[teamName(id)] ?? 0), 0);
-        perRound[r.uid][round] = fav - anti;
-      }
-    }
-    return { activeRounds, perRound };
-  }, [allApiMatches, manualMatches, rankings]);
-
-  function getGains(mPts: Record<string, number>) {
-    return rankings
-      .filter((r) => r.bet?.confirmed)
-      .map((r) => ({
-        user: r.user,
-        uid: r.uid,
-        gain: (r.bet!.favorites ?? []).reduce((s, id) => s + (mPts[teamName(id)] ?? 0), 0)
-             - (r.bet!.antiFavorites ?? []).reduce((s, id) => s + (mPts[teamName(id)] ?? 0), 0),
       }));
-  }
+    const columns = [...apiPlayed, ...manualMatches.filter((m) => m.played)];
+
+    // Puntos de cada equipo en cada partido.
+    const colPts = columns.map((m) => ({ match: m, pts: matchPoints(m) }));
+
+    // Puntuación de cada participante en cada partido (no acumulada).
+    const perMatch: Record<string, number[]> = {};
+    for (const r of rankings) {
+      perMatch[r.uid] = colPts.map(({ pts }) => {
+        if (!r.bet?.confirmed) return NaN;
+        const fav = (r.bet.favorites ?? []).reduce((s, id) => s + (pts[teamName(id)] ?? 0), 0);
+        const anti = (r.bet.antiFavorites ?? []).reduce((s, id) => s + (pts[teamName(id)] ?? 0), 0);
+        return fav - anti;
+      });
+    }
+    return { columns, perMatch };
+  }, [allApiMatches, manualMatches, rankings]);
 
   function handleLogout() {
     clearUser();
@@ -295,11 +250,15 @@ export default function ResultadosPage() {
           <div className="hero-crest placeholder">⚽</div>
           <div className="hero-text">
             <div className="hero-eyebrow">Porra Mundial 2026</div>
-            <h2 className="hero-name">Clasificación</h2>
+            <h2 className="hero-name">{tab === "resultados" ? "Resultados" : "Clasificación"}</h2>
             <p className="lead">
-              {playedMatches.length === 0
-                ? "El Mundial empieza el 11 de junio. La clasificación se actualizará automáticamente."
-                : `${playedMatches.length} partido${playedMatches.length !== 1 ? "s" : ""} jugado${playedMatches.length !== 1 ? "s" : ""} · datos de football-data.org`}
+              {tab === "resultados"
+                ? (playedMatches.length === 0
+                    ? "El Mundial empieza el 11 de junio. Aquí verás el calendario, horarios y resultados."
+                    : `${playedMatches.length} partido${playedMatches.length !== 1 ? "s" : ""} jugado${playedMatches.length !== 1 ? "s" : ""} · datos de football-data.org`)
+                : (playedMatches.length === 0
+                    ? "La clasificación se actualizará automáticamente con cada partido."
+                    : "Puntuación total y desglose partido a partido.")}
             </p>
           </div>
         </div>
@@ -315,46 +274,85 @@ export default function ResultadosPage() {
             </div>
           )}
 
-          {/* Rankings + evolución por jornada */}
+          {/* Selector de pestañas */}
           <div className="results-section">
-            <div className="ranking-scroll">
-              <table className="ranking-table">
-                <thead>
-                  <tr>
-                    <th className="col-rank">#</th>
-                    <th className="col-name">Participante</th>
-                    <th className="col-pts">Total</th>
-                    {roundData.activeRounds.map((r) => <th key={r} className="col-round">{r}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rankings.map((r, i) => (
-                    <tr
-                      key={r.uid}
-                      className={`${r.uid === currentUser?.toLowerCase() ? "row-me" : ""} ${!r.confirmed ? "row-pending" : ""}`}
-                    >
-                      <td className="col-rank">{r.confirmed ? i + 1 : "—"}</td>
-                      <td className="col-name">
-                        {r.user}
-                        {r.uid === currentUser?.toLowerCase() ? <span className="me-badge"> (tú)</span> : ""}
-                        {!r.confirmed ? <span className="pending-label"> · sin confirmar</span> : ""}
-                      </td>
-                      <td className="col-pts">{r.confirmed ? r.total : "—"}</td>
-                      {roundData.activeRounds.map((round) => {
-                        const pts = roundData.perRound[r.uid]?.[round];
-                        return (
-                          <td key={round} className="col-round">
-                            {!r.confirmed ? "—" : isNaN(pts) ? "—" : pts > 0 ? `+${pts}` : `${pts}`}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="tabs" role="tablist">
+              <button
+                role="tab"
+                aria-selected={tab === "resultados"}
+                className={`tab ${tab === "resultados" ? "tab-active" : ""}`}
+                onClick={() => setTab("resultados")}
+              >
+                Resultados
+              </button>
+              <button
+                role="tab"
+                aria-selected={tab === "clasificacion"}
+                className={`tab ${tab === "clasificacion" ? "tab-active" : ""}`}
+                onClick={() => setTab("clasificacion")}
+              >
+                Clasificación
+              </button>
             </div>
           </div>
 
+          {/* Clasificación: total + desglose por partido */}
+          {tab === "clasificacion" && (
+            <div className="results-section">
+              <div className="standings-wrap">
+                <table className="standings-table">
+                  <thead>
+                    <tr>
+                      <th className="st-rank">#</th>
+                      <th className="st-name">Participante</th>
+                      <th className="st-total">Total</th>
+                      {roundData.columns.map((m) => (
+                        <th key={m.id} className="st-match">
+                          <span className="st-match-teams">{teamCode(m.home)}-{teamCode(m.away)}</span>
+                          <span className="st-match-score">{m.homeGoals}–{m.awayGoals}{m.penalties ? "p" : ""}</span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rankings.map((r, i) => (
+                      <tr
+                        key={r.uid}
+                        className={`${r.uid === currentUser?.toLowerCase() ? "row-me" : ""} ${!r.confirmed ? "row-pending" : ""}`}
+                      >
+                        <td className="st-rank">{r.confirmed ? i + 1 : "—"}</td>
+                        <td className="st-name">
+                          {r.user}
+                          {r.uid === currentUser?.toLowerCase() ? <span className="me-badge"> (tú)</span> : ""}
+                          {!r.confirmed ? <span className="pending-label"> · sin confirmar</span> : ""}
+                        </td>
+                        <td className="st-total">{r.confirmed ? r.total : "—"}</td>
+                        {roundData.columns.map((m, ci) => {
+                          const pts = roundData.perMatch[r.uid]?.[ci];
+                          return (
+                            <td
+                              key={m.id}
+                              className={`st-match-cell${!r.confirmed || isNaN(pts) ? "" : pts > 0 ? " pts-pos" : pts < 0 ? " pts-neg" : ""}`}
+                            >
+                              {!r.confirmed || isNaN(pts) ? "—" : pts > 0 ? `+${pts}` : `${pts}`}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {roundData.columns.length === 0 && (
+                <p className="muted" style={{ marginTop: 12 }}>
+                  Aún no hay partidos jugados. El desglose por partido aparecerá aquí en cuanto empiece el Mundial.
+                </p>
+              )}
+            </div>
+          )}
+
+          {tab === "resultados" && (
+          <>
           {/* Calendario completo */}
           {matchesByDay.size > 0 && (
             <div className="results-section">
@@ -366,9 +364,6 @@ export default function ResultadosPage() {
                       {formatMatchDay(dayMatches[0].utcDate)} · {dayMatches.length} partido{dayMatches.length !== 1 ? "s" : ""}
                     </h3>
                     {dayMatches.map((m) => {
-                      const mPts = m.played ? matchPoints({ id: m.id, home: m.home, away: m.away, homeGoals: m.homeGoals ?? 0, awayGoals: m.awayGoals ?? 0, phase: m.phase, penalties: m.penalties, played: true }) : null;
-                      const gains = mPts ? getGains(mPts) : [];
-                      const confirmed = rankings.filter((r) => r.bet?.confirmed);
                       return m.played ? (
                         <div key={m.id} className="match-card">
                           <div className="match-card-info">
@@ -379,31 +374,22 @@ export default function ResultadosPage() {
                             </span>
                             <span className="match-away"><Flag name={m.away} />{m.away}</span>
                           </div>
-                          {gains.length > 0 && (
-                            <div className="match-gains">
-                              {gains.map(({ user, uid, gain }, i) => (
-                                <span key={uid}>
-                                  {i > 0 && <span className="gains-sep"> / </span>}
-                                  <span className={uid === currentUser?.toLowerCase() ? "me-label" : ""}>{user}</span>
-                                  {" "}
-                                  <span className={`match-gain-pts${gain > 0 ? " pts-pos" : gain < 0 ? " pts-neg" : ""}`}>
-                                    ({gain > 0 ? `+${gain}` : `${gain}`})
-                                  </span>
-                                </span>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       ) : (
                         <div key={m.id} className="match-row">
-                          <span className="match-home"><Flag name={m.home} />{m.home}</span>
+                          <span className="match-teams">
+                            <span className="match-home"><Flag name={m.home} />{m.home}</span>
+                            <span className="match-vs">vs.</span>
+                            <span className="match-away"><Flag name={m.away} />{m.away}</span>
+                          </span>
                           {m.id.startsWith("static-") ? (
                             <span className="match-time">Pendiente</span>
                           ) : (
                             <span className="match-time">{formatMatchTime(m.utcDate)}</span>
                           )}
-                          <span className="match-away"><Flag name={m.away} />{m.away}</span>
-                          {!m.id.startsWith("static-") && (
+                          {m.id.startsWith("static-") ? (
+                            <span className="match-tv" />
+                          ) : (
                             <div className="match-tv">
                               {tvChannelsFor(m).map((ch) => (
                                 <a
@@ -416,17 +402,6 @@ export default function ResultadosPage() {
                                 >
                                   {ch.name}
                                 </a>
-                              ))}
-                            </div>
-                          )}
-                          {confirmed.length > 0 && (
-                            <div className="match-gains">
-                              {confirmed.map(({ user, uid }, i) => (
-                                <span key={uid}>
-                                  {i > 0 && <span className="gains-sep"> / </span>}
-                                  <span className={uid === currentUser?.toLowerCase() ? "me-label" : ""}>{user}</span>
-                                  {" "}<span className="match-gain-pts">—</span>
-                                </span>
                               ))}
                             </div>
                           )}
@@ -496,7 +471,6 @@ export default function ResultadosPage() {
                   <div className="matches-list" style={{ marginTop: 16 }}>
                     <h3 className="matches-phase-label">Partidos manuales</h3>
                     {manualMatches.map((m) => {
-                      const gains = getGains(matchPoints(m));
                       return (
                         <div key={m.id} className="match-card">
                           <div className="match-card-info">
@@ -507,20 +481,6 @@ export default function ResultadosPage() {
                             </span>
                             <span className="match-away"><Flag name={m.away} />{m.away}</span>
                           </div>
-                          {gains.length > 0 && (
-                            <div className="match-gains">
-                              {gains.map(({ user, uid, gain }, i) => (
-                                <span key={uid}>
-                                  {i > 0 && <span className="gains-sep"> / </span>}
-                                  <span className={uid === currentUser?.toLowerCase() ? "me-label" : ""}>{user}</span>
-                                  {" "}
-                                  <span className={`match-gain-pts${gain > 0 ? " pts-pos" : gain < 0 ? " pts-neg" : ""}`}>
-                                    ({gain > 0 ? `+${gain}` : `${gain}`})
-                                  </span>
-                                </span>
-                              ))}
-                            </div>
-                          )}
                           <button className="match-delete" onClick={() => handleDelete(m.id)} title="Eliminar">✕</button>
                         </div>
                       );
@@ -530,6 +490,8 @@ export default function ResultadosPage() {
               </>
             )}
           </div>
+          </>
+          )}
         </>
       )}
     </main>
