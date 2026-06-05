@@ -13,7 +13,7 @@ export interface GroupConfig {
 
 export const GROUPS: Record<string, GroupConfig> = {
   javi: { label: "Papis Llor", admin: "Javi" },
-  brain2store: { label: "Brain2Store", admin: "Jordi" },
+  brain2store: { label: "Brain2Store", admin: "JN" },
 };
 
 export const DEFAULT_GROUP = "javi";
