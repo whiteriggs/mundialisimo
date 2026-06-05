@@ -2574,34 +2574,68 @@ a {
 
 /* ── Próximo partido (versión compacta para la barra) ───── */
 .next-match-pill {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.6rem;
+  gap: 0.5rem;
+  padding: 0.45rem 0.85rem;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: var(--bg-2);
   color: var(--text);
-  font-size: 0.78rem;
+  font-size: 0.92rem;
   line-height: 1;
   white-space: nowrap;
   width: fit-content;
 }
 
+.next-match-pill img {
+  width: 24px;
+  height: 18px;
+}
+
 .next-match-pill-label {
   color: var(--text-dim);
-  font-size: 0.72rem;
+  font-size: 0.82rem;
 }
 
 .next-match-pill-vs {
   color: var(--text-dim);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
 }
 
 .next-match-pill-time {
   font-weight: 600;
+  font-size: 0.95rem;
   font-variant-numeric: tabular-nums;
   color: var(--accent);
+}
+
+/* En pantallas estrechas la pill vuelve al flujo normal (fila propia,
+   centrada) para no solaparse con el logo; UFWC se queda a la derecha.
+   Esta regla va DESPUÉS de la base para ganar en la cascada. */
+@media (max-width: 960px) {
+  .topbar-extras {
+    order: 5;
+    width: 100%;
+    flex: 0 0 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px 0;
+    padding-bottom: 8px;
+  }
+
+  .next-match-pill {
+    position: static;
+    transform: none;
+    width: auto;
+    flex: 0 0 100%;
+    justify-content: center;
+  }
 }
 
 /* ── Barra lateral de navegación (estilo VS Code) ───────── */
