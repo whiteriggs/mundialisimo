@@ -2388,6 +2388,7 @@ a {
 }
 .nav-toggle-mobile {
   display: none;
+  order: -1;
 }
 
 .topbar-extras {
@@ -2409,7 +2410,7 @@ a {
   padding-top: 0;
   background: var(--bg-2);
   border-right: 1px solid var(--line);
-  z-index: 50;
+  z-index: 60;
   overflow-x: hidden;
   overflow-y: auto;
   transition: width 0.18s ease, transform 0.18s ease;
@@ -2446,9 +2447,8 @@ body[data-sidebar="expanded"] .sidebar {
   box-shadow: inset 2px 0 0 var(--accent);
 }
 .nav-icon {
-  font-size: 18px;
-  width: 22px;
-  text-align: center;
+  width: 20px;
+  height: 20px;
   flex: 0 0 auto;
 }
 .nav-label {
@@ -2480,6 +2480,10 @@ body[data-sidebar="expanded"] .app-shell {
   .nav-toggle-rail {
     display: none;
   }
+  /* La marca se pega al hamburguesa (izquierda) */
+  .brand {
+    margin-right: auto;
+  }
   body[data-sidebar] .app-shell,
   body[data-sidebar="expanded"] .app-shell {
     padding-left: 0;
@@ -2502,7 +2506,7 @@ body[data-sidebar="expanded"] .app-shell {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 45;
+    z-index: 55;
   }
 }
 
