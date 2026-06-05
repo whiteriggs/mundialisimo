@@ -1,0 +1,79 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para Mundialísimo.
+//
+// IMPORTANTE: la app NO usa Firebase Auth (el login es por contraseña propia,
+// verificada en el cliente). Por eso estas reglas NO pueden distinguir a un
+// usuario legítimo de un atacante: cualquier permiso que necesite la app queda
+// también disponible para cualquiera con la URL. Lo que SÍ hacen estas reglas:
+//   • Bloquear escrituras en colecciones/paths arbitrarios (anti-vandalismo).
+//   • Validar la forma y el tamaño de cada documento (anti-basura / anti-bloat).
+//   • Impedir el VOLCADO MASIVO de hashes de contraseñas (allow list = false).
+// Seguridad real (que cada uno solo edite lo suyo) exige Firebase Auth; ver
+// README/notas. Mientras tanto, esto reduce mucho la superficie de ataque sin
+// romper ninguna funcionalidad existente.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isValidBet(d) {
+      return d.keys().hasOnly(['favorites', 'antiFavorites', 'superFavorite', 'confirmed', 'updatedAt'])
+        && d.favorites is list && d.favorites.size() <= 20
+        && d.antiFavorites is list && d.antiFavorites.size() <= 20
+        && (!('superFavorite' in d) || d.superFavorite == null || d.superFavorite is string)
+        && (!('confirmed' in d) || d.confirmed is bool)
+        && (!('updatedAt' in d) || d.updatedAt is timestamp);
+    }
+    // ── Apuestas ───────────────────────────────────────────────────────────
+    // Visibles en la UI (página Apuestas). Se crean/editan con forma válida.
+    // No se borran desde la app.
+    match /groups/{groupId}/bets/{userId} {
+      allow read: if true;
+      allow create, update: if isValidBet(request.resource.data);
+      allow delete: if false;
+    }
+
+    // ── Contraseñas (hashes SHA-256) ───────────────────────────────────────
+    // El login lee UN doc concreto para verificar (get permitido), pero se
+    // prohíbe listar la colección entera para evitar volcar todos los hashes.
+    match /groups/{groupId}/userPasswords/{userId} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if request.resource.data.keys().hasOnly(['hash', 'createdAt'])
+        && request.resource.data.hash is string
+        && request.resource.data.hash.size() <= 200;
+      allow delete: if true; // el admin puede retirar la contraseña de un usuario
+    }
+
+    // ── Lista de jugadores del grupo ───────────────────────────────────────
+    match /groups/{groupId}/config/{docId} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['list'])
+        && request.resource.data.list is list
+        && request.resource.data.list.size() <= 200;
+    }
+
+    // ── Crónicas ───────────────────────────────────────────────────────────
+    match /groups/{groupId}/chronicles/{docId} {
+      allow read: if true;
+      allow write: if request.resource.data.text is string
+        && request.resource.data.text.size() <= 20000;
+    }
+
+    // ── Resultados de partidos (globales) ──────────────────────────────────
+    // Entrada manual del admin desde la UI de Resultados.
+    match /matches/{matchId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.home is string
+        && request.resource.data.away is string
+        && request.resource.data.homeGoals is number
+        && request.resource.data.awayGoals is number;
+      allow delete: if true;
+    }
+
+    // ── Por defecto: todo lo demás denegado ────────────────────────────────
+    // (Firestore ya deniega por defecto; explícito para dejarlo claro.)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
