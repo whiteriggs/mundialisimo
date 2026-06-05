@@ -21,20 +21,26 @@ function remainingTo(iso: string): Remaining {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
+// Duración estimada de un partido (90' + descanso + añadido + posible prórroga
+// holgada). Mientras no pase este margen desde el inicio lo tratamos como
+// "en directo" y no saltamos todavía al siguiente.
+const MATCH_DURATION_MS = 2.5 * 60 * 60 * 1000;
+
 export default function NextMatchCountdown({ compact = false }: { compact?: boolean }) {
+  const [upcoming, setUpcoming] = useState<ApiAllMatch[]>([]);
   const [match, setMatch] = useState<ApiAllMatch | null>(null);
   const [left, setLeft] = useState<Remaining>(null);
+  const [live, setLive] = useState(false);
 
   useEffect(() => {
     let alive = true;
     fetchAllMatches()
       .then((all) => {
         if (!alive) return;
-        const now = Date.now();
-        const next = all
-          .filter((m) => !m.played && new Date(m.utcDate).getTime() > now)
-          .sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime())[0];
-        setMatch(next ?? null);
+        const future = all
+          .filter((m) => !m.played)
+          .sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime());
+        setUpcoming(future);
       })
       .catch(() => {
         /* sin datos: no mostramos nada */
@@ -45,14 +51,36 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
   }, []);
 
   useEffect(() => {
-    if (!match) return;
-    const tick = () => setLeft(remainingTo(match.utcDate));
+    if (upcoming.length === 0) {
+      setMatch(null);
+      return;
+    }
+    const tick = () => {
+      const now = Date.now();
+      // Partido activo = el primero cuyo final estimado (inicio + duración) aún
+      // no ha pasado. Así seguimos mostrándolo "en directo" mientras se juega y
+      // solo saltamos al siguiente cuando este termina. Todo en memoria, sin
+      // recargar ni volver a llamar a la API.
+      const current =
+        upcoming.find(
+          (m) => new Date(m.utcDate).getTime() + MATCH_DURATION_MS > now,
+        ) ?? null;
+      setMatch(current);
+      if (!current) {
+        setLeft(null);
+        setLive(false);
+        return;
+      }
+      const remaining = remainingTo(current.utcDate);
+      setLeft(remaining);
+      setLive(remaining === null);
+    };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [match]);
+  }, [upcoming]);
 
-  if (!match || !left) return null;
+  if (!match) return null;
 
   const kickoff = new Date(match.utcDate).toLocaleString("es-ES", {
     weekday: "short",
@@ -63,27 +91,36 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
   });
 
   if (compact) {
-    const time =
-      left.d > 0
+    const time = left
+      ? left.d > 0
         ? `${left.d}d ${pad(left.h)}:${pad(left.m)}:${pad(left.s)}`
-        : `${pad(left.h)}:${pad(left.m)}:${pad(left.s)}`;
+        : `${pad(left.h)}:${pad(left.m)}:${pad(left.s)}`
+      : null;
     return (
       <div
-        className="next-match-pill"
-        title={`Próximo partido: ${match.home} vs ${match.away} · ${kickoff}`}
+        className={`next-match-pill${live ? " is-live" : ""}`}
+        title={
+          live
+            ? `En directo: ${match.home} vs ${match.away} · ${kickoff}`
+            : `Próximo partido: ${match.home} vs ${match.away} · ${kickoff}`
+        }
       >
-        <span className="next-match-pill-label">Próximo</span>
+        <span className="next-match-pill-label">{live ? "En directo" : "Próximo"}</span>
         <Flag name={match.home} />
         <span className="next-match-pill-vs">vs</span>
         <Flag name={match.away} />
-        <span className="next-match-pill-time">{time}</span>
+        {live ? (
+          <span className="next-match-pill-time next-match-pill-live">●</span>
+        ) : (
+          <span className="next-match-pill-time">{time}</span>
+        )}
       </div>
     );
   }
 
   return (
     <div className="next-match card">
-      <span className="next-match-eyebrow">Próximo partido</span>
+      <span className="next-match-eyebrow">{live ? "En directo" : "Próximo partido"}</span>
       <div className="next-match-teams">
         <span className="next-match-team">
           <Flag name={match.home} />
@@ -96,26 +133,35 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
         </span>
       </div>
       <div className="next-match-kickoff">{kickoff}</div>
-      <div className="next-match-clock">
-        {left.d > 0 && (
-          <span className="next-match-unit">
-            <b>{left.d}</b>
-            <small>días</small>
-          </span>
-        )}
-        <span className="next-match-unit">
-          <b>{pad(left.h)}</b>
-          <small>h</small>
-        </span>
-        <span className="next-match-unit">
-          <b>{pad(left.m)}</b>
-          <small>min</small>
-        </span>
-        <span className="next-match-unit">
-          <b>{pad(left.s)}</b>
-          <small>seg</small>
-        </span>
-      </div>
+      {live ? (
+        <div className="next-match-clock next-match-live-row">
+          <span className="next-match-live-dot">●</span>
+          <span className="next-match-live-text">En juego</span>
+        </div>
+      ) : (
+        left && (
+          <div className="next-match-clock">
+            {left.d > 0 && (
+              <span className="next-match-unit">
+                <b>{left.d}</b>
+                <small>días</small>
+              </span>
+            )}
+            <span className="next-match-unit">
+              <b>{pad(left.h)}</b>
+              <small>h</small>
+            </span>
+            <span className="next-match-unit">
+              <b>{pad(left.m)}</b>
+              <small>min</small>
+            </span>
+            <span className="next-match-unit">
+              <b>{pad(left.s)}</b>
+              <small>seg</small>
+            </span>
+          </div>
+        )
+      )}
       <div className="next-match-tv">
         <span className="next-match-tv-label">Dónde verlo</span>
         {tvChannelsFor(match).map((ch) => (

@@ -2614,6 +2614,43 @@ a {
   color: var(--accent);
 }
 
+/* Estado "en directo" de la pill: borde rojo y punto parpadeante. */
+.next-match-pill.is-live {
+  border-color: #e5484d;
+}
+.next-match-pill.is-live .next-match-pill-label {
+  color: #ff6b6f;
+}
+.next-match-pill-live {
+  color: #e5484d;
+  animation: nm-live-blink 1.2s ease-in-out infinite;
+}
+.next-match-live-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.next-match-live-dot {
+  color: #e5484d;
+  font-size: 0.9rem;
+  animation: nm-live-blink 1.2s ease-in-out infinite;
+}
+.next-match-live-text {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ff6b6f;
+}
+@keyframes nm-live-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
 /* En pantallas estrechas la pill vuelve al flujo normal (fila propia,
    centrada) para no solaparse con el logo; UFWC se queda a la derecha.
    Esta regla va DESPUÉS de la base para ganar en la cascada. */
