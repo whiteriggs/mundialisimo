@@ -26,6 +26,12 @@ const I = (paths: ReactNode) => (
 );
 
 const ICON = {
+  partidos: I(
+    <>
+      <rect x="3" y="4" width="18" height="17" rx="2" />
+      <path d="M3 9h18M8 2v4M16 2v4" />
+    </>
+  ),
   apuesta: I(
     <>
       <circle cx="12" cy="12" r="8" />
@@ -82,6 +88,7 @@ const ICON = {
 } as const;
 
 const NAV_LINKS: { href: string; label: string; icon: keyof typeof ICON }[] = [
+  { href: "/partidos", label: "Calendario", icon: "partidos" },
   { href: "/resultados", label: "Clasificación", icon: "resultados" },
   { href: "/apuesta", label: "Apuestas", icon: "apuesta" },
   { href: "/grupos", label: "Grupos/Resultados", icon: "grupos" },
