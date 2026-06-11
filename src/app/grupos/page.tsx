@@ -1,7 +1,7 @@
 "use client";
 
 import NavBar from "@/components/NavBar";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   collection,
@@ -12,7 +12,8 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getStoredUser, clearUser } from "@/lib/auth";
-import { fetchGroupStandings, ApiStandingGroup, toInternalName, fetchAllMatches, ApiAllMatch } from "@/lib/football-api";
+import { fetchGroupStandings, ApiStandingGroup, toInternalName, fetchAllMatches, ApiAllMatch, isLiveStatus } from "@/lib/football-api";
+import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { GROUP_POOL, TEAM_NAMES } from "@/lib/teams";
 import { Phase, Match } from "@/lib/scoring";
 import { buildStaticSchedule } from "@/lib/static-schedule";
@@ -67,33 +68,35 @@ export default function GruposPage() {
 
   const [user, setUser] = useState<string | null>(null);
 
+  const loadData = useCallback(async () => {
+    const standingsP = fetchGroupStandings()
+      .then((data) => {
+        if (data.length === 0) { setNoData(true); return; }
+        setNoData(false);
+        setGroups(data);
+        const played = data.reduce((sum, g) => sum + (g.table[0]?.playedGames ?? 0), 0);
+        setMatchCount(played);
+      })
+      .catch(() => setNoData(true));
+
+    const matchesP = (async () => {
+      const apiAll = await fetchAllMatches().catch(() => [] as ApiAllMatch[]);
+      setAllApiMatches(apiAll.length > 0 ? apiAll : buildStaticSchedule());
+      const manualSnap = await getDocs(collection(db, "matches"));
+      setManualMatches(manualSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Match, "id">) })));
+    })().catch(() => {});
+
+    await Promise.all([standingsP, matchesP]);
+  }, []);
+
   useEffect(() => {
     const u = getStoredUser();
     if (!u) { router.push("/login"); return; }
     setUser(u);
+    loadData().finally(() => setLoading(false));
+  }, [router, loadData]);
 
-    async function load() {
-      const standingsP = fetchGroupStandings()
-        .then((data) => {
-          if (data.length === 0) { setNoData(true); return; }
-          setGroups(data);
-          const played = data.reduce((sum, g) => sum + (g.table[0]?.playedGames ?? 0), 0);
-          setMatchCount(played);
-        })
-        .catch(() => setNoData(true));
-
-      const matchesP = (async () => {
-        const apiAll = await fetchAllMatches().catch(() => [] as ApiAllMatch[]);
-        setAllApiMatches(apiAll.length > 0 ? apiAll : buildStaticSchedule());
-        const manualSnap = await getDocs(collection(db, "matches"));
-        setManualMatches(manualSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Match, "id">) })));
-      })().catch(() => {});
-
-      await Promise.all([standingsP, matchesP]);
-      setLoading(false);
-    }
-    load();
-  }, [router]);
+  useLiveRefresh(loadData);
 
   function handleLogout() {
     clearUser();
@@ -310,12 +313,14 @@ export default function GruposPage() {
                           {formatMatchDay(dayMatches[0].utcDate)} · {dayMatches.length} partido{dayMatches.length !== 1 ? "s" : ""}
                         </h3>
                         {dayMatches.map((m) => {
-                          return m.played ? (
+                          const live = isLiveStatus(m.status);
+                          return (m.played || live) ? (
                             <div key={m.id} className="match-card">
                               <div className="match-card-info">
                                 <span className="match-home"><Flag name={m.home} />{m.home}</span>
                                 <span className="match-score">
                                   {m.homeGoals} – {m.awayGoals}
+                                  {live && <span className="live-badge">EN VIVO</span>}
                                   {m.penalties && <span className="pens-badge">pen.</span>}
                                 </span>
                                 <span className="match-away"><Flag name={m.away} />{m.away}</span>

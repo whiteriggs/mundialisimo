@@ -4,6 +4,18 @@ const API_KEY = process.env.NEXT_PUBLIC_FOOTBALL_DATA_KEY ?? "";
 const BASE = "https://api.football-data.org/v4";
 const COMPETITION = "WC";
 
+// Estados de football-data.org que representan un partido en juego.
+const LIVE_STATUSES = new Set(["IN_PLAY", "PAUSED"]);
+export function isLiveStatus(status: string | null | undefined): boolean {
+  return status != null && LIVE_STATUSES.has(status);
+}
+
+// Añade un parámetro anticaché para que el polling en vivo no reciba la copia
+// que el CDN de GitHub Pages tenga guardada del JSON estático.
+function bust(url: string): string {
+  return `${url}?t=${Date.now()}`;
+}
+
 // ── Name mapping: football-data.org English names → our Spanish names ──────
 export const API_NAME_MAP: Record<string, string> = {
   Mexico: "México",
@@ -94,7 +106,7 @@ export async function fetchGroupStandings(): Promise<ApiStandingGroup[]> {
   // 1. Intentar el JSON bakeado (sin CORS)
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
   try {
-    const staticRes = await fetch(`${basePath}/standings.json`, { cache: "no-store" });
+    const staticRes = await fetch(bust(`${basePath}/standings.json`), { cache: "no-store" });
     if (staticRes.ok) {
       const data = await staticRes.json();
       if (Array.isArray(data) && data.length > 0) return data as ApiStandingGroup[];
@@ -171,6 +183,7 @@ export type ApiKnockoutMatch = {
   homeGoals: number | null;
   awayGoals: number | null;
   finished: boolean;
+  live: boolean;
   penalties: boolean;
   date: string;
   winner: "home" | "away" | null;
@@ -181,7 +194,7 @@ export async function fetchKnockoutMatches(): Promise<ApiKnockoutMatch[]> {
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
   let rawMatches: ApiKnockoutMatch[] | null = null;
   try {
-    const staticRes = await fetch(`${basePath}/matches.json`, { cache: "no-store" });
+    const staticRes = await fetch(bust(`${basePath}/matches.json`), { cache: "no-store" });
     if (staticRes.ok) {
       const data: ApiAllMatch[] = await staticRes.json();
       if (Array.isArray(data) && data.length > 0) {
@@ -195,6 +208,7 @@ export async function fetchKnockoutMatches(): Promise<ApiKnockoutMatch[]> {
             homeGoals: m.homeGoals,
             awayGoals: m.awayGoals,
             finished: m.played,
+            live: isLiveStatus(m.status),
             penalties: m.penalties,
             date: new Date(m.utcDate).toLocaleDateString("es-ES", { day: "numeric", month: "short" }),
             winner: m.played
@@ -230,6 +244,7 @@ export async function fetchKnockoutMatches(): Promise<ApiKnockoutMatch[]> {
       homeGoals: m.score?.fullTime?.home ?? null,
       awayGoals: m.score?.fullTime?.away ?? null,
       finished: m.status === "FINISHED",
+      live: isLiveStatus(m.status),
       penalties: m.score?.duration === "PENALTY_SHOOTOUT",
       date: new Date(m.utcDate).toLocaleDateString("es-ES", { day: "numeric", month: "short" }),
       winner:
@@ -263,7 +278,7 @@ export async function fetchAllMatches(): Promise<ApiAllMatch[]> {
   // 1. Intentar el JSON pre-generado en build time (sin restricciones CORS)
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
   try {
-    const staticRes = await fetch(`${basePath}/matches.json`, { cache: "no-store" });
+    const staticRes = await fetch(bust(`${basePath}/matches.json`), { cache: "no-store" });
     if (staticRes.ok) {
       const data = await staticRes.json();
       if (Array.isArray(data) && data.length > 0) return data as ApiAllMatch[];

@@ -3,9 +3,10 @@
 import NavBar from "@/components/NavBar";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { getStoredUser, clearUser } from "@/lib/auth";
 import { fetchKnockoutMatches, ApiKnockoutMatch } from "@/lib/football-api";
+import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import Flag from "@/components/Flag";
 
 type BMatch = {
@@ -16,6 +17,7 @@ type BMatch = {
   homeGoals?: number | null;
   awayGoals?: number | null;
   finished?: boolean;
+  live?: boolean;
   winner?: "home" | "away" | null;
   penalties?: boolean;
 };
@@ -128,6 +130,7 @@ function apiToBMatch(m: ApiKnockoutMatch): BMatch {
     homeGoals: m.homeGoals,
     awayGoals: m.awayGoals,
     finished: m.finished,
+    live: m.live,
     winner: m.winner,
     penalties: m.penalties,
   };
@@ -167,13 +170,14 @@ function buildBracketFromApi(matches: ApiKnockoutMatch[]): {
 }
 
 function MatchCard({ m, isFinal = false }: { m: BMatch; isFinal?: boolean }) {
-  const showScore = m.finished && m.homeGoals !== null && m.homeGoals !== undefined;
+  const showScore = (m.finished || m.live) && m.homeGoals !== null && m.homeGoals !== undefined;
   return (
     <div className={[
       "bk-match",
       m.isTbd  ? "bk-match--tbd"      : "",
       isFinal  ? "bk-match--final"    : "",
       m.finished ? "bk-match--finished" : "",
+      m.live ? "bk-match--live" : "",
     ].join(" ").trim()}>
       <div className={[
         "bk-team",
@@ -193,6 +197,7 @@ function MatchCard({ m, isFinal = false }: { m: BMatch; isFinal?: boolean }) {
         <span className="bk-team-name"><Flag name={m.away} />{m.away}</span>
         {showScore && <span className="bk-team-score">{m.awayGoals}{m.penalties && m.winner === "away" ? "p" : ""}</span>}
       </div>
+      {m.live && <div className="bk-live">EN VIVO</div>}
       {m.date && <div className="bk-date">{m.date}</div>}
     </div>
   );
@@ -244,19 +249,25 @@ export default function EliminatoriasPage() {
     const u = getStoredUser();
     if (!u) { router.push("/login"); return; }
     setUser(u);
+  }, [router]);
 
-    fetchKnockoutMatches()
+  const loadData = useCallback(() => {
+    return fetchKnockoutMatches()
       .then((matches) => {
         if (matches.length === 0) return; // pre-torneo: mantener datos estáticos
         const { left, right, final } = buildBracketFromApi(matches);
         setLeftHalf(left);
         setRightHalf(right);
         setFinalMatch(final);
+        setApiNote(null);
       })
       .catch(() => {
         setApiNote("No se pudieron cargar los datos en directo. Mostrando cuadro del sorteo oficial.");
       });
-  }, [router]);
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+  useLiveRefresh(loadData);
 
   function handleLogout() {
     clearUser();

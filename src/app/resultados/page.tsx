@@ -1,7 +1,7 @@
 "use client";
 
 import NavBar from "@/components/NavBar";
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -10,6 +10,7 @@ import { getStoredUser, clearUser, getUsers } from "@/lib/auth";
 import { teamName, teamCode } from "@/lib/teams";
 import { buildTeamTotals, matchPoints, Match } from "@/lib/scoring";
 import { fetchAllMatches, ApiAllMatch } from "@/lib/football-api";
+import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { buildStaticSchedule } from "@/lib/static-schedule";
 
 type BetDoc = {
@@ -30,62 +31,64 @@ export default function ResultadosPage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [userList, setUserList] = useState<string[]>([]);
 
+  const loadData = useCallback(async () => {
+    try {
+      const [apiAll, manualSnap, betSnap, users] = await Promise.all([
+        fetchAllMatches().catch((err) => {
+          setApiError(err.message);
+          return [] as ApiAllMatch[];
+        }),
+        getDocs(collection(db, "matches")),
+        getDocs(groupCollection("bets")),
+        getUsers(),
+      ]);
+      setUserList(users);
+
+      setAllApiMatches(apiAll.length > 0 ? apiAll : buildStaticSchedule());
+      const finished: Match[] = apiAll
+        .filter((m) => m.played)
+        .map((m) => ({
+          id: m.id,
+          home: m.home,
+          away: m.away,
+          homeGoals: m.homeGoals ?? 0,
+          awayGoals: m.awayGoals ?? 0,
+          phase: m.phase,
+          penalties: m.penalties,
+          played: true,
+        }));
+      setMatches(finished);
+
+      const manual: Match[] = manualSnap.docs.map((d) => ({
+        id: d.id,
+        ...(d.data() as Omit<Match, "id">),
+      }));
+      setManualMatches(manual);
+
+      setBets(
+        betSnap.docs.map((d) => {
+          const raw = d.data() as Partial<Omit<BetDoc, "user">>;
+          return {
+            user: d.id,
+            favorites: raw.favorites ?? [],
+            antiFavorites: raw.antiFavorites ?? [],
+            confirmed: raw.confirmed ?? false,
+          };
+        })
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const user = getStoredUser();
     if (!user) { router.push("/login"); return; }
     setCurrentUser(user);
+    loadData();
+  }, [router, loadData]);
 
-    async function load() {
-      try {
-        const [apiAll, manualSnap, betSnap, users] = await Promise.all([
-          fetchAllMatches().catch((err) => {
-            setApiError(err.message);
-            return [] as ApiAllMatch[];
-          }),
-          getDocs(collection(db, "matches")),
-          getDocs(groupCollection("bets")),
-          getUsers(),
-        ]);
-        setUserList(users);
-
-        setAllApiMatches(apiAll.length > 0 ? apiAll : buildStaticSchedule());
-        const finished: Match[] = apiAll
-          .filter((m) => m.played)
-          .map((m) => ({
-            id: m.id,
-            home: m.home,
-            away: m.away,
-            homeGoals: m.homeGoals ?? 0,
-            awayGoals: m.awayGoals ?? 0,
-            phase: m.phase,
-            penalties: m.penalties,
-            played: true,
-          }));
-        setMatches(finished);
-
-        const manual: Match[] = manualSnap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<Match, "id">),
-        }));
-        setManualMatches(manual);
-
-        setBets(
-          betSnap.docs.map((d) => {
-            const raw = d.data() as Partial<Omit<BetDoc, "user">>;
-            return {
-              user: d.id,
-              favorites: raw.favorites ?? [],
-              antiFavorites: raw.antiFavorites ?? [],
-              confirmed: raw.confirmed ?? false,
-            };
-          })
-        );
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, [router]);
+  useLiveRefresh(loadData);
 
   const teamTotals = buildTeamTotals([...matches, ...manualMatches]);
 

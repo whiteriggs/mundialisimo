@@ -2,10 +2,11 @@
 
 import NavBar from "@/components/NavBar";
 import Flag from "@/components/Flag";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getStoredUser, clearUser } from "@/lib/auth";
-import { fetchAllMatches, ApiAllMatch } from "@/lib/football-api";
+import { fetchAllMatches, ApiAllMatch, isLiveStatus } from "@/lib/football-api";
+import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { buildStaticSchedule } from "@/lib/static-schedule";
 import { GROUP_POOL, TEAM_NAMES } from "@/lib/teams";
 import { tvChannelsFor } from "@/lib/tv-channels";
@@ -92,17 +93,18 @@ const PHASE_FILTERS: { key: string; label: string; stages: string[] }[] = [
 function MatchCard({ m }: { m: ApiAllMatch }) {
   const tag = phaseLabel(m.stage, m.home);
   const channels = tvChannelsFor(m);
+  const live = isLiveStatus(m.status);
   return (
-    <article className="pm-card" data-played={m.played}>
+    <article className="pm-card" data-played={m.played} data-live={live}>
       <div className="pm-main">
-        <span className="pm-tag">{tag}</span>
+        <span className="pm-tag">{tag}{live && <span className="pm-live">EN VIVO</span>}</span>
         <div className="pm-fixture">
           <div className="pm-team pm-team--home">
             <span className="pm-team-name">{m.home}</span>
             <Flag name={m.home} />
           </div>
           <div className="pm-center">
-            {m.played ? (
+            {(m.played || live) ? (
               <span className="pm-score">
                 {m.homeGoals}<span className="pm-dash">–</span>{m.awayGoals}
               </span>
@@ -149,16 +151,20 @@ export default function PartidosPage() {
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const dayStripRef = useRef<HTMLDivElement>(null);
 
+  const loadData = useCallback(() => {
+    return fetchAllMatches()
+      .then((data) => setMatches(data.length > 0 ? data : buildStaticSchedule()))
+      .catch(() => setMatches(buildStaticSchedule()));
+  }, []);
+
   useEffect(() => {
     const u = getStoredUser();
     if (!u) { router.push("/login"); return; }
     setUser(u);
+    loadData().finally(() => setLoading(false));
+  }, [router, loadData]);
 
-    fetchAllMatches()
-      .then((data) => setMatches(data.length > 0 ? data : buildStaticSchedule()))
-      .catch(() => setMatches(buildStaticSchedule()))
-      .finally(() => setLoading(false));
-  }, [router]);
+  useLiveRefresh(loadData);
 
   const activeStages = useMemo(
     () => PHASE_FILTERS.find((p) => p.key === phaseKey)?.stages ?? [],
