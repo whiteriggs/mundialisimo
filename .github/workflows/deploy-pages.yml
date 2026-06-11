@@ -5,8 +5,8 @@ on:
     branches: ["main"]
   workflow_dispatch:
   schedule:
-    # Rebuild cada 15 min durante el Mundial (11 jun – 27 jul 2026)
-    - cron: "*/15 * * * *"
+    # Rebuild cada 5 min durante el Mundial (11 jun – 27 jul 2026)
+    - cron: "*/5 * * * *"
 
 permissions:
   contents: read
