@@ -8,7 +8,7 @@ workers_dev = true
 #   wrangler kv namespace create SCORES
 [[kv_namespaces]]
 binding = "SCORES"
-id = "REEMPLAZAR_CON_ID_KV"
+id = "93cf42f479ff4447afad2765c4c13d1e"
 
 # La API key NO va aquí. Se guarda como secret:
 #   wrangler secret put FOOTBALL_DATA_KEY
