@@ -1,7 +1,7 @@
 "use client";
 
 import NavBar from "@/components/NavBar";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   collection,
@@ -12,8 +12,9 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getStoredUser, clearUser } from "@/lib/auth";
-import { fetchGroupStandings, ApiStandingGroup, toInternalName, fetchAllMatches, ApiAllMatch, isLiveStatus } from "@/lib/football-api";
+import { ApiStandingGroup, toInternalName, fetchAllMatches, ApiAllMatch, isLiveStatus } from "@/lib/football-api";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
+import { buildGroupStandings } from "@/lib/standings";
 import { GROUP_POOL, TEAM_NAMES } from "@/lib/teams";
 import { Phase, Match } from "@/lib/scoring";
 import { buildStaticSchedule } from "@/lib/static-schedule";
@@ -54,10 +55,7 @@ function groupLetter(apiGroup: string) {
 export default function GruposPage() {
   const router = useRouter();
   const [tab, setTab] = useState<"grupos" | "resultados">("grupos");
-  const [groups, setGroups] = useState<ApiStandingGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [noData, setNoData] = useState(false);
-  const [matchCount, setMatchCount] = useState(0);
 
   const [allApiMatches, setAllApiMatches] = useState<ApiAllMatch[]>([]);
   const [manualMatches, setManualMatches] = useState<Match[]>([]);
@@ -69,24 +67,12 @@ export default function GruposPage() {
   const [user, setUser] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
-    const standingsP = fetchGroupStandings()
-      .then((data) => {
-        if (data.length === 0) { setNoData(true); return; }
-        setNoData(false);
-        setGroups(data);
-        const played = data.reduce((sum, g) => sum + (g.table[0]?.playedGames ?? 0), 0);
-        setMatchCount(played);
-      })
-      .catch(() => setNoData(true));
-
-    const matchesP = (async () => {
-      const apiAll = await fetchAllMatches().catch(() => [] as ApiAllMatch[]);
-      setAllApiMatches(apiAll.length > 0 ? apiAll : buildStaticSchedule());
+    const apiAll = await fetchAllMatches().catch(() => [] as ApiAllMatch[]);
+    setAllApiMatches(apiAll.length > 0 ? apiAll : buildStaticSchedule());
+    try {
       const manualSnap = await getDocs(collection(db, "matches"));
       setManualMatches(manualSnap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<Match, "id">) })));
-    })().catch(() => {});
-
-    await Promise.all([standingsP, matchesP]);
+    } catch { /* ignorar */ }
   }, []);
 
   useEffect(() => {
@@ -97,6 +83,48 @@ export default function GruposPage() {
   }, [router, loadData]);
 
   useLiveRefresh(loadData);
+
+  // Clasificación de grupos calculada en el cliente a partir de los partidos en
+  // vivo (Worker) + resultados manuales. Cuenta también los partidos en juego
+  // (IN_PLAY/PAUSED) con su marcador parcial, así la tabla se mueve en directo.
+  const groups = useMemo<ApiStandingGroup[]>(() => {
+    const groupMatches: Match[] = [
+      ...allApiMatches
+        .filter((m) => m.phase === "groups" && (m.played || isLiveStatus(m.status)))
+        .map((m) => ({
+          id: m.id,
+          home: m.home,
+          away: m.away,
+          homeGoals: m.homeGoals ?? 0,
+          awayGoals: m.awayGoals ?? 0,
+          phase: "groups" as Phase,
+          penalties: m.penalties,
+          played: true,
+        })),
+      ...manualMatches.filter((m) => m.phase === "groups" && m.played),
+    ];
+    const byLetter = buildGroupStandings(groupMatches);
+    return Object.entries(byLetter).map(([letter, table]) => ({
+      group: `GROUP_${letter}`,
+      table: table.map((s, i) => ({
+        position: i + 1,
+        team: { name: s.name },
+        playedGames: s.played,
+        won: s.won,
+        draw: s.drawn,
+        lost: s.lost,
+        goalsFor: s.gf,
+        goalsAgainst: s.ga,
+        goalDifference: s.gd,
+        points: s.pts,
+      })),
+    }));
+  }, [allApiMatches, manualMatches]);
+
+  const matchCount = useMemo(
+    () => groups.reduce((sum, g) => sum + (g.table[0]?.playedGames ?? 0), 0),
+    [groups]
+  );
 
   function handleLogout() {
     clearUser();
@@ -179,10 +207,8 @@ export default function GruposPage() {
             <h2 className="hero-name">{tab === "grupos" ? "Clasificación de grupos" : "Resultados"}</h2>
             <p className="lead">
               {tab === "grupos"
-                ? (noData
+                ? (matchCount === 0
                     ? "Los datos se actualizarán automáticamente cuando empiece el Mundial el 11 de junio."
-                    : matchCount === 0
-                    ? "Torneo en marcha. Datos actualizados desde football-data.org."
                     : `${matchCount} partido${matchCount !== 1 ? "s" : ""} de grupo jugado${matchCount !== 1 ? "s" : ""}.`)
                 : "Calendario, horarios y resultados de todos los partidos."}
             </p>
@@ -216,7 +242,7 @@ export default function GruposPage() {
             </div>
           </div>
 
-          {tab === "grupos" && noData && (
+          {tab === "grupos" && matchCount === 0 && (
             <>
               <div className="results-section">
                 <p className="api-notice">El Mundial empieza el 11 de junio. Aquí están los grupos ya definidos — las puntuaciones aparecerán cuando comiencen los partidos.</p>
@@ -253,7 +279,7 @@ export default function GruposPage() {
             </>
           )}
 
-          {tab === "grupos" && !noData && (
+          {tab === "grupos" && matchCount > 0 && (
             <div className="groups-standings-grid">
               {groups.map((g) => {
                 const letter = groupLetter(g.group);

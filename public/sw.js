@@ -1,4 +1,4 @@
-const CACHE = 'mundialisimo-v14';
+const CACHE = 'mundialisimo-v15';
 
 self.addEventListener('install', () => self.skipWaiting());
 
