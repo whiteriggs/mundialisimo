@@ -23,6 +23,14 @@ if (existsSync(envLocal)) {
 const API_KEY = process.env.NEXT_PUBLIC_FOOTBALL_DATA_KEY ?? "";
 const URL = "https://api.football-data.org/v4/competitions/WC/matches";
 
+// Resultados forzados a mano (el plan gratuito de football-data.org dio el
+// marcador y luego lo borró). Se tratan como si la API hubiera devuelto un
+// FINISHED con ese resultado. Clave = id del partido en football-data.org.
+const SCORE_OVERRIDES = {
+  // México 2 - 0 Sudáfrica (partido inaugural)
+  "537327": { homeGoals: 2, awayGoals: 0 },
+};
+
 const NAME_MAP = {
   Mexico: "México", "South Africa": "Sudáfrica", "Korea Republic": "Rep. Corea",
   "Republic of Korea": "Rep. Corea", "South Korea": "Rep. Corea",
@@ -104,9 +112,10 @@ async function main() {
       .map((m) => {
         const id = String(m.id);
         const old = prev.get(id);
+        const override = SCORE_OVERRIDES[id];
 
-        const apiHome = m.score?.fullTime?.home ?? null;
-        const apiAway = m.score?.fullTime?.away ?? null;
+        const apiHome = override ? override.homeGoals : (m.score?.fullTime?.home ?? null);
+        const apiAway = override ? override.awayGoals : (m.score?.fullTime?.away ?? null);
         const apiHasScore = apiHome !== null || apiAway !== null;
 
         // Marcador provisional ya conocido de un build anterior.
@@ -117,7 +126,9 @@ async function main() {
         // El resultado SOLO se da por confirmado cuando la API reporta FINISHED
         // con un marcador real (no null), o si ya estaba confirmado antes. Hasta
         // entonces el 2-0 se mantiene como provisional y se sigue consultando.
+        // Un override manual cuenta como FINISHED confirmado.
         const confirmed =
+          Boolean(override) ||
           (m.status === "FINISHED" && apiHasScore) || Boolean(old?.confirmed);
 
         let homeGoals;
