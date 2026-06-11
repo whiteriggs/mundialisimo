@@ -53,6 +53,39 @@ function stageToPhase(stage) {
   return "knockout";
 }
 
+const LIVE_STATUSES = new Set(["IN_PLAY", "PAUSED"]);
+
+// Carga el matches.json del build anterior para no perder marcadores ya vistos.
+// El plan gratuito de football-data.org a veces devuelve `null` en el marcador
+// (incluso en partidos IN_PLAY o FINISHED). Si ya conocíamos un resultado, lo
+// conservamos hasta que la API confirme uno nuevo.
+async function loadPrevious() {
+  const map = new Map();
+  // 1) Build previo desplegado en GitHub Pages (estado persistente entre runs).
+  const repo = process.env.GITHUB_REPOSITORY ?? "";
+  const [owner, name] = repo.split("/");
+  if (owner && name && !name.endsWith(".github.io")) {
+    try {
+      const url = `https://${owner}.github.io/${name}/matches.json?t=${Date.now()}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) for (const m of data) map.set(m.id, m);
+        console.log(`[fetch-matches] estado previo: ${map.size} partidos desde Pages`);
+        return map;
+      }
+    } catch { /* ignorar */ }
+  }
+  // 2) Fallback: archivo local de un build anterior (desarrollo).
+  try {
+    if (existsSync(OUT)) {
+      const data = JSON.parse(readFileSync(OUT, "utf8"));
+      if (Array.isArray(data)) for (const m of data) map.set(m.id, m);
+    }
+  } catch { /* ignorar */ }
+  return map;
+}
+
 async function main() {
   if (!API_KEY) {
     console.warn("[fetch-matches] Sin API key — se omite la generación de matches.json");
@@ -65,22 +98,47 @@ async function main() {
       return;
     }
     const data = await res.json();
+    const prev = await loadPrevious();
     const matches = (data.matches ?? [])
       .sort((a, b) => new Date(a.utcDate) - new Date(b.utcDate))
-      .map((m) => ({
-        id: String(m.id),
-        utcDate: m.utcDate,
-        status: m.status,
-        stage: m.stage,
-        home: m.homeTeam?.name ? toName(m.homeTeam.name) : "Por determinar",
-        away: m.awayTeam?.name ? toName(m.awayTeam.name) : "Por determinar",
-        homeGoals: m.score?.fullTime?.home ?? null,
-        awayGoals: m.score?.fullTime?.away ?? null,
-        phase: stageToPhase(m.stage),
-        penalties: m.score?.duration === "PENALTY_SHOOTOUT",
-        played: m.status === "FINISHED",
-        matchday: m.matchday ?? null,
-      }));
+      .map((m) => {
+        const id = String(m.id);
+        const old = prev.get(id);
+
+        let homeGoals = m.score?.fullTime?.home ?? null;
+        let awayGoals = m.score?.fullTime?.away ?? null;
+        // Si la API ya no trae marcador pero antes sí lo conocíamos, conservarlo.
+        if (homeGoals === null && awayGoals === null && old &&
+            (old.homeGoals !== null && old.homeGoals !== undefined ||
+             old.awayGoals !== null && old.awayGoals !== undefined)) {
+          homeGoals = old.homeGoals ?? null;
+          awayGoals = old.awayGoals ?? null;
+        }
+
+        // Una vez jugado/en vivo, no degradar a "TIMED" si la API retrocede.
+        const wasAdvanced = old && (old.played || LIVE_STATUSES.has(old.status));
+        let status = m.status;
+        if (status === "TIMED" && wasAdvanced) status = old.status;
+
+        const played = m.status === "FINISHED" || Boolean(old && old.played);
+        const penalties = m.score?.duration === "PENALTY_SHOOTOUT" ||
+          Boolean(old && old.penalties);
+
+        return {
+          id,
+          utcDate: m.utcDate,
+          status,
+          stage: m.stage,
+          home: m.homeTeam?.name ? toName(m.homeTeam.name) : "Por determinar",
+          away: m.awayTeam?.name ? toName(m.awayTeam.name) : "Por determinar",
+          homeGoals,
+          awayGoals,
+          phase: stageToPhase(m.stage),
+          penalties,
+          played,
+          matchday: m.matchday ?? null,
+        };
+      });
 
     mkdirSync(join(__dirname, "../public"), { recursive: true });
     writeFileSync(OUT, JSON.stringify(matches));
