@@ -9,7 +9,7 @@ import { groupCollection } from "@/lib/db";
 import { getStoredUser, clearUser, getUsers } from "@/lib/auth";
 import { teamName, teamCode } from "@/lib/teams";
 import { buildTeamTotals, matchPoints, Match } from "@/lib/scoring";
-import { fetchAllMatches, ApiAllMatch } from "@/lib/football-api";
+import { fetchAllMatches, ApiAllMatch, isLiveStatus } from "@/lib/football-api";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { buildStaticSchedule } from "@/lib/static-schedule";
 
@@ -45,8 +45,10 @@ export default function ResultadosPage() {
       setUserList(users);
 
       setAllApiMatches(apiAll.length > 0 ? apiAll : buildStaticSchedule());
-      const finished: Match[] = apiAll
-        .filter((m) => m.played)
+      // Incluye partidos en vivo (IN_PLAY/PAUSED) con su marcador parcial para
+      // que la clasificación de la porra se mueva en directo.
+      const scored: Match[] = apiAll
+        .filter((m) => m.played || isLiveStatus(m.status))
         .map((m) => ({
           id: m.id,
           home: m.home,
@@ -57,7 +59,7 @@ export default function ResultadosPage() {
           penalties: m.penalties,
           played: true,
         }));
-      setMatches(finished);
+      setMatches(scored);
 
       const manual: Match[] = manualSnap.docs.map((d) => ({
         id: d.id,
@@ -105,9 +107,12 @@ export default function ResultadosPage() {
   }).sort((a, b) => b.total - a.total);
 
   const roundData = useMemo(() => {
-    // Partidos jugados como columnas (cronológico): API por fecha, luego manuales.
+    const liveIds = new Set(
+      allApiMatches.filter((m) => isLiveStatus(m.status)).map((m) => m.id)
+    );
+    // Partidos jugados o en vivo como columnas (cronológico): API por fecha, luego manuales.
     const apiPlayed: Match[] = allApiMatches
-      .filter((m) => m.played)
+      .filter((m) => m.played || liveIds.has(m.id))
       .sort((a, b) => a.utcDate.localeCompare(b.utcDate))
       .map((m) => ({
         id: m.id, home: m.home, away: m.away,
@@ -129,7 +134,7 @@ export default function ResultadosPage() {
         return fav - anti;
       });
     }
-    return { columns, perMatch };
+    return { columns, perMatch, liveIds };
   }, [allApiMatches, manualMatches, rankings]);
 
   function handleLogout() {
@@ -186,9 +191,10 @@ export default function ResultadosPage() {
                     <th className="st-name">Participante</th>
                     <th className="st-total">Total</th>
                     {roundData.columns.map((m) => (
-                      <th key={m.id} className="st-match">
+                      <th key={m.id} className={`st-match${roundData.liveIds.has(m.id) ? " st-match-live" : ""}`}>
                         <span className="st-match-teams">{teamCode(m.home)}-{teamCode(m.away)}</span>
                         <span className="st-match-score">{m.homeGoals}–{m.awayGoals}{m.penalties ? "p" : ""}</span>
+                        {roundData.liveIds.has(m.id) && <span className="st-live-tag">EN VIVO</span>}
                       </th>
                     ))}
                   </tr>

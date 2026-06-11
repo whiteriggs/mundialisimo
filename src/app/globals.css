@@ -1428,6 +1428,21 @@ a {
 .st-match-cell.pts-pos { color: var(--green, #4ade80); }
 .st-match-cell.pts-neg { color: var(--red, #f87171); }
 
+.st-match-live {
+  background: rgba(229, 52, 43, 0.08);
+}
+
+.st-live-tag {
+  display: block;
+  margin-top: 2px;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: #e5342b;
+  text-transform: uppercase;
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+
 /* Match form */
 .match-form {
   display: flex;
