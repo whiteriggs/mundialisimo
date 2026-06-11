@@ -105,22 +105,52 @@ async function main() {
         const id = String(m.id);
         const old = prev.get(id);
 
-        let homeGoals = m.score?.fullTime?.home ?? null;
-        let awayGoals = m.score?.fullTime?.away ?? null;
-        // Si la API ya no trae marcador pero antes sí lo conocíamos, conservarlo.
-        if (homeGoals === null && awayGoals === null && old &&
-            (old.homeGoals !== null && old.homeGoals !== undefined ||
-             old.awayGoals !== null && old.awayGoals !== undefined)) {
-          homeGoals = old.homeGoals ?? null;
-          awayGoals = old.awayGoals ?? null;
+        const apiHome = m.score?.fullTime?.home ?? null;
+        const apiAway = m.score?.fullTime?.away ?? null;
+        const apiHasScore = apiHome !== null || apiAway !== null;
+
+        // Marcador provisional ya conocido de un build anterior.
+        const knownHome = old?.homeGoals ?? null;
+        const knownAway = old?.awayGoals ?? null;
+        const hadKnown = knownHome !== null || knownAway !== null;
+
+        // El resultado SOLO se da por confirmado cuando la API reporta FINISHED
+        // con un marcador real (no null), o si ya estaba confirmado antes. Hasta
+        // entonces el 2-0 se mantiene como provisional y se sigue consultando.
+        const confirmed =
+          (m.status === "FINISHED" && apiHasScore) || Boolean(old?.confirmed);
+
+        let homeGoals;
+        let awayGoals;
+        if (apiHasScore) {
+          // La API trae marcador fresco: es el más fiable.
+          homeGoals = apiHome;
+          awayGoals = apiAway;
+        } else {
+          // Sin marcador en la API: conservar el provisional conocido.
+          homeGoals = hadKnown ? knownHome : null;
+          awayGoals = hadKnown ? knownAway : null;
         }
 
-        // Una vez jugado/en vivo, no degradar a "TIMED" si la API retrocede.
-        const wasAdvanced = old && (old.played || LIVE_STATUSES.has(old.status));
-        let status = m.status;
-        if (status === "TIMED" && wasAdvanced) status = old.status;
+        const hasScore = homeGoals !== null || awayGoals !== null;
 
-        const played = m.status === "FINISHED" || Boolean(old && old.played);
+        // `played` (resultado final fijado) solo si está confirmado.
+        const played = confirmed;
+
+        // Estado: confirmado → FINISHED; con marcador provisional pero sin
+        // confirmar → mantener "en vivo" para que se muestre y se siga sondeando;
+        // si no, lo que diga la API (sin degradar un estado ya avanzado a TIMED).
+        let status;
+        if (confirmed) {
+          status = "FINISHED";
+        } else if (hasScore) {
+          status = LIVE_STATUSES.has(m.status) ? m.status : "IN_PLAY";
+        } else if (m.status === "TIMED" && old && LIVE_STATUSES.has(old.status)) {
+          status = old.status;
+        } else {
+          status = m.status;
+        }
+
         const penalties = m.score?.duration === "PENALTY_SHOOTOUT" ||
           Boolean(old && old.penalties);
 
@@ -128,6 +158,7 @@ async function main() {
           id,
           utcDate: m.utcDate,
           status,
+          confirmed,
           stage: m.stage,
           home: m.homeTeam?.name ? toName(m.homeTeam.name) : "Por determinar",
           away: m.awayTeam?.name ? toName(m.awayTeam.name) : "Por determinar",
