@@ -1,0 +1,14 @@
+name = "mundialisimo-live"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+workers_dev = true
+
+# KV para persistir los marcadores consolidados entre peticiones.
+# El id real se rellena al crear el namespace:
+#   wrangler kv namespace create SCORES
+[[kv_namespaces]]
+binding = "SCORES"
+id = "REEMPLAZAR_CON_ID_KV"
+
+# La API key NO va aquí. Se guarda como secret:
+#   wrangler secret put FOOTBALL_DATA_KEY

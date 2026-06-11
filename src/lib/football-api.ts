@@ -4,6 +4,10 @@ const API_KEY = process.env.NEXT_PUBLIC_FOOTBALL_DATA_KEY ?? "";
 const BASE = "https://api.football-data.org/v4";
 const COMPETITION = "WC";
 
+// Worker de Cloudflare que sirve los partidos en vivo (proxy con CORS + caché).
+// Si está configurado, es la fuente preferente; si no, se usa el JSON estático.
+const LIVE_MATCHES_URL = process.env.NEXT_PUBLIC_LIVE_MATCHES_URL ?? "";
+
 // Estados de football-data.org que representan un partido en juego.
 const LIVE_STATUSES = new Set(["IN_PLAY", "PAUSED"]);
 export function isLiveStatus(status: string | null | undefined): boolean {
@@ -190,68 +194,27 @@ export type ApiKnockoutMatch = {
 };
 
 export async function fetchKnockoutMatches(): Promise<ApiKnockoutMatch[]> {
-  // Reusar el JSON bakeado si está disponible
-  const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-  let rawMatches: ApiKnockoutMatch[] | null = null;
-  try {
-    const staticRes = await fetch(bust(`${basePath}/matches.json`), { cache: "no-store" });
-    if (staticRes.ok) {
-      const data: ApiAllMatch[] = await staticRes.json();
-      if (Array.isArray(data) && data.length > 0) {
-        rawMatches = data
-          .filter((m) => KNOCKOUT_STAGES.has(m.stage))
-          .map((m): ApiKnockoutMatch => ({
-            id: m.id,
-            stage: m.stage,
-            home: m.home,
-            away: m.away,
-            homeGoals: m.homeGoals,
-            awayGoals: m.awayGoals,
-            finished: m.played,
-            live: isLiveStatus(m.status),
-            penalties: m.penalties,
-            date: new Date(m.utcDate).toLocaleDateString("es-ES", { day: "numeric", month: "short" }),
-            winner: m.played
-              ? m.homeGoals !== null && m.awayGoals !== null
-                ? m.homeGoals > m.awayGoals ? "home" : m.awayGoals > m.homeGoals ? "away" : null
-                : null
-              : null,
-          }));
-      }
-    }
-  } catch { /* ignorar */ }
-
-  if (rawMatches) return rawMatches;
-
-  const res = await fetch(
-    `${BASE}/competitions/${COMPETITION}/matches`,
-    { headers: { "X-Auth-Token": API_KEY } }
-  );
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`football-data.org ${res.status}: ${text}`);
-  }
-  const data = await res.json();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data.matches as any[])
+  // Deriva del mismo origen que el resto (Worker en vivo → JSON estático → API),
+  // así el cuadro de eliminatorias también se actualiza en directo.
+  const all = await fetchAllMatches();
+  return all
     .filter((m) => KNOCKOUT_STAGES.has(m.stage))
-    .sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime())
     .map((m): ApiKnockoutMatch => ({
-      id: String(m.id),
+      id: m.id,
       stage: m.stage,
-      home: m.homeTeam?.name ? toInternalName(m.homeTeam.name) : "Por determinar",
-      away: m.awayTeam?.name ? toInternalName(m.awayTeam.name) : "Por determinar",
-      homeGoals: m.score?.fullTime?.home ?? null,
-      awayGoals: m.score?.fullTime?.away ?? null,
-      finished: m.status === "FINISHED",
+      home: m.home,
+      away: m.away,
+      homeGoals: m.homeGoals,
+      awayGoals: m.awayGoals,
+      finished: m.played,
       live: isLiveStatus(m.status),
-      penalties: m.score?.duration === "PENALTY_SHOOTOUT",
+      penalties: m.penalties,
       date: new Date(m.utcDate).toLocaleDateString("es-ES", { day: "numeric", month: "short" }),
       winner:
-        m.status === "FINISHED"
-          ? m.score?.winner === "HOME_TEAM"
+        m.homeGoals !== null && m.awayGoals !== null
+          ? m.homeGoals > m.awayGoals
             ? "home"
-            : m.score?.winner === "AWAY_TEAM"
+            : m.awayGoals > m.homeGoals
             ? "away"
             : null
           : null,
@@ -275,6 +238,19 @@ export type ApiAllMatch = {
 };
 
 export async function fetchAllMatches(): Promise<ApiAllMatch[]> {
+  // 0. Fuente en vivo: Worker de Cloudflare (datos frescos, con CORS).
+  if (LIVE_MATCHES_URL) {
+    try {
+      const liveRes = await fetch(LIVE_MATCHES_URL, { cache: "no-store" });
+      if (liveRes.ok) {
+        const data = await liveRes.json();
+        if (Array.isArray(data) && data.length > 0) return data as ApiAllMatch[];
+      }
+    } catch {
+      // ignorar — caer al JSON estático
+    }
+  }
+
   // 1. Intentar el JSON pre-generado en build time (sin restricciones CORS)
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
   try {
