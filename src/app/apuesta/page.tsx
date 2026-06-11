@@ -12,7 +12,7 @@ import { TEAMS as teams, GROUP_POOL as groupPool, teamName } from "@/lib/teams";
 const favoriteBounds = { min: 9, max: 12 };
 const antiBounds = { min: 4, max: 6 };
 const ticketBounds = { min: 15, max: 22 };
-const DEADLINE = new Date("2026-06-11T00:00:00");
+const DEADLINE = new Date("2026-06-11T20:00:00");
 
 type BetDoc = {
   user: string;
