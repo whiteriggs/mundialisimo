@@ -201,18 +201,6 @@ export default function ResultadosPage() {
             </div>
           )}
 
-          {/* Histórico de puntos (gráfica de evolución) */}
-          {history.series.length > 0 && history.labels.length > 0 && (
-            <div className="results-section">
-              <h2 className="results-title">Evolución de puntos</h2>
-              <PointsHistoryChart
-                labels={history.labels}
-                series={history.series}
-                currentUid={currentUser?.toLowerCase()}
-              />
-            </div>
-          )}
-
           {/* Clasificación: total + desglose por partido */}
           <div className="results-section">
             <div className="standings-wrap">
@@ -266,6 +254,18 @@ export default function ResultadosPage() {
               </p>
             )}
           </div>
+
+          {/* Histórico de puntos (gráfica de evolución) */}
+          {history.series.length > 0 && history.labels.length > 0 && (
+            <div className="results-section">
+              <h2 className="results-title">Evolución de puntos</h2>
+              <PointsHistoryChart
+                labels={history.labels}
+                series={history.series}
+                currentUid={currentUser?.toLowerCase()}
+              />
+            </div>
+          )}
         </>
       )}
     </main>
