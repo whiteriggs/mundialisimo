@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useCallback, useState } from "react";
 import { getStoredUser, clearUser } from "@/lib/auth";
-import { fetchKnockoutMatches, ApiKnockoutMatch } from "@/lib/football-api";
+import { fetchKnockoutMatches, ApiKnockoutMatch, fetchAllMatches } from "@/lib/football-api";
+import { makeBracketResolver } from "@/lib/knockout";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import Flag from "@/components/Flag";
 
@@ -20,6 +21,8 @@ type BMatch = {
   live?: boolean;
   winner?: "home" | "away" | null;
   penalties?: boolean;
+  homeProv?: boolean;
+  awayProv?: boolean;
 };
 // BHalf: array of rounds, each round is array of pairs, each pair is 1 or 2 matches
 type BHalf = BMatch[][][];
@@ -182,19 +185,21 @@ function MatchCard({ m, isFinal = false }: { m: BMatch; isFinal?: boolean }) {
       <div className={[
         "bk-team",
         m.isTbd      ? "bk-team--tbd"    : "",
+        m.homeProv   ? "bk-team--prov"   : "",
         m.winner === "home" ? "bk-team--winner" : "",
         m.winner === "away" ? "bk-team--loser"  : "",
       ].join(" ").trim()}>
-        <span className="bk-team-name"><Flag name={m.home} />{m.home}</span>
+        <span className="bk-team-name"><Flag name={m.home} />{m.home}{m.homeProv && <span className="bk-prov-mark" title="Posición provisional">·prov</span>}</span>
         {showScore && <span className="bk-team-score">{m.homeGoals}{m.penalties && m.winner === "home" ? "p" : ""}</span>}
       </div>
       <div className={[
         "bk-team",
         m.isTbd      ? "bk-team--tbd"    : "",
+        m.awayProv   ? "bk-team--prov"   : "",
         m.winner === "away" ? "bk-team--winner" : "",
         m.winner === "home" ? "bk-team--loser"  : "",
       ].join(" ").trim()}>
-        <span className="bk-team-name"><Flag name={m.away} />{m.away}</span>
+        <span className="bk-team-name"><Flag name={m.away} />{m.away}{m.awayProv && <span className="bk-prov-mark" title="Posición provisional">·prov</span>}</span>
         {showScore && <span className="bk-team-score">{m.awayGoals}{m.penalties && m.winner === "away" ? "p" : ""}</span>}
       </div>
       {m.live && <div className="bk-live">EN VIVO</div>}
@@ -244,6 +249,7 @@ export default function EliminatoriasPage() {
   const [rightHalf,  setRightHalf]  = useState<BHalf>(RIGHT_HALF);
   const [finalMatch, setFinalMatch] = useState<BMatch>(FINAL_MATCH);
   const [apiNote, setApiNote]       = useState<string | null>(null);
+  const [hasProvisional, setHasProvisional] = useState(false);
 
   useEffect(() => {
     const u = getStoredUser();
@@ -251,19 +257,39 @@ export default function EliminatoriasPage() {
     setUser(u);
   }, [router]);
 
-  const loadData = useCallback(() => {
-    return fetchKnockoutMatches()
-      .then((matches) => {
-        if (matches.length === 0) return; // pre-torneo: mantener datos estáticos
-        const { left, right, final } = buildBracketFromApi(matches);
-        setLeftHalf(left);
-        setRightHalf(right);
-        setFinalMatch(final);
-        setApiNote(null);
-      })
-      .catch(() => {
-        setApiNote("No se pudieron cargar los datos en directo. Mostrando cuadro del sorteo oficial.");
-      });
+  const loadData = useCallback(async () => {
+    try {
+      const [knockout, all] = await Promise.all([fetchKnockoutMatches(), fetchAllMatches()]);
+      const base = knockout.length
+        ? buildBracketFromApi(knockout)
+        : { left: LEFT_HALF, right: RIGHT_HALF, final: FINAL_MATCH };
+
+      // Rellena los huecos del cuadro (dieciseisavos) con la clasificación
+      // provisional de los grupos que ya han empezado. Los equipos reales que ya
+      // dé la API pasan intactos; solo se resuelven los placeholders "1º Gr. X" etc.
+      const resolve = makeBracketResolver(all);
+      let prov = false;
+      const fillCol = (col: BHalf[number]) =>
+        col.map((pair) =>
+          pair.map((m): BMatch => {
+            const h = resolve(m.home);
+            const a = resolve(m.away);
+            if (h.provisional || a.provisional) prov = true;
+            return { ...m, home: h.name, away: a.name, homeProv: h.provisional, awayProv: a.provisional };
+          })
+        );
+      // R32 está en la columna 0 del lado izquierdo y la 3 del derecho.
+      const left = base.left.map((col, ci) => (ci === 0 ? fillCol(col) : col));
+      const right = base.right.map((col, ci) => (ci === 3 ? fillCol(col) : col));
+
+      setLeftHalf(left);
+      setRightHalf(right);
+      setFinalMatch(base.final);
+      setHasProvisional(prov);
+      setApiNote(null);
+    } catch {
+      setApiNote("No se pudieron cargar los datos en directo. Mostrando cuadro del sorteo oficial.");
+    }
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -303,7 +329,9 @@ export default function EliminatoriasPage() {
         {apiNote
           ? <p className="api-notice" style={{ marginBottom: 20 }}>{apiNote}</p>
           : <p className="api-notice" style={{ marginBottom: 20 }}>
-              Los cruces de dieciseisavos son fijos. M.3º = mejor tercer clasificado de los grupos indicados.
+              {hasProvisional
+                ? "Posiciones marcadas «·prov» = clasificación PROVISIONAL según los grupos en curso (cambiarán hasta el final de los grupos). Los terceros son una estimación."
+                : "Los cruces de dieciseisavos son fijos. M.3º = mejor tercer clasificado de los grupos indicados."}
             </p>
         }
 

@@ -2158,6 +2158,23 @@ a {
   background: rgba(246, 192, 80, 0.06);
 }
 
+/* Equipo en posición provisional (clasificación de grupos en curso). */
+.bk-team--prov .bk-team-name {
+  font-style: italic;
+  color: var(--text-dim);
+}
+
+.bk-prov-mark {
+  margin-left: 5px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--gold);
+  opacity: 0.85;
+  vertical-align: super;
+}
+
 .bk-team {
   display: flex;
   align-items: center;
