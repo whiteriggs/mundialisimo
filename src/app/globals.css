@@ -1600,7 +1600,7 @@ a {
 .match-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 12px;
   padding: 8px 12px;
   background: var(--bg-3);
@@ -1610,11 +1610,21 @@ a {
 }
 
 .match-card-info {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
+  gap: 12px;
+  width: 100%;
+  max-width: 420px;
   white-space: nowrap;
+}
+
+.match-card-info .match-home {
+  justify-content: flex-end;
+}
+
+.match-card-info .match-away {
+  justify-content: flex-start;
 }
 
 .match-gains {
