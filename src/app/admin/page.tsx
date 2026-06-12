@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { generateText } from "@/lib/gemini";
 import { fetchAllMatches } from "@/lib/football-api";
+import NewspaperChronicle from "@/components/NewspaperChronicle";
 import { Match, buildTeamTotals, calcUserScore } from "@/lib/scoring";
 import { db } from "@/lib/firebase";
 import { groupDoc } from "@/lib/db";
@@ -621,9 +622,18 @@ Reglas de formato: usa emojis con moderación dentro de los textos; NO uses la b
               </button>
             ) : (
               <>
-                <div style={{ whiteSpace: "pre-wrap", background: "#1a1a2e", color: "#e8e8f0", border: "1px solid #444", borderRadius: "6px", padding: "1rem", marginBottom: "1rem", fontSize: "0.9rem", maxHeight: "400px", overflowY: "auto" }}>
-                  {chroniclePreview}
+                <p className="muted" style={{ marginBottom: "0.75rem", fontSize: "0.85rem" }}>
+                  Vista previa (así se verá en <a href="/cronica" target="_blank" rel="noreferrer">/cronica</a>):
+                </p>
+                <div style={{ marginBottom: "1rem" }}>
+                  <NewspaperChronicle text={chroniclePreview} dateLabel={new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })} />
                 </div>
+                <details style={{ marginBottom: "1rem" }}>
+                  <summary style={{ cursor: "pointer", fontSize: "0.85rem", color: "#888" }}>Ver texto generado (crudo)</summary>
+                  <div style={{ whiteSpace: "pre-wrap", background: "#1a1a2e", color: "#e8e8f0", border: "1px solid #444", borderRadius: "6px", padding: "1rem", marginTop: "0.5rem", fontSize: "0.85rem", maxHeight: "300px", overflowY: "auto" }}>
+                    {chroniclePreview}
+                  </div>
+                </details>
                 <div style={{ display: "flex", gap: "0.75rem" }}>
                   <button className="btn" onClick={handlePublishChronicle} disabled={chroniclePublishing}>
                     {chroniclePublishing ? "Publicando…" : "Publicar crónica"}
