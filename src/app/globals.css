@@ -3438,4 +3438,88 @@ body[data-sidebar="expanded"] .app-shell {
   }
 }
 
+/* ── Gráfica histórico de puntos (estilo Grafana) ────────────────────── */
+.ph-wrap {
+  background: #0e1116;
+  border: 1px solid #1f2630;
+  border-radius: 10px;
+  padding: 14px 14px 10px;
+}
+
+.ph-chart {
+  width: 100%;
+}
+
+.ph-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.ph-grid {
+  stroke: #232b36;
+  stroke-width: 1;
+}
+
+.ph-grid-zero {
+  stroke: #3a4756;
+  stroke-dasharray: 3 3;
+}
+
+.ph-axis-label {
+  fill: #6b7888;
+  font-size: 10px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.ph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #1f2630;
+}
+
+.ph-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #161b22;
+  border: 1px solid #232b36;
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+}
+
+.ph-legend-item:hover,
+.ph-legend-on {
+  background: #1c2330;
+  border-color: #3a4756;
+}
+
+.ph-legend-me {
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+
+.ph-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ph-legend-name {
+  font-weight: 600;
+}
+
+.ph-legend-pts {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
 

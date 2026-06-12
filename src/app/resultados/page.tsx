@@ -12,6 +12,7 @@ import { buildTeamTotals, matchPoints, Match } from "@/lib/scoring";
 import { fetchAllMatches, ApiAllMatch, isLiveStatus } from "@/lib/football-api";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { buildStaticSchedule } from "@/lib/static-schedule";
+import PointsHistoryChart, { ChartSeries } from "@/components/PointsHistoryChart";
 
 type BetDoc = {
   user: string;
@@ -137,6 +138,25 @@ export default function ResultadosPage() {
     return { columns, perMatch, liveIds };
   }, [allApiMatches, manualMatches, rankings]);
 
+  // Histórico de puntos acumulados por participante (para la gráfica).
+  const history = useMemo(() => {
+    const labels = roundData.columns.map((m) => `${teamCode(m.home)}-${teamCode(m.away)}`);
+    const series: ChartSeries[] = rankings
+      .filter((r) => r.confirmed)
+      .map((r) => {
+        const per = roundData.perMatch[r.uid] ?? [];
+        let acc = 0;
+        const points = [0];
+        for (let i = 0; i < roundData.columns.length; i++) {
+          const v = per[i];
+          acc += Number.isNaN(v) ? 0 : v;
+          points.push(acc);
+        }
+        return { uid: r.uid, name: r.user, points };
+      });
+    return { labels, series };
+  }, [roundData, rankings]);
+
   function handleLogout() {
     clearUser();
     router.push("/login");
@@ -178,6 +198,18 @@ export default function ResultadosPage() {
           {apiError && (
             <div className="results-section">
               <p className="api-notice">Los datos de partidos se cargarán automáticamente cuando empiece el Mundial (11 jun 2026).</p>
+            </div>
+          )}
+
+          {/* Histórico de puntos (gráfica de evolución) */}
+          {history.series.length > 0 && history.labels.length > 0 && (
+            <div className="results-section">
+              <h2 className="results-title">Evolución de puntos</h2>
+              <PointsHistoryChart
+                labels={history.labels}
+                series={history.series}
+                currentUid={currentUser?.toLowerCase()}
+              />
             </div>
           )}
 
