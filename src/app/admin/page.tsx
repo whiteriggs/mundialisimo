@@ -259,13 +259,18 @@ TONO: sarcástico, gamberro y divertido, pero sin crueldad real y SIN palabrotas
 
 REGLAS DE LA PORRA (para no confundir conceptos):\n- Cada participante elige equipos FAVORITOS y ANTIFAVORITOS.\n- Cada equipo tiene un VALOR DE APUESTA (1 a 4): es solo el coste de incluirlo, NO son puntos de torneo. 4 = gran favorito del grupo, 1 = farolillo rojo.\n- Acertar = que tus FAVORITOS ganen y tus ANTIFAVORITOS pierdan. Lo más ridículo es apostar un favorito fuerte que pierde, o poner de antifavorito a un equipo que acaba ganando.
 
-EQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nQUIÉN TIENE CADA EQUIPO (favorito / antifavorito de quién):\n${teamOwnersInfo}\n\nAPUESTAS DE CADA UNO (referencia):\n${betsInfo}\n\nCLASIFICACIÓN ACTUAL DE LA PORRA:\n${leaderboardInfo}\n\nPARTIDOS DE LA JORNADA (finalizados en las últimas 24h, a comentar):\n${matchesInfo}\n\nESCRIBE LA CRÓNICA CON ESTA ESTRUCTURA EXACTA Y NADA MÁS:
+EQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nQUIÉN TIENE CADA EQUIPO (favorito / antifavorito de quién):\n${teamOwnersInfo}\n\nAPUESTAS DE CADA UNO (referencia):\n${betsInfo}\n\nCLASIFICACIÓN ACTUAL DE LA PORRA:\n${leaderboardInfo}\n\nPARTIDOS DE LA JORNADA (finalizados en las últimas 24h, a comentar):\n${matchesInfo}\n\nDEVUELVE EXACTAMENTE ESTE FORMATO DE TEXTO (sin markdown, sin asteriscos, sin texto extra antes o después). Respeta las etiquetas en MAYÚSCULAS al inicio de línea:
 
-🌍 CRÓNICA DE LA JORNADA\n[Resumen MUY corto, 1-2 líneas, sarcástico, de lo que ha dado de sí la jornada según los partidos finalizados listados.]
+TITULAR: [un titular de portada sensacionalista y gracioso, estilo diario deportivo, sobre lo más jugoso de la jornada. Máx. 12 palabras]
+ENTRADILLA: [una sola frase de subtítulo, irónica, que resuma la jornada]
+CRONICA:
+[1 o 2 párrafos cortos (2-4 frases en total) comentando con sarcasmo los partidos finalizados de la lista. Tono de columnista gamberro.]
+RANKING:
+[Una línea por participante, en el ORDEN de la clasificación actual, con este formato EXACTO:
+posición | Nombre | comentario sarcástico breve
+Para cada uno cruza SUS apuestas con los RESULTADOS DE LA JORNADA: cébate (con gracia) con quien tenga un FAVORITO que ha perdido o un ANTIFAVORITO que ha ganado en esta jornada; a quien le fue bien, reconócelo a regañadientes. Trato SUAVE con Adri y Mariona. Un comentario por persona, sin saltarte a nadie.]
 
-🏆 POWER RANKING DE LA PORRA\n[Repasa la clasificación de la porra metiéndote con TODOS, uno por uno y en plan coña. Para cada persona cruza SUS apuestas con los RESULTADOS DE LA JORNADA: si un FAVORITO suyo ha perdido o un ANTIFAVORITO suyo ha ganado en esta jornada, cébate con gracia; si le ha ido bien, reconócelo a regañadientes. Pon MÁS énfasis sarcástico en quienes apostaron por favoritos que han perdido o antifavoritos que han ganado en esta jornada. Nombra a la gente. Mantén el trato suave con Adri y Mariona.]
-
-Usa emojis, sé breve y con chispa. No añadas otras secciones ni veredictos extra.${extraContext ? `\n\nCONTEXTO ADICIONAL (tenlo en cuenta al escribir la crónica):\n${extraContext}` : ""}`;
+Reglas de formato: usa emojis con moderación dentro de los textos; NO uses la barra vertical "|" salvo como separador del ranking; NO añadas ninguna sección, cabecera ni despedida fuera de las etiquetas indicadas.${extraContext ? `\n\nCONTEXTO ADICIONAL (tenlo en cuenta al escribir la crónica):\n${extraContext}` : ""}`;
   }
 
   async function handleGenerateChronicle() {
