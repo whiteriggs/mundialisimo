@@ -261,9 +261,9 @@ REGLAS DE LA PORRA (para no confundir conceptos):\n- Cada participante elige equ
 
 EQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nQUIÉN TIENE CADA EQUIPO (favorito / antifavorito de quién):\n${teamOwnersInfo}\n\nAPUESTAS DE CADA UNO (referencia):\n${betsInfo}\n\nCLASIFICACIÓN ACTUAL DE LA PORRA:\n${leaderboardInfo}\n\nPARTIDOS DE LA JORNADA (resultados finalizados a comentar):\n${matchesInfo}\n\nESCRIBE LA CRÓNICA CON ESTA ESTRUCTURA EXACTA Y NADA MÁS:
 
-🌍 CRÓNICA DE LA JORNADA\n[Resumen MUY corto, 1-2 líneas, sarcástico, de lo que ha dado de sí la jornada de hoy según los partidos finalizados.]
+🌍 CRÓNICA DE LA JORNADA\n[Resumen MUY corto, 1-2 líneas, sarcástico, de lo que ha dado de sí la jornada según los partidos finalizados listados.]
 
-🏆 POWER RANKING DE LA PORRA\n[Repasa la clasificación de la porra metiéndote con TODOS, uno por uno y en plan coña. Para cada persona cruza SUS apuestas con los RESULTADOS DE HOY: si un FAVORITO suyo ha perdido hoy o un ANTIFAVORITO suyo ha ganado hoy, cébate con gracia; si le ha ido bien, reconócelo a regañadientes. Pon MÁS énfasis sarcástico en quienes apostaron por favoritos que hoy han perdido o antifavoritos que hoy han ganado. Nombra a la gente. Mantén el trato suave con Adri y Mariona.]
+🏆 POWER RANKING DE LA PORRA\n[Repasa la clasificación de la porra metiéndote con TODOS, uno por uno y en plan coña. Para cada persona cruza SUS apuestas con los RESULTADOS DE LA JORNADA: si un FAVORITO suyo ha perdido o un ANTIFAVORITO suyo ha ganado en esta jornada, cébate con gracia; si le ha ido bien, reconócelo a regañadientes. Pon MÁS énfasis sarcástico en quienes apostaron por favoritos que han perdido o antifavoritos que han ganado en esta jornada. Nombra a la gente. Mantén el trato suave con Adri y Mariona.]
 
 Usa emojis, sé breve y con chispa. No añadas otras secciones ni veredictos extra.${extraContext ? `\n\nCONTEXTO ADICIONAL (tenlo en cuenta al escribir la crónica):\n${extraContext}` : ""}`;
   }
@@ -282,29 +282,41 @@ Usa emojis, sé breve y con chispa. No añadas otras secciones ni veredictos ext
         allBets[u] = { favorites: data.favorites ?? [], antiFavorites: data.antiFavorites ?? [], superFavorite: data.superFavorite ?? null };
       }
 
-      // Resultados: todos los finalizados (para la clasificación acumulada) y,
-      // aparte, solo los de HOY (zona Madrid) para que la crónica sea de la jornada.
-      const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-      const dayKey = (utc: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(utc));
+      // Día "futbolístico": termina de madrugada, no a medianoche. Restamos 6h
+      // antes de calcular la fecha (zona Madrid), así un partido a las 02:00
+      // cuenta como la noche del día anterior → misma jornada que los de la tarde.
+      const footballDay = (utc: string) => {
+        const shifted = new Date(new Date(utc).getTime() - 6 * 60 * 60 * 1000);
+        return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" }).format(shifted);
+      };
       const playedMatches: Match[] = [];
-      const jornadaMatches: Match[] = [];
+      const apiPlayed: { match: Match; day: string }[] = [];
       try {
         const apiMatches = await fetchAllMatches();
         apiMatches.filter(m => m.played).forEach(m => {
           const match: Match = { id: m.id, home: m.home, away: m.away, homeGoals: m.homeGoals ?? 0, awayGoals: m.awayGoals ?? 0, phase: m.phase, penalties: m.penalties ?? false, played: true };
           playedMatches.push(match);
-          if (dayKey(m.utcDate) === hoy) jornadaMatches.push(match);
+          apiPlayed.push({ match, day: footballDay(m.utcDate) });
         });
       } catch { /* API unavailable, continue */ }
+      const manualPlayed: Match[] = [];
       const manualSnap = await getDocs(collection(db, "matches"));
       manualSnap.docs.forEach(d => {
         const data = d.data() as Omit<Match, "id">;
         if (data.played) {
           const match: Match = { id: d.id, ...data };
           playedMatches.push(match);
-          jornadaMatches.push(match);
+          manualPlayed.push(match);
         }
       });
+
+      // Jornada = última "día futbolístico" con partidos finalizados. Los
+      // manuales (entrada del admin) se incluyen siempre por ser curados.
+      const latestDay = apiPlayed.reduce((max, x) => (x.day > max ? x.day : max), "");
+      const jornadaMatches: Match[] = [
+        ...apiPlayed.filter(x => x.day === latestDay).map(x => x.match),
+        ...manualPlayed,
+      ];
 
       // Clasificación acumulada de la porra (con TODOS los partidos jugados).
       const teamTotals = buildTeamTotals(playedMatches);
