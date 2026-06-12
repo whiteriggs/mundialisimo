@@ -2560,6 +2560,14 @@ a {
   font-size: 0.85rem;
 }
 
+.next-match-score {
+  font-weight: 800;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  color: #e5484d;
+  padding: 0 0.2rem;
+}
+
 .next-match-kickoff {
   color: var(--text-dim);
   font-size: 0.82rem;
@@ -2685,6 +2693,14 @@ a {
 .next-match-pill-vs {
   color: var(--text-dim);
   font-size: 0.8rem;
+}
+
+.next-match-pill-score {
+  font-weight: 800;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  color: #e5484d;
+  padding: 0 0.15rem;
 }
 
 .next-match-pill-time {

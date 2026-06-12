@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Flag from "@/components/Flag";
 import { fetchAllMatches, type ApiAllMatch } from "@/lib/football-api";
+import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { tvChannelsFor } from "@/lib/tv-channels";
 
 type Remaining = { d: number; h: number; m: number; s: number } | null;
@@ -50,6 +51,19 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
     };
   }, []);
 
+  // Refresca periódicamente para que el marcador en directo se actualice.
+  const refresh = useCallback(() => {
+    fetchAllMatches()
+      .then((all) => {
+        const future = all
+          .filter((m) => !m.played)
+          .sort((a, b) => new Date(a.utcDate).getTime() - new Date(b.utcDate).getTime());
+        setUpcoming(future);
+      })
+      .catch(() => {});
+  }, []);
+  useLiveRefresh(refresh);
+
   useEffect(() => {
     if (upcoming.length === 0) {
       setMatch(null);
@@ -96,6 +110,7 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
         ? `${left.d}d ${pad(left.h)}:${pad(left.m)}:${pad(left.s)}`
         : `${pad(left.h)}:${pad(left.m)}:${pad(left.s)}`
       : null;
+    const hasScore = match.homeGoals !== null && match.awayGoals !== null;
     return (
       <div
         className={`next-match-pill${live ? " is-live" : ""}`}
@@ -107,7 +122,11 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
       >
         <span className="next-match-pill-label">{live ? "En directo" : "Próximo"}</span>
         <Flag name={match.home} />
-        <span className="next-match-pill-vs">vs</span>
+        {live && hasScore ? (
+          <span className="next-match-pill-score">{match.homeGoals}-{match.awayGoals}</span>
+        ) : (
+          <span className="next-match-pill-vs">vs</span>
+        )}
         <Flag name={match.away} />
         {live ? (
           <span className="next-match-pill-time next-match-pill-live">●</span>
@@ -126,7 +145,11 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
           <Flag name={match.home} />
           {match.home}
         </span>
-        <span className="next-match-vs">vs</span>
+        {live && match.homeGoals !== null && match.awayGoals !== null ? (
+          <span className="next-match-score">{match.homeGoals}-{match.awayGoals}</span>
+        ) : (
+          <span className="next-match-vs">vs</span>
+        )}
         <span className="next-match-team">
           <Flag name={match.away} />
           {match.away}
