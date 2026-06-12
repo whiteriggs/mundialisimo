@@ -251,7 +251,7 @@ export default function AdminPage() {
     const leaderboardInfo = leaderboard.length === 0
       ? "Sin partidos jugados aún, todos a 0 puntos."
       : leaderboard.map((e, i) => `  ${i + 1}. ${e.uname}: ${e.score} pts`).join("\n");
-    return `Eres «LaIA», la reportera estrella —y muy sarcástica— de la Porra del Mundial 2026. Escribes en primera persona, con mala leche cariñosa, ingenio y emojis. Tu crónica es de UNA jornada concreta: SOLO comentas los partidos FINALIZADOS que aparecen en "PARTIDOS DE LA JORNADA". No inventes resultados ni menciones partidos que no estén en esa lista.
+    return `Eres «LaIA», la reportera estrella —y muy sarcástica— de la Porra del Mundial 2026. Escribes en primera persona, con mala leche cariñosa, ingenio y emojis. Tu crónica cubre los partidos de las ÚLTIMAS 24 HORAS: SOLO comentas los partidos FINALIZADOS que aparecen en "PARTIDOS DE LA JORNADA". No inventes resultados ni menciones partidos que no estén en esa lista.
 
 PARTICIPANTES Y SUS MANÍAS (úsalas como guía sutil de tono; NO las cites literalmente, NO las uses todas ni las repitas, solo cuando venga a cuento y con naturalidad):\n- Esteban: siempre llega tarde a todo.\n- Jorge: dice que trabaja de noche y se escapa de vacaciones al pueblo cada dos por tres.\n- Juan: promete que viene y siempre nos deja tirados.\n- Manuel: presume de viajar y de estar ocupadísimo, pero es un Willy Fog que no para quieto sin hacer gran cosa.\n- Jordi: madruga para salir con la bici a las 5 de la mañana.\n- Javi: el de los gadgets, siempre con su perro Riggs.\n- Capde: corre, va en bici y trabaja muchísimo.\n- Iris: profesora y ahora directora del cole.\n- Ester: de Zarza, melena corta, jugaba al basket.\n- JuanRa: curra sin parar, aparece de vez en cuando, hijos ya mayores.\n- Sebas: argentino y algo despistado.\n- Adri y Mariona: deportistas (basket y fútbol). Con ellos SÉ SUAVE: bromas cariñosas, nada de sarcasmo duro. NO menciones su edad ni que son pequeños.
 
@@ -259,7 +259,7 @@ TONO: sarcástico, gamberro y divertido, pero sin crueldad real y SIN palabrotas
 
 REGLAS DE LA PORRA (para no confundir conceptos):\n- Cada participante elige equipos FAVORITOS y ANTIFAVORITOS.\n- Cada equipo tiene un VALOR DE APUESTA (1 a 4): es solo el coste de incluirlo, NO son puntos de torneo. 4 = gran favorito del grupo, 1 = farolillo rojo.\n- Acertar = que tus FAVORITOS ganen y tus ANTIFAVORITOS pierdan. Lo más ridículo es apostar un favorito fuerte que pierde, o poner de antifavorito a un equipo que acaba ganando.
 
-EQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nQUIÉN TIENE CADA EQUIPO (favorito / antifavorito de quién):\n${teamOwnersInfo}\n\nAPUESTAS DE CADA UNO (referencia):\n${betsInfo}\n\nCLASIFICACIÓN ACTUAL DE LA PORRA:\n${leaderboardInfo}\n\nPARTIDOS DE LA JORNADA (resultados finalizados a comentar):\n${matchesInfo}\n\nESCRIBE LA CRÓNICA CON ESTA ESTRUCTURA EXACTA Y NADA MÁS:
+EQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nQUIÉN TIENE CADA EQUIPO (favorito / antifavorito de quién):\n${teamOwnersInfo}\n\nAPUESTAS DE CADA UNO (referencia):\n${betsInfo}\n\nCLASIFICACIÓN ACTUAL DE LA PORRA:\n${leaderboardInfo}\n\nPARTIDOS DE LA JORNADA (finalizados en las últimas 24h, a comentar):\n${matchesInfo}\n\nESCRIBE LA CRÓNICA CON ESTA ESTRUCTURA EXACTA Y NADA MÁS:
 
 🌍 CRÓNICA DE LA JORNADA\n[Resumen MUY corto, 1-2 líneas, sarcástico, de lo que ha dado de sí la jornada según los partidos finalizados listados.]
 
@@ -282,21 +282,18 @@ Usa emojis, sé breve y con chispa. No añadas otras secciones ni veredictos ext
         allBets[u] = { favorites: data.favorites ?? [], antiFavorites: data.antiFavorites ?? [], superFavorite: data.superFavorite ?? null };
       }
 
-      // Día "futbolístico": termina de madrugada, no a medianoche. Restamos 6h
-      // antes de calcular la fecha (zona Madrid), así un partido a las 02:00
-      // cuenta como la noche del día anterior → misma jornada que los de la tarde.
-      const footballDay = (utc: string) => {
-        const shifted = new Date(new Date(utc).getTime() - 6 * 60 * 60 * 1000);
-        return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" }).format(shifted);
-      };
+      // Jornada = partidos finalizados cuyo inicio (utcDate) cae dentro de las
+      // últimas 24h. Cada partido trae su hora de inicio, así que comparamos con
+      // (ahora − 24h). Los manuales del admin se incluyen siempre (curados).
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
       const playedMatches: Match[] = [];
-      const apiPlayed: { match: Match; day: string }[] = [];
+      const apiPlayed: { match: Match; start: number }[] = [];
       try {
         const apiMatches = await fetchAllMatches();
         apiMatches.filter(m => m.played).forEach(m => {
           const match: Match = { id: m.id, home: m.home, away: m.away, homeGoals: m.homeGoals ?? 0, awayGoals: m.awayGoals ?? 0, phase: m.phase, penalties: m.penalties ?? false, played: true };
           playedMatches.push(match);
-          apiPlayed.push({ match, day: footballDay(m.utcDate) });
+          apiPlayed.push({ match, start: new Date(m.utcDate).getTime() });
         });
       } catch { /* API unavailable, continue */ }
       const manualPlayed: Match[] = [];
@@ -310,11 +307,8 @@ Usa emojis, sé breve y con chispa. No añadas otras secciones ni veredictos ext
         }
       });
 
-      // Jornada = última "día futbolístico" con partidos finalizados. Los
-      // manuales (entrada del admin) se incluyen siempre por ser curados.
-      const latestDay = apiPlayed.reduce((max, x) => (x.day > max ? x.day : max), "");
       const jornadaMatches: Match[] = [
-        ...apiPlayed.filter(x => x.day === latestDay).map(x => x.match),
+        ...apiPlayed.filter(x => x.start >= cutoff).map(x => x.match),
         ...manualPlayed,
       ];
 
