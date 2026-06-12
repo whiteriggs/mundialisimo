@@ -19,25 +19,12 @@ function colorFor(i: number) {
   return PALETTE[i % PALETTE.length];
 }
 
-// Construye un path "suave" (Catmull-Rom → Bézier) para que las líneas se vean
-// modernas y fluidas como en Grafana.
-function smoothPath(pts: { x: number; y: number }[]): string {
+// Path con segmentos rectos entre puntos. Usamos líneas rectas (no curvas) porque
+// los valores son puntos ACUMULADOS reales: una curva suave haría "overshoot" y
+// dibujaría jorobas por encima de valores que nunca se alcanzaron.
+function linePath(pts: { x: number; y: number }[]): string {
   if (pts.length === 0) return "";
-  if (pts.length === 1) return `M ${pts[0].x} ${pts[0].y}`;
-  let d = `M ${pts[0].x} ${pts[0].y}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] ?? pts[i];
-    const p1 = pts[i];
-    const p2 = pts[i + 1];
-    const p3 = pts[i + 2] ?? p2;
-    const t = 0.18;
-    const c1x = p1.x + (p2.x - p0.x) * t;
-    const c1y = p1.y + (p2.y - p0.y) * t;
-    const c2x = p2.x - (p3.x - p1.x) * t;
-    const c2y = p2.y - (p3.y - p1.y) * t;
-    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
-  }
-  return d;
+  return pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
 }
 
 export default function PointsHistoryChart({
@@ -123,7 +110,7 @@ export default function PointsHistoryChart({
             return (
               <g key={s.uid} opacity={dimmed ? 0.15 : 1} style={{ transition: "opacity 150ms" }}>
                 <path
-                  d={smoothPath(pts)}
+                  d={linePath(pts)}
                   fill="none"
                   stroke={c}
                   strokeWidth={isHi ? 3.4 : isMe ? 2.8 : 1.8}
