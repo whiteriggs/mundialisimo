@@ -67,9 +67,9 @@ export default function CronicaPage() {
         <div className="hero-inner">
           <div className="hero-crest placeholder">📰</div>
           <div className="hero-text">
-            <div className="hero-eyebrow">Mundial 2026 · Análisis IA</div>
+            <div className="hero-eyebrow">Mundial 2026 · Reportera LaIA</div>
             <h2 className="hero-name">Crónica de la Porra</h2>
-            <p className="lead">El power ranking sarcástico generado con Gemini.</p>
+            <p className="lead">La jornada y el power ranking, por LaIA, nuestra reportera con muy mala leche.</p>
           </div>
         </div>
       </section>

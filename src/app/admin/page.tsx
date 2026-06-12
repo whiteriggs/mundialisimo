@@ -209,7 +209,7 @@ export default function AdminPage() {
 
   function buildChroniclePrompt(
     allBets: Record<string, { favorites: string[]; antiFavorites: string[]; superFavorite: string | null }>,
-    playedMatches: Match[],
+    jornadaMatches: Match[],
     leaderboard: { uname: string; score: number }[],
     extraContext = ""
   ): string {
@@ -222,12 +222,11 @@ export default function AdminPage() {
       const antiNames = data.antiFavorites.map(id => TEAMS.find(t => t.id === id)?.name ?? id).join(", ");
       return `${uname}:\n  Favoritos: ${favNames || "ninguno"}\n  Antifavoritos: ${antiNames || "ninguno"}\n  Superfavorito: ${sfTeam ? sfTeam.name : "ninguno"}`;
     }).join("\n\n");
-    const matchesInfo = playedMatches.length === 0
-      ? "Aún no se han jugado partidos (análisis pre-torneo)."
-      : playedMatches.map(m =>
+    const matchesInfo = jornadaMatches.length === 0
+      ? "No se han jugado partidos en esta jornada."
+      : jornadaMatches.map(m =>
           `${m.home} ${m.homeGoals}-${m.awayGoals} ${m.away}${m.penalties ? " (pen.)" : ""}`
         ).join("\n");
-    const hasMatches = playedMatches.length > 0;
     // Build team → participants lookup
     const teamOwners: Record<string, { favs: string[]; antis: string[] }> = {};
     Object.entries(allBets).forEach(([uname, data]) => {
@@ -252,22 +251,21 @@ export default function AdminPage() {
     const leaderboardInfo = leaderboard.length === 0
       ? "Sin partidos jugados aún, todos a 0 puntos."
       : leaderboard.map((e, i) => `  ${i + 1}. ${e.uname}: ${e.score} pts`).join("\n");
-    const torneoStarted = new Date() >= new Date("2026-06-11");
-    const modoTexto = torneoStarted
-      ? "MODO ACTIVO: CRÓNICA DE JORNADA. Analiza los resultados del contexto, menciona cómo afectan a la porra e incluye el ranking actual con sarcasmo."
-      : "MODO ACTIVO: CRÓNICA PRE-MUNDIAL. Usa el CONTEXTO ADICIONAL (resultados de amistosos, datos, anécdotas) para comentar y conectar con los participantes. Produce una crónica periodística sarcástica. PROHIBIDO generar un ranking por persona o analizar apuestas individualmente.";
-    const rankingSection = torneoStarted
-      ? `\n\nCLASIFICACIÓN ACTUAL DE LA PORRA:\n${leaderboardInfo}`
-      : "";
-    const instruccion = torneoStarted
-      ? "Usa el CONTEXTO ADICIONAL como base. Comenta cada resultado con ironía y mala leche, mencionando a los participantes que tienen ese equipo. Incluye una sección de ranking con comentarios sarcásticos sobre los puestos. La unidad es el hecho deportivo, no la persona. Usa emojis, sé divertido."
-      : "Usa el CONTEXTO ADICIONAL como base. Comenta cada resultado o hecho con ironía y mala leche, mencionando a los participantes que tienen ese equipo según QUIÉN TIENE CADA EQUIPO. NO hagas un ranking por persona ni analices apuestas individualmente. La unidad es el hecho deportivo, no la persona. Usa emojis, sé divertido.";
-    const estructura = torneoStarted
-      ? `Estructura:\n\n🌍 CRÓNICA JORNADA\n\n[Íntro breve y sarcástica, 2-3 frases]\n\n⚽ [RESULTADO/HECHO 1 del contexto]\n[Comentario sarcástico + quién de la porra se ve afectado]\n\n⚽ [RESULTADO/HECHO 2]\n...\n\n🏆 EL POWER RANKING OFICIAL DE LA PORRA\n[Clasifica a los participantes del 1.º al último con un comentario cruel y gracioso para cada uno]\n\n🏁 VEREDICTO DE LA JORNADA\n[Cierre corto y cruel]`
-      : `Estructura (pre-torneo):\n\n🌍 CRÓNICA PRE-MUNDIAL\n\n[Íntro breve y sarcástica, 2-3 frases]\n\n⚽ [RESULTADO/HECHO 1 del contexto]\n[Comentario sarcástico + quién de la porra se ve afectado]\n\n⚽ [RESULTADO/HECHO 2]\n...\n\n🏁 VEREDICTO ANTES DEL PITAZO\n[Cierre corto y cruel]`;
-    return `Eres el analista oficial —sarcástico, con mala leche cariñosa y muy gracioso— de la Porra del Mundial 2026. ${modoTexto}\n\nPARTICIPANTES: Esteban, Juan, Manuel, Jordi, Iris, Capde, Javi, Jorge, JuanRa, Ester, Mariona (niña, sé siempre animosa con ella), Adri (niño, sé siempre animoso con él). Con el resto puedes ser sarcástico. No menciones la edad de Mariona ni de Adri. No uses palabrotas.
+    return `Eres «LaIA», la reportera estrella —y muy sarcástica— de la Porra del Mundial 2026. Escribes en primera persona, con mala leche cariñosa, ingenio y emojis. Tu crónica es de UNA jornada concreta: SOLO comentas los partidos FINALIZADOS que aparecen en "PARTIDOS DE LA JORNADA". No inventes resultados ni menciones partidos que no estén en esa lista.
 
-REGLAS DE LA PORRA (léelas para no confundir conceptos):\n- Cada participante elige equipos FAVORITOS y ANTIFAVORITOS.\n- Cada equipo tiene un VALOR DE APUESTA (1 a 4): no son puntos de torneo, es solo el coste para incluirlo en la apuesta.\n  · Valor 4 = gran favorito del grupo, Valor 3 = segundo, Valor 2 = tercero, Valor 1 = farolillo rojo.\n- El SUPERFAVORITO es un favorito cuyo valor se usará como desempate final (no altera los totales).\n- IMPORTANTE: los valores que aparecen en las apuestas (ej. "España(4)") son estos valores de apuesta (1-4), NO son puntos ganados en el torneo. NO intentes calcular puntos de torneo a partir de ellos.\n- Los ANTIFAVORITOS deben ser equipos flojos: meter un gigante de antifavorito es un error enorme.\n\nEQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nQUIÉN TIENE CADA EQUIPO:\n${teamOwnersInfo}\n\nAPUESTAS (solo referencia, no analices):\n${betsInfo}${rankingSection}\n\n${instruccion}\n\n${estructura}${extraContext ? `\n\nCONTEXTO ADICIONAL (tenlo en cuenta al escribir la crónica):\n${extraContext}` : ""}`;
+PARTICIPANTES Y SUS MANÍAS (úsalas como guía sutil de tono; NO las cites literalmente, NO las uses todas ni las repitas, solo cuando venga a cuento y con naturalidad):\n- Esteban: siempre llega tarde a todo.\n- Jorge: dice que trabaja de noche y se escapa de vacaciones al pueblo cada dos por tres.\n- Juan: promete que viene y siempre nos deja tirados.\n- Manuel: presume de viajar y de estar ocupadísimo, pero es un Willy Fog que no para quieto sin hacer gran cosa.\n- Jordi: madruga para salir con la bici a las 5 de la mañana.\n- Javi: el de los gadgets, siempre con su perro Riggs.\n- Capde: corre, va en bici y trabaja muchísimo.\n- Iris: profesora y ahora directora del cole.\n- Ester: de Zarza, melena corta, jugaba al basket.\n- JuanRa: curra sin parar, aparece de vez en cuando, hijos ya mayores.\n- Sebas: argentino y algo despistado.\n- Adri y Mariona: deportistas (basket y fútbol). Con ellos SÉ SUAVE: bromas cariñosas, nada de sarcasmo duro. NO menciones su edad ni que son pequeños.
+
+TONO: sarcástico, gamberro y divertido, pero sin crueldad real y SIN palabrotas.
+
+REGLAS DE LA PORRA (para no confundir conceptos):\n- Cada participante elige equipos FAVORITOS y ANTIFAVORITOS.\n- Cada equipo tiene un VALOR DE APUESTA (1 a 4): es solo el coste de incluirlo, NO son puntos de torneo. 4 = gran favorito del grupo, 1 = farolillo rojo.\n- Acertar = que tus FAVORITOS ganen y tus ANTIFAVORITOS pierdan. Lo más ridículo es apostar un favorito fuerte que pierde, o poner de antifavorito a un equipo que acaba ganando.
+
+EQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nQUIÉN TIENE CADA EQUIPO (favorito / antifavorito de quién):\n${teamOwnersInfo}\n\nAPUESTAS DE CADA UNO (referencia):\n${betsInfo}\n\nCLASIFICACIÓN ACTUAL DE LA PORRA:\n${leaderboardInfo}\n\nPARTIDOS DE LA JORNADA (resultados finalizados a comentar):\n${matchesInfo}\n\nESCRIBE LA CRÓNICA CON ESTA ESTRUCTURA EXACTA Y NADA MÁS:
+
+🌍 CRÓNICA DE LA JORNADA\n[Resumen MUY corto, 1-2 líneas, sarcástico, de lo que ha dado de sí la jornada de hoy según los partidos finalizados.]
+
+🏆 POWER RANKING DE LA PORRA\n[Repasa la clasificación de la porra metiéndote con TODOS, uno por uno y en plan coña. Para cada persona cruza SUS apuestas con los RESULTADOS DE HOY: si un FAVORITO suyo ha perdido hoy o un ANTIFAVORITO suyo ha ganado hoy, cébate con gracia; si le ha ido bien, reconócelo a regañadientes. Pon MÁS énfasis sarcástico en quienes apostaron por favoritos que hoy han perdido o antifavoritos que hoy han ganado. Nombra a la gente. Mantén el trato suave con Adri y Mariona.]
+
+Usa emojis, sé breve y con chispa. No añadas otras secciones ni veredictos extra.${extraContext ? `\n\nCONTEXTO ADICIONAL (tenlo en cuenta al escribir la crónica):\n${extraContext}` : ""}`;
   }
 
   async function handleGenerateChronicle() {
@@ -284,21 +282,31 @@ REGLAS DE LA PORRA (léelas para no confundir conceptos):\n- Cada participante e
         allBets[u] = { favorites: data.favorites ?? [], antiFavorites: data.antiFavorites ?? [], superFavorite: data.superFavorite ?? null };
       }
 
-      // Read played matches: API + manual Firestore
+      // Resultados: todos los finalizados (para la clasificación acumulada) y,
+      // aparte, solo los de HOY (zona Madrid) para que la crónica sea de la jornada.
+      const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      const dayKey = (utc: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(utc));
       const playedMatches: Match[] = [];
+      const jornadaMatches: Match[] = [];
       try {
         const apiMatches = await fetchAllMatches();
         apiMatches.filter(m => m.played).forEach(m => {
-          playedMatches.push({ id: m.id, home: m.home, away: m.away, homeGoals: m.homeGoals ?? 0, awayGoals: m.awayGoals ?? 0, phase: m.phase, penalties: m.penalties ?? false, played: true });
+          const match: Match = { id: m.id, home: m.home, away: m.away, homeGoals: m.homeGoals ?? 0, awayGoals: m.awayGoals ?? 0, phase: m.phase, penalties: m.penalties ?? false, played: true };
+          playedMatches.push(match);
+          if (dayKey(m.utcDate) === hoy) jornadaMatches.push(match);
         });
       } catch { /* API unavailable, continue */ }
       const manualSnap = await getDocs(collection(db, "matches"));
       manualSnap.docs.forEach(d => {
         const data = d.data() as Omit<Match, "id">;
-        if (data.played) playedMatches.push({ id: d.id, ...data });
+        if (data.played) {
+          const match: Match = { id: d.id, ...data };
+          playedMatches.push(match);
+          jornadaMatches.push(match);
+        }
       });
 
-      // Compute leaderboard
+      // Clasificación acumulada de la porra (con TODOS los partidos jugados).
       const teamTotals = buildTeamTotals(playedMatches);
       const leaderboard = Object.entries(allBets)
         .map(([uname, data]) => ({
@@ -307,7 +315,7 @@ REGLAS DE LA PORRA (léelas para no confundir conceptos):\n- Cada participante e
         }))
         .sort((a, b) => b.score - a.score);
 
-      const prompt = buildChroniclePrompt(allBets, playedMatches, leaderboard, chronicleContext.trim());
+      const prompt = buildChroniclePrompt(allBets, jornadaMatches, leaderboard, chronicleContext.trim());
       const text = await generateText(prompt);
       setChroniclePreview(text);
       setChronicleMsg("Crónica generada correctamente.");
