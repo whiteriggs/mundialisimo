@@ -70,6 +70,7 @@ export default function AdminPage() {
   const [chronicleContext, setChronicleContext]        = useState("");
   const [chroniclePreview, setChroniclePreview]        = useState<string | null>(null);
   const [chroniclePublishing, setChroniclePublishing]  = useState(false);
+  const [chronicleLeaderboard, setChronicleLeaderboard] = useState<{ user: string; total: number; confirmed: boolean }[]>([]);
 
   // ── Auth guard ────────────────────────────────────────────────
   useEffect(() => {
@@ -299,12 +300,12 @@ PROHIBIDO POR DEFECTO (salvo que las INDICACIONES DEL EDITOR lo pidan expresamen
     setChronicleMsg(null);
     try {
       const users = await getUsers();
-      const allBets: Record<string, { favorites: string[]; antiFavorites: string[]; superFavorite: string | null }> = {};
+      const allBets: Record<string, { favorites: string[]; antiFavorites: string[]; superFavorite: string | null; confirmed: boolean }> = {};
       for (const u of users) {
         const snap = await getDoc(groupDoc("bets", u.toLowerCase()));
         if (!snap.exists()) continue;
-        const data = snap.data() as { favorites?: string[]; antiFavorites?: string[]; superFavorite?: string | null };
-        allBets[u] = { favorites: data.favorites ?? [], antiFavorites: data.antiFavorites ?? [], superFavorite: data.superFavorite ?? null };
+        const data = snap.data() as { favorites?: string[]; antiFavorites?: string[]; superFavorite?: string | null; confirmed?: boolean };
+        allBets[u] = { favorites: data.favorites ?? [], antiFavorites: data.antiFavorites ?? [], superFavorite: data.superFavorite ?? null, confirmed: data.confirmed ?? false };
       }
 
       // Jornada = partidos finalizados cuyo inicio (utcDate) cae dentro de las
@@ -346,6 +347,18 @@ PROHIBIDO POR DEFECTO (salvo que las INDICACIONES DEL EDITOR lo pidan expresamen
         }))
         .sort((a, b) => b.score - a.score);
 
+      // Tabla que se guardará junto a la crónica (incluye TODOS los usuarios y su
+      // estado confirmado, igual que la página de Clasificación).
+      const fullBoard = users
+        .map((u) => {
+          const bet = allBets[u];
+          const confirmed = bet?.confirmed ?? false;
+          const total = bet && confirmed ? calcUserScore(bet.favorites, bet.antiFavorites, teamTotals) : 0;
+          return { user: u, total, confirmed };
+        })
+        .sort((a, b) => b.total - a.total);
+      setChronicleLeaderboard(fullBoard);
+
       // Crónicas anteriores (memoria anti-repetición): las 3 más recientes.
       let prevChronicles: string[] = [];
       try {
@@ -374,7 +387,7 @@ PROHIBIDO POR DEFECTO (salvo que las INDICACIONES DEL EDITOR lo pidan expresamen
     setChroniclePublishing(true);
     try {
       const dateKey = new Date().toISOString().slice(0, 10);
-      await setDoc(groupDoc("chronicles", dateKey), { text: chroniclePreview, generatedAt: new Date(), generatedBy: currentUser ?? getGroupConfig().admin });
+      await setDoc(groupDoc("chronicles", dateKey), { text: chroniclePreview, leaderboard: chronicleLeaderboard, generatedAt: new Date(), generatedBy: currentUser ?? getGroupConfig().admin });
       setChronicleMsg("✓ Crónica publicada. Ya visible en /cronica.");
       setChroniclePreview(null);
     } catch (e) {

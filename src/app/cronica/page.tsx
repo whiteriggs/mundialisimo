@@ -7,11 +7,12 @@ import { groupCollection } from "@/lib/db";
 import NavBar from "@/components/NavBar";
 import { getStoredUser, clearUser } from "@/lib/auth";
 import NewspaperChronicle from "@/components/NewspaperChronicle";
-import { fetchLeaderboard, type LeaderboardRow } from "@/lib/leaderboard";
+import type { LeaderboardRow } from "@/lib/leaderboard";
 
 interface ChronicleEntry {
   id: string; // YYYY-MM-DD
   text: string;
+  leaderboard?: LeaderboardRow[];
   generatedAt: { seconds: number } | Date;
 }
 
@@ -21,7 +22,6 @@ export default function CronicaPage() {
   const [chronicles, setChronicles] = useState<ChronicleEntry[]>([]);
   const [index, setIndex] = useState(0); // 0 = más reciente
   const [loading, setLoading] = useState(true);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardRow[]>([]);
 
   useEffect(() => {
     const u = getStoredUser();
@@ -40,7 +40,6 @@ export default function CronicaPage() {
       }
     }
     load();
-    fetchLeaderboard().then(setLeaderboard).catch(() => setLeaderboard([]));
   }, [router]);
 
   function handleLogout() {
@@ -114,7 +113,7 @@ export default function CronicaPage() {
             <NewspaperChronicle
               text={chronicle.text}
               dateLabel={formatId(chronicle.id)}
-              leaderboard={index === 0 ? leaderboard : undefined}
+              leaderboard={chronicle.leaderboard}
             />
           </>
         )}
