@@ -24,9 +24,11 @@ type BetDoc = {
 export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
   const [apiAll, betSnap, users] = await Promise.all([
     fetchAllMatches().catch(() => []),
-    getDocs(groupCollection("bets")),
-    getUsers(),
+    getDocs(groupCollection("bets")).catch(() => null),
+    getUsers().catch(() => [] as string[]),
   ]);
+
+  if (users.length === 0) return [];
 
   const scored: Match[] = apiAll
     .filter((m) => m.played || isLiveStatus(m.status))
@@ -42,7 +44,7 @@ export async function fetchLeaderboard(): Promise<LeaderboardRow[]> {
     }));
   const teamTotals = buildTeamTotals(scored);
 
-  const bets: BetDoc[] = betSnap.docs.map((d) => {
+  const bets: BetDoc[] = (betSnap?.docs ?? []).map((d) => {
     const raw = d.data() as Partial<Omit<BetDoc, "user">>;
     return {
       user: d.id,
