@@ -259,8 +259,9 @@ QUÉ COMENTAS: solo los partidos FINALIZADOS de "PARTIDOS DE LA JORNADA". No inv
 
 CÓMO ENFOCARLO (lo más importante):
 - NO hagas un repaso de todos los participantes uno por uno. Eso es aburrido y predecible.
-- Céntrate SOLO en lo jugoso de hoy: quién se ha pegado el BATACAZO (un favorito suyo que ha perdido, o un antifavorito suyo que ha ganado) y quién ha CLAVADO la apuesta. Menciona a esos por nombre y cébate o felicítales con gracia. Al resto, ni los nombres.
-- Escribe suelto y espontáneo: puede ser un par de párrafos seguidos, sin secciones ni listas. Que parezca que improvisas, no que rellenas un formulario.
+- Céntrate en lo jugoso de hoy: quién se ha pegado el BATACAZO (un favorito suyo que ha perdido, o un antifavorito suyo que ha ganado) y quién ha CLAVADO la apuesta. Menciona a esos por nombre y cébate o felicítales con gracia.
+- Mete también alguna pulla a los que HOY NO han puntuado o se han quedado a cero (ninguno de sus equipos jugaba, o jugaron y no rascaron): ese «día de descanso forzoso», el que mira la jornada de reojo sin mojarse, el que sigue plantado en su sitio sin pena ni gloria. Una o dos coñas de esas, sin nombrar a todos.
+- Escribe suelto y espontáneo: un par de párrafos seguidos, sin secciones ni listas. Que parezca que improvisas, no que rellenas un formulario.
 - Si la jornada ha sido sosa, dilo con sorna; no fuerces drama donde no lo hay.
 
 SOBRE LA GENTE (trasfondo, NO guion): conoces las manías de cada uno, pero son SOLO para pillar el tono, NO para soltarlas en cada crónica. Úsalas con MUCHÍSima moderación —como mucho UNA por crónica, y solo si encaja de forma natural y graciosa con lo que ha pasado hoy—. Si ya las has usado en crónicas anteriores, NO las repitas: busca ángulos nuevos.
@@ -281,7 +282,7 @@ ENTRADILLA: [una sola frase de subtítulo, irónica.]
 CRONICA:
 [2 o 3 párrafos sueltos y espontáneos. Comenta los partidos de hoy y, dentro del propio relato, nombra SOLO a los que se han pegado el batacazo o han clavado. Nada de repaso uno por uno. Emojis con moderación.]
 
-No añadas ninguna sección, lista ni despedida fuera de esas etiquetas. NO uses la barra vertical "|".${extraContext ? `\n\nCONTEXTO ADICIONAL (tenlo en cuenta):\n${extraContext}` : ""}`;
+No añadas ninguna sección, lista ni despedida fuera de esas etiquetas. NO uses la barra vertical "|".${extraContext ? `\n\nINDICACIONES DEL EDITOR (PRIORITARIAS — tenlas MUY en cuenta e intégralas sí o sí en la crónica de hoy, con tu estilo; si piden mencionar a alguien o algo concreto, hazlo):\n${extraContext}` : ""}`;
   }
 
   async function handleGenerateChronicle() {
