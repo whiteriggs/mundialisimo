@@ -1,4 +1,4 @@
-const CACHE = 'mundialisimo-v33';
+const CACHE = 'mundialisimo-v34';
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -15,12 +15,37 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
-  // Only cache same-origin requests. Cross-origin resources (e.g. the UFWC
-  // data on whiteriggs.github.io) must always go straight to the network so a
-  // flaky/opaque response never gets stuck in the PWA cache.
+  // Only handle same-origin requests. Cross-origin (UFWC data, Worker, Firestore)
+  // siempre va directo a la red para no quedar atrapado en caché.
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
+  // NETWORK-FIRST para el código y las páginas (HTML, JS, CSS, JSON y datos):
+  // así el usuario SIEMPRE recibe la última versión y nunca se queda con un
+  // bundle viejo (causa de "no veo los cambios" pese a recargar). La caché solo
+  // se usa como respaldo si no hay red (modo offline).
+  const isCodeOrData =
+    event.request.mode === 'navigate' ||
+    /\.(?:html|js|css|json)$/.test(url.pathname) ||
+    url.pathname.startsWith('/_next/');
+
+  if (isCodeOrData) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // CACHE-FIRST (stale-while-revalidate) para assets estáticos (imágenes,
+  // fuentes, iconos): rara vez cambian y conviene servirlos rápido.
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const cached = await cache.match(event.request);
