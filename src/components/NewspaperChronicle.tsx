@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { parseChronicle } from "@/lib/chronicle";
 import { getUsers } from "@/lib/auth";
+import type { LeaderboardRow } from "@/lib/leaderboard";
 
 // Resalta en negrita los nombres de participantes que aparezcan en un texto.
 // Hace el match por palabra completa e ignorando mayúsculas/acentos no, pero sí
@@ -22,7 +23,15 @@ function highlightNames(text: string, names: string[]): ReactNode {
 
 // Renderiza una crónica de LaIA con estética de diario deportivo. Si el texto no
 // trae el formato estructurado (crónicas antiguas), cae a texto plano.
-export default function NewspaperChronicle({ text, dateLabel }: { text: string; dateLabel: string }) {
+export default function NewspaperChronicle({
+  text,
+  dateLabel,
+  leaderboard,
+}: {
+  text: string;
+  dateLabel: string;
+  leaderboard?: LeaderboardRow[];
+}) {
   const parsed = parseChronicle(text);
   const [names, setNames] = useState<string[]>([]);
 
@@ -76,6 +85,42 @@ export default function NewspaperChronicle({ text, dateLabel }: { text: string; 
               </li>
             ))}
           </ol>
+        </div>
+      )}
+
+      {leaderboard && leaderboard.length > 0 && (
+        <div className="np-standings">
+          <h3 className="np-section-title">📊 La tabla de la porra</h3>
+          <table className="np-standings-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Participante</th>
+                <th>Pts</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leaderboard.map((row, i) => {
+                const pos = i + 1;
+                const isLeader = i === 0 && row.confirmed;
+                const isLast = i === leaderboard.length - 1 && row.confirmed;
+                return (
+                  <tr
+                    key={row.user}
+                    className={`${isLeader ? "np-st-leader" : ""} ${isLast ? "np-st-last" : ""}`.trim()}
+                  >
+                    <td className="np-st-pos">{row.confirmed ? pos : "—"}</td>
+                    <td className="np-st-name">
+                      {row.user}
+                      {isLeader && <span className="np-st-badge">👑 Líder</span>}
+                      {isLast && <span className="np-st-badge np-st-badge-red">🥄 Farolillo</span>}
+                    </td>
+                    <td className="np-st-pts">{row.confirmed ? row.total : "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 

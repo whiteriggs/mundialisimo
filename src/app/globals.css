@@ -3378,6 +3378,87 @@ body[data-sidebar="expanded"] .app-shell {
   color: #8a2b2b;
 }
 
+/* Tabla de clasificación dentro del periódico. */
+.np-standings {
+  margin-top: 26px;
+  border-top: 3px double #14110c;
+  padding-top: 16px;
+}
+
+.np-standings-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: Georgia, "Times New Roman", serif;
+  color: #1a1712;
+}
+
+.np-standings-table thead th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b6253;
+  border-bottom: 2px solid #14110c;
+  padding: 4px 8px;
+}
+
+.np-standings-table thead th:first-child {
+  width: 28px;
+  text-align: center;
+}
+
+.np-standings-table thead th:last-child {
+  text-align: right;
+  width: 48px;
+}
+
+.np-standings-table tbody td {
+  padding: 6px 8px;
+  border-bottom: 1px dotted #c7ba9e;
+  font-size: 15px;
+}
+
+.np-st-pos {
+  text-align: center;
+  font-weight: 800;
+  color: #8a7f6b;
+}
+
+.np-st-pts {
+  text-align: right;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.np-st-name {
+  font-weight: 600;
+}
+
+.np-st-badge {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a6d2b;
+  vertical-align: middle;
+}
+
+.np-st-badge-red {
+  color: #8a2b2b;
+}
+
+.np-st-leader td {
+  background: rgba(212, 175, 55, 0.18);
+}
+
+.np-st-leader .np-st-pos {
+  color: #8a6d2b;
+}
+
+.np-st-last td {
+  background: rgba(138, 43, 43, 0.08);
+}
+
 .np-ranking {
   margin-top: 26px;
   border-top: 3px double #14110c;
