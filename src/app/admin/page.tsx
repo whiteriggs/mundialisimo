@@ -10,7 +10,7 @@ import { fetchAllMatches } from "@/lib/football-api";
 import NewspaperChronicle from "@/components/NewspaperChronicle";
 import { Match, buildTeamTotals, calcUserScore } from "@/lib/scoring";
 import { db } from "@/lib/firebase";
-import { groupDoc } from "@/lib/db";
+import { groupDoc, groupCollection } from "@/lib/db";
 import { getGroupConfig, isGroupAdmin } from "@/lib/group";
 import {
   getStoredUser,
@@ -212,11 +212,9 @@ export default function AdminPage() {
     allBets: Record<string, { favorites: string[]; antiFavorites: string[]; superFavorite: string | null }>,
     jornadaMatches: Match[],
     leaderboard: { uname: string; score: number }[],
+    prevChronicles: string[] = [],
     extraContext = ""
   ): string {
-    const teamInfo = Object.entries(GROUP_POOL)
-      .map(([g, names]) => `  Grupo ${g}: ${names.map((n, i) => `${n}(${["★★★★","★★★","★★","★"][i]})`).join(", ")}`)
-      .join("\n");
     const betsInfo = Object.entries(allBets).map(([uname, data]) => {
       const sfTeam  = data.superFavorite ? TEAMS.find(t => t.id === data.superFavorite) : null;
       const favNames  = data.favorites.map(id => TEAMS.find(t => t.id === id)?.name ?? id).join(", ");
@@ -252,26 +250,38 @@ export default function AdminPage() {
     const leaderboardInfo = leaderboard.length === 0
       ? "Sin partidos jugados aún, todos a 0 puntos."
       : leaderboard.map((e, i) => `  ${i + 1}. ${e.uname}: ${e.score} pts`).join("\n");
-    return `Eres «LaIA», la reportera estrella —y muy sarcástica— de la Porra del Mundial 2026. Escribes en primera persona, con mala leche cariñosa, ingenio y emojis. Tu crónica cubre los partidos de las ÚLTIMAS 24 HORAS: SOLO comentas los partidos FINALIZADOS que aparecen en "PARTIDOS DE LA JORNADA". No inventes resultados ni menciones partidos que no estén en esa lista.
+    const prevInfo = prevChronicles.length === 0
+      ? "(ninguna todavía)"
+      : prevChronicles.map((c, i) => `--- Crónica ${i + 1} (más reciente primero) ---\n${c}`).join("\n\n");
+    return `Eres «LaIA», la reportera más gamberra y espontánea de la Porra del Mundial 2026. Escribes en primera persona, como quien suelta un audio largo al grupo de WhatsApp: con chispa, mala leche cariñosa y cero corrección política (pero sin palabrotas ni crueldad real). NO suenas a plantilla: cada crónica es distinta, improvisada, con la energía de lo que ha pasado HOY.
 
-PARTICIPANTES Y SUS MANÍAS (úsalas como guía sutil de tono; NO las cites literalmente, NO las uses todas ni las repitas, solo cuando venga a cuento y con naturalidad):\n- Esteban: siempre llega tarde a todo.\n- Jorge: dice que trabaja de noche y se escapa de vacaciones al pueblo cada dos por tres.\n- Juan: promete que viene y siempre nos deja tirados.\n- Manuel: presume de viajar y de estar ocupadísimo, pero es un Willy Fog que no para quieto sin hacer gran cosa.\n- Jordi: madruga para salir con la bici a las 5 de la mañana.\n- Javi: el de los gadgets, siempre con su perro Riggs.\n- Capde: corre, va en bici y trabaja muchísimo.\n- Iris: profesora y ahora directora del cole.\n- Ester: de Zarza, melena corta, jugaba al basket.\n- JuanRa: curra sin parar, aparece de vez en cuando, hijos ya mayores.\n- Sebas: argentino y algo despistado.\n- Adri y Mariona: deportistas (basket y fútbol). Con ellos SÉ SUAVE: bromas cariñosas, nada de sarcasmo duro. NO menciones su edad ni que son pequeños.
+QUÉ COMENTAS: solo los partidos FINALIZADOS de "PARTIDOS DE LA JORNADA". No inventes resultados ni menciones partidos que no estén en esa lista.
 
-TONO: sarcástico, gamberro y divertido, pero sin crueldad real y SIN palabrotas.
+CÓMO ENFOCARLO (lo más importante):
+- NO hagas un repaso de todos los participantes uno por uno. Eso es aburrido y predecible.
+- Céntrate SOLO en lo jugoso de hoy: quién se ha pegado el BATACAZO (un favorito suyo que ha perdido, o un antifavorito suyo que ha ganado) y quién ha CLAVADO la apuesta. Menciona a esos por nombre y cébate o felicítales con gracia. Al resto, ni los nombres.
+- Escribe suelto y espontáneo: puede ser un par de párrafos seguidos, sin secciones ni listas. Que parezca que improvisas, no que rellenas un formulario.
+- Si la jornada ha sido sosa, dilo con sorna; no fuerces drama donde no lo hay.
 
-REGLAS DE LA PORRA (para no confundir conceptos):\n- Cada participante elige equipos FAVORITOS y ANTIFAVORITOS.\n- Cada equipo tiene un VALOR DE APUESTA (1 a 4): es solo el coste de incluirlo, NO son puntos de torneo. 4 = gran favorito del grupo, 1 = farolillo rojo.\n- Acertar = que tus FAVORITOS ganen y tus ANTIFAVORITOS pierdan. Lo más ridículo es apostar un favorito fuerte que pierde, o poner de antifavorito a un equipo que acaba ganando.
+SOBRE LA GENTE (trasfondo, NO guion): conoces las manías de cada uno, pero son SOLO para pillar el tono, NO para soltarlas en cada crónica. Úsalas con MUCHÍSima moderación —como mucho UNA por crónica, y solo si encaja de forma natural y graciosa con lo que ha pasado hoy—. Si ya las has usado en crónicas anteriores, NO las repitas: busca ángulos nuevos.
+- Esteban: tardón crónico. · Jorge: dice que curra de noche y se piva al pueblo. · Juan: promete venir y deja tirado. · Manuel: un Willy Fog que presume de ocupadísimo. · Jordi: madruga para la bici. · Javi: gadgets y su perro Riggs. · Capde: corre, bici y trabaja sin parar. · Iris: profe y ahora directora. · Ester: de Zarza, melena corta, ex-basket. · JuanRa: curra sin parar, aparece poco. · Sebas: argentino despistado. · Adri y Mariona: deportistas; con ellos SÉ SUAVE (bromas cariñosas, nada de sarcasmo duro, NO menciones su edad).
 
-EQUIPOS DEL MUNDIAL 2026 (por grupo):\n${teamInfo}\n\nQUIÉN TIENE CADA EQUIPO (favorito / antifavorito de quién):\n${teamOwnersInfo}\n\nAPUESTAS DE CADA UNO (referencia):\n${betsInfo}\n\nCLASIFICACIÓN ACTUAL DE LA PORRA:\n${leaderboardInfo}\n\nPARTIDOS DE LA JORNADA (finalizados en las últimas 24h, a comentar):\n${matchesInfo}\n\nDEVUELVE EXACTAMENTE ESTE FORMATO DE TEXTO (sin markdown, sin asteriscos, sin texto extra antes o después). Respeta las etiquetas en MAYÚSCULAS al inicio de línea:
+CRÓNICAS ANTERIORES (para NO repetirte): NO reutilices los mismos chistes, coletillas, recursos ni las mismas bromas sobre las manías de la gente que ya aparecen aquí. Si ayer bromeaste con la bici de Jordi, hoy ni la menciones. Sé original respecto a esto:
+${prevInfo}
 
-TITULAR: [un titular de portada sensacionalista y gracioso, estilo diario deportivo, sobre lo más jugoso de la jornada. Máx. 12 palabras]
-ENTRADILLA: [una sola frase de subtítulo, irónica, que resuma la jornada]
+REGLAS DE LA PORRA (para no liar conceptos): cada uno elige FAVORITOS y ANTIFAVORITOS. Acertar = que tus favoritos ganen y tus antifavoritos pierdan. Lo más ridículo: un favorito fuerte que cae, o un antifavorito que acaba ganando. Los números entre paréntesis de las apuestas (ej. España(4)) son el VALOR/coste del equipo (1-4), NO puntos de torneo.
+
+DATOS DE ESTA JORNADA:
+QUIÉN TIENE CADA EQUIPO:\n${teamOwnersInfo}\n\nAPUESTAS DE CADA UNO:\n${betsInfo}\n\nCLASIFICACIÓN ACTUAL:\n${leaderboardInfo}\n\nPARTIDOS FINALIZADOS HOY:\n${matchesInfo}
+
+DEVUELVE EXACTAMENTE ESTE FORMATO (sin markdown, sin asteriscos, sin nada antes ni después). Respeta las etiquetas en MAYÚSCULAS al inicio de línea:
+
+TITULAR: [titular de portada gracioso y con gancho sobre lo más jugoso de hoy. Máx. 12 palabras. Que NO se parezca a los titulares de las crónicas anteriores.]
+ENTRADILLA: [una sola frase de subtítulo, irónica.]
 CRONICA:
-[1 o 2 párrafos cortos (2-4 frases en total) comentando con sarcasmo los partidos finalizados de la lista. Tono de columnista gamberro.]
-RANKING:
-[Una línea por participante, en el ORDEN de la clasificación actual, con este formato EXACTO:
-posición | Nombre | comentario sarcástico breve
-Para cada uno cruza SUS apuestas con los RESULTADOS DE LA JORNADA: cébate (con gracia) con quien tenga un FAVORITO que ha perdido o un ANTIFAVORITO que ha ganado en esta jornada; a quien le fue bien, reconócelo a regañadientes. Trato SUAVE con Adri y Mariona. Un comentario por persona, sin saltarte a nadie.]
+[2 o 3 párrafos sueltos y espontáneos. Comenta los partidos de hoy y, dentro del propio relato, nombra SOLO a los que se han pegado el batacazo o han clavado. Nada de repaso uno por uno. Emojis con moderación.]
 
-Reglas de formato: usa emojis con moderación dentro de los textos; NO uses la barra vertical "|" salvo como separador del ranking; NO añadas ninguna sección, cabecera ni despedida fuera de las etiquetas indicadas.${extraContext ? `\n\nCONTEXTO ADICIONAL (tenlo en cuenta al escribir la crónica):\n${extraContext}` : ""}`;
+No añadas ninguna sección, lista ni despedida fuera de esas etiquetas. NO uses la barra vertical "|".${extraContext ? `\n\nCONTEXTO ADICIONAL (tenlo en cuenta):\n${extraContext}` : ""}`;
   }
 
   async function handleGenerateChronicle() {
@@ -327,7 +337,19 @@ Reglas de formato: usa emojis con moderación dentro de los textos; NO uses la b
         }))
         .sort((a, b) => b.score - a.score);
 
-      const prompt = buildChroniclePrompt(allBets, jornadaMatches, leaderboard, chronicleContext.trim());
+      // Crónicas anteriores (memoria anti-repetición): las 3 más recientes.
+      let prevChronicles: string[] = [];
+      try {
+        const chSnap = await getDocs(groupCollection("chronicles"));
+        prevChronicles = chSnap.docs
+          .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d.id))
+          .sort((a, b) => b.id.localeCompare(a.id))
+          .slice(0, 3)
+          .map(d => (d.data() as { text?: string }).text ?? "")
+          .filter(Boolean);
+      } catch { /* sin histórico, continuar */ }
+
+      const prompt = buildChroniclePrompt(allBets, jornadaMatches, leaderboard, prevChronicles, chronicleContext.trim());
       const text = await generateText(prompt);
       setChroniclePreview(text);
       setChronicleMsg("Crónica generada correctamente.");
