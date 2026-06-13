@@ -59,6 +59,17 @@ service cloud.firestore {
         && request.resource.data.text.size() <= 20000;
     }
 
+    // ── Pronósticos "Qué pasaría si" (uno por usuario) ─────────────────────
+    // Cada usuario guarda su simulación personal de resultados. Forma validada
+    // (un mapa de resultados) y tamaño acotado para evitar basura.
+    match /groups/{groupId}/predictions/{userId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasOnly(['results', 'updatedAt'])
+        && request.resource.data.results is map
+        && request.resource.data.results.size() <= 120;
+      allow delete: if false;
+    }
+
     // ── Resultados de partidos (globales) ──────────────────────────────────
     // Entrada manual del admin desde la UI de Resultados.
     match /matches/{matchId} {

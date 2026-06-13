@@ -27,6 +27,7 @@ function strArray(v?: FsValue): string[] {
 }
 
 type BetDoc = { user: string; favorites: string[]; antiFavorites: string[]; confirmed: boolean };
+export type { BetDoc };
 
 export async function fetchUsersRest(groupId: string): Promise<string[]> {
   try {
@@ -40,7 +41,7 @@ export async function fetchUsersRest(groupId: string): Promise<string[]> {
   return groupId === DEFAULT_GROUP ? USERS : [];
 }
 
-async function fetchBetsRest(groupId: string): Promise<BetDoc[]> {
+export async function fetchBetsRest(groupId: string): Promise<BetDoc[]> {
   try {
     const res = await fetch(`${FS}/groups/${groupId}/bets`, { cache: "no-store" });
     if (!res.ok) return [];

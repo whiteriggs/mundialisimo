@@ -85,6 +85,13 @@ const ICON = {
       <path d="M19.4 13.5a7.8 7.8 0 0 0 0-3l1.7-1.3-1.8-3.1-2 .8a7.6 7.6 0 0 0-2.6-1.5l-.3-2.1H8.6l-.3 2.1A7.6 7.6 0 0 0 5.7 5.9l-2-.8L1.9 8.2l1.7 1.3a7.8 7.8 0 0 0 0 3l-1.7 1.3 1.8 3.1 2-.8a7.6 7.6 0 0 0 2.6 1.5l.3 2.1h3.8l.3-2.1a7.6 7.6 0 0 0 2.6-1.5l2 .8 1.8-3.1-1.7-1.3Z" />
     </>
   ),
+  simulador: I(
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M11 7a4 4 0 0 0-4 4" />
+      <path d="M21 21l-3.5-3.5" />
+    </>
+  ),
 } as const;
 
 const NAV_LINKS: { href: string; label: string; icon: keyof typeof ICON }[] = [
@@ -93,6 +100,7 @@ const NAV_LINKS: { href: string; label: string; icon: keyof typeof ICON }[] = [
   { href: "/apuesta", label: "Apuestas", icon: "apuesta" },
   { href: "/grupos", label: "Grupos/Resultados", icon: "grupos" },
   { href: "/eliminatorias", label: "Eliminatorias", icon: "eliminatorias" },
+  { href: "/que-pasaria-si", label: "Qué pasaría si…", icon: "simulador" },
   { href: "/cronica", label: "Crónica", icon: "cronica" },
   { href: "/reglas", label: "Reglas", icon: "reglas" },
 ];
