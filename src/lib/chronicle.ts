@@ -26,35 +26,61 @@ export interface ParsedChronicle {
 }
 
 export function parseChronicle(text: string): ParsedChronicle | null {
-  if (!text || !/^\s*TITULAR\s*:/im.test(text)) return null;
+  if (!text) return null;
+  // Limpia restos de markdown que el modelo a veces cuela (negritas, almohadillas,
+  // viñetas) para que las etiquetas TITULAR/ENTRADILLA/... se detecten siempre.
+  const cleaned = text
+    .replace(/\r/g, "")
+    .replace(/\*\*/g, "")
+    .replace(/^\s{0,3}#{1,6}\s*/gm, "");
 
-  const lines = text.replace(/\r/g, "").split("\n");
+  if (!/^\s*TITULAR\s*:/im.test(cleaned)) return null;
+
+  const lines = cleaned.split("\n");
   let headline = "";
   let standfirst = "";
   const body: string[] = [];
   const ranking: RankingItem[] = [];
 
+  // "label" = acabamos de leer una etiqueta sin texto en su línea; la siguiente
+  // línea no vacía es su contenido (algunos modelos ponen el titular debajo).
   type Section = "none" | "cronica" | "ranking";
+  type Pending = "headline" | "standfirst" | null;
   let section: Section = "none";
+  let pending: Pending = null;
 
   for (const raw of lines) {
     const line = raw.trim();
     if (!line) continue;
 
     const mTit = line.match(/^TITULAR\s*:\s*(.*)$/i);
-    if (mTit) { headline = mTit[1].trim(); section = "none"; continue; }
+    if (mTit) {
+      headline = mTit[1].trim();
+      pending = headline ? null : "headline";
+      section = "none";
+      continue;
+    }
 
     const mEnt = line.match(/^ENTRADILLA\s*:\s*(.*)$/i);
-    if (mEnt) { standfirst = mEnt[1].trim(); section = "none"; continue; }
+    if (mEnt) {
+      standfirst = mEnt[1].trim();
+      pending = standfirst ? null : "standfirst";
+      section = "none";
+      continue;
+    }
 
     if (/^CRONICA\s*:?/i.test(line)) {
       section = "cronica";
+      pending = null;
       const rest = line.replace(/^CRONICA\s*:?/i, "").trim();
       if (rest) body.push(rest);
       continue;
     }
 
-    if (/^RANKING\s*:?/i.test(line)) { section = "ranking"; continue; }
+    if (/^RANKING\s*:?/i.test(line)) { section = "ranking"; pending = null; continue; }
+
+    if (pending === "headline") { headline = line; pending = null; continue; }
+    if (pending === "standfirst") { standfirst = line; pending = null; continue; }
 
     if (section === "cronica") {
       body.push(line);
