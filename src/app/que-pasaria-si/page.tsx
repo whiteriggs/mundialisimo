@@ -248,7 +248,7 @@ export default function QuePasariaSiPage() {
           </section>
 
           {/* Columna de resultados simulados */}
-          <section className="results-section">
+          <section className="results-section qps-results">
             <h2 className="results-title">Clasificación simulada de la porra</h2>
             <div className="standings-wrap">
               <table className="standings-table">

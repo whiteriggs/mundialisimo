@@ -3633,6 +3633,16 @@ body[data-sidebar="expanded"] .app-shell {
   align-items: start;
 }
 
+/* La columna de resultados se queda fija al hacer scroll (solo en 2 columnas). */
+@media (min-width: 881px) {
+  .qps-results {
+    position: sticky;
+    top: 12px;
+    max-height: calc(100vh - 24px);
+    overflow-y: auto;
+  }
+}
+
 .qps-counter {
   margin-left: 10px;
   font-size: 12px;
