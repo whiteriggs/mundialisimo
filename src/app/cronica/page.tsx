@@ -6,6 +6,7 @@ import NavBar from "@/components/NavBar";
 import { getStoredUser, clearUser } from "@/lib/auth";
 import NewspaperChronicle from "@/components/NewspaperChronicle";
 import { fetchChronicles, type ChronicleEntry } from "@/lib/chronicles";
+import { fetchLeaderboard, type LeaderboardRow } from "@/lib/leaderboard";
 
 export default function CronicaPage() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function CronicaPage() {
   const [chronicles, setChronicles] = useState<ChronicleEntry[]>([]);
   const [index, setIndex] = useState(0); // 0 = más reciente
   const [loading, setLoading] = useState(true);
+  const [liveBoard, setLiveBoard] = useState<LeaderboardRow[]>([]);
 
   useEffect(() => {
     const u = getStoredUser();
@@ -22,6 +24,8 @@ export default function CronicaPage() {
       .then(setChronicles)
       .catch(() => setChronicles([]))
       .finally(() => setLoading(false));
+    // Clasificación actual de respaldo, por si la crónica no la trae guardada.
+    fetchLeaderboard().then(setLiveBoard).catch(() => setLiveBoard([]));
   }, [router]);
 
   function handleLogout() {
@@ -95,7 +99,7 @@ export default function CronicaPage() {
             <NewspaperChronicle
               text={chronicle.text}
               dateLabel={formatId(chronicle.id)}
-              leaderboard={chronicle.leaderboard}
+              leaderboard={chronicle.leaderboard ?? liveBoard}
             />
           </>
         )}

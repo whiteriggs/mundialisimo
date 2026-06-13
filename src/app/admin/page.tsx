@@ -670,7 +670,7 @@ PROHIBIDO POR DEFECTO (salvo que las INDICACIONES DEL EDITOR lo pidan expresamen
                   Vista previa (así se verá en <a href="/cronica" target="_blank" rel="noreferrer">/cronica</a>):
                 </p>
                 <div style={{ marginBottom: "1rem" }}>
-                  <NewspaperChronicle text={chroniclePreview} dateLabel={new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })} />
+                  <NewspaperChronicle text={chroniclePreview} dateLabel={new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })} leaderboard={chronicleLeaderboard} />
                 </div>
                 <details style={{ marginBottom: "1rem" }}>
                   <summary style={{ cursor: "pointer", fontSize: "0.85rem", color: "#888" }}>Ver texto generado (crudo)</summary>
