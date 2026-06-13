@@ -3669,6 +3669,30 @@ body[data-sidebar="expanded"] .app-shell {
   border-color: rgba(246, 192, 80, 0.5);
 }
 
+.qps-match--played {
+  opacity: 0.72;
+  background: var(--bg-3);
+}
+
+.qps-score--final {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+}
+
+.qps-final {
+  min-width: 18px;
+  text-align: center;
+}
+
+.qps-played-tag {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-dim);
+}
+
 .qps-team {
   display: flex;
   align-items: center;

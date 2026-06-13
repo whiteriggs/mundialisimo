@@ -46,16 +46,23 @@ export default function QuePasariaSiPage() {
       .finally(() => setLoading(false));
   }, [router]);
 
-  // Partidos de grupos no jugados que el usuario puede pronosticar.
-  const pendingGroupMatches = useMemo(
+  // Todos los partidos de grupos con rivales conocidos (jugados y por jugar),
+  // en orden cronológico. Los jugados se muestran fijos; los demás, editables.
+  const groupMatches = useMemo(
     () =>
       apiMatches
-        .filter((m) => m.phase === "groups" && !m.played && m.home !== "Por determinar" && m.away !== "Por determinar")
+        .filter((m) => m.phase === "groups" && m.home !== "Por determinar" && m.away !== "Por determinar")
         .sort((a, b) => a.utcDate.localeCompare(b.utcDate)),
     [apiMatches]
   );
 
-  // Conjunto de partidos para el cálculo: reales jugados + pronosticados.
+  const pendingGroupMatches = useMemo(
+    () => groupMatches.filter((m) => !m.played),
+    [groupMatches]
+  );
+
+  // Conjunto de partidos para el cálculo: el resultado REAL siempre manda; el
+  // pronóstico solo cuenta en partidos aún no jugados.
   const simulatedMatches = useMemo<Match[]>(() => {
     const real: Match[] = apiMatches
       .filter((m) => m.played && m.phase === "groups")
@@ -129,16 +136,16 @@ export default function QuePasariaSiPage() {
 
   const predictedCount = pendingGroupMatches.filter((m) => predictions[m.id]).length;
 
-  // Agrupar partidos pendientes por día.
+  // Agrupar TODOS los partidos por día (jugados y por jugar).
   const byDay = useMemo(() => {
     const map = new Map<string, ApiAllMatch[]>();
-    for (const m of pendingGroupMatches) {
+    for (const m of groupMatches) {
       const day = m.utcDate.slice(0, 10);
       if (!map.has(day)) map.set(day, []);
       map.get(day)!.push(m);
     }
     return map;
-  }, [pendingGroupMatches]);
+  }, [groupMatches]);
 
   function fmtDay(iso: string) {
     return new Date(iso).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
@@ -182,14 +189,30 @@ export default function QuePasariaSiPage() {
                 {saveState === "saving" ? "Guardando…" : saveState === "saved" ? "Guardado ✓" : ""}
               </span>
             </h2>
-            {pendingGroupMatches.length === 0 ? (
-              <p className="muted">No quedan partidos de grupos por jugar. ¡La fase de grupos ha terminado!</p>
+            {groupMatches.length === 0 ? (
+              <p className="muted">Aún no hay partidos de grupos disponibles.</p>
             ) : (
               <div className="qps-matches">
                 {Array.from(byDay.entries()).map(([day, dayMatches]) => (
                   <div key={day} className="qps-day">
                     <h3 className="matches-phase-label">{fmtDay(dayMatches[0].utcDate)}</h3>
                     {dayMatches.map((m) => {
+                      // Partido ya jugado: resultado real, fijo (no editable).
+                      if (m.played) {
+                        return (
+                          <div key={m.id} className="qps-match qps-match--played">
+                            <span className="qps-team qps-team--home"><Flag name={m.home} />{m.home}</span>
+                            <div className="qps-score qps-score--final">
+                              <span className="qps-final">{m.homeGoals ?? 0}</span>
+                              <span className="qps-dash">–</span>
+                              <span className="qps-final">{m.awayGoals ?? 0}</span>
+                            </div>
+                            <span className="qps-team qps-team--away">{m.away}<Flag name={m.away} /></span>
+                            <span className="qps-played-tag">Jugado</span>
+                          </div>
+                        );
+                      }
+                      // Partido por jugar: editable.
                       const p = predictions[m.id];
                       return (
                         <div key={m.id} className={`qps-match${p ? " qps-match--set" : ""}`}>
