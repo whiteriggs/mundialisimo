@@ -99,7 +99,7 @@ export default function CronicaPage() {
             <NewspaperChronicle
               text={chronicle.text}
               dateLabel={formatId(chronicle.id)}
-              leaderboard={chronicle.leaderboard ?? liveBoard}
+              leaderboard={chronicle.leaderboard ?? (index === 0 ? liveBoard : undefined)}
             />
           </>
         )}
