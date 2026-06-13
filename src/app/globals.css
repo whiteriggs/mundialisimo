@@ -3372,6 +3372,12 @@ body[data-sidebar="expanded"] .app-shell {
   color: #8a2b2b;
 }
 
+/* Nombres de participantes resaltados dentro del cuerpo de la crónica. */
+.np-name {
+  font-weight: 800;
+  color: #8a2b2b;
+}
+
 .np-ranking {
   margin-top: 26px;
   border-top: 3px double #14110c;
