@@ -64,9 +64,10 @@ service cloud.firestore {
     // (un mapa de resultados) y tamaño acotado para evitar basura.
     match /groups/{groupId}/predictions/{userId} {
       allow read: if true;
-      allow create, update: if request.resource.data.keys().hasOnly(['results', 'updatedAt'])
+      allow create, update: if request.resource.data.keys().hasOnly(['results', 'knockout', 'updatedAt'])
         && request.resource.data.results is map
-        && request.resource.data.results.size() <= 120;
+        && request.resource.data.results.size() <= 120
+        && (!('knockout' in request.resource.data) || request.resource.data.knockout is map);
       allow delete: if false;
     }
 

@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 import { getStoredUser, clearUser } from "@/lib/auth";
 import { fetchAllMatches, type ApiAllMatch } from "@/lib/football-api";
 import { fetchUsersRest, fetchBetsRest, type BetDoc } from "@/lib/leaderboard";
-import { fetchPredictions, savePredictions, type Predictions } from "@/lib/predictions";
+import { fetchUserSim, saveUserSim, type Predictions, type KnockoutPicks } from "@/lib/predictions";
 import { buildTeamTotals, calcUserScore, type Match } from "@/lib/scoring";
 import { buildGroupStandings } from "@/lib/standings";
+import { simulateBracket } from "@/lib/simulateBracket";
 import { teamName } from "@/lib/teams";
 import { getGroupId } from "@/lib/group";
 import Flag from "@/components/Flag";
@@ -25,6 +26,7 @@ export default function QuePasariaSiPage() {
   const [bets, setBets] = useState<BetDoc[]>([]);
   const [users, setUsers] = useState<string[]>([]);
   const [predictions, setPredictions] = useState<Predictions>({});
+  const [knockout, setKnockout] = useState<KnockoutPicks>({});
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
@@ -35,13 +37,14 @@ export default function QuePasariaSiPage() {
       fetchAllMatches().catch(() => [] as ApiAllMatch[]),
       fetchUsersRest(getGroupId()),
       fetchBetsRest(getGroupId()),
-      fetchPredictions(u),
+      fetchUserSim(u),
     ])
-      .then(([m, us, bs, preds]) => {
+      .then(([m, us, bs, sim]) => {
         setApiMatches(m);
         setUsers(us);
         setBets(bs);
-        setPredictions(preds);
+        setPredictions(sim.results);
+        setKnockout(sim.knockout);
       })
       .finally(() => setLoading(false));
   }, [router]);
@@ -97,14 +100,28 @@ export default function QuePasariaSiPage() {
 
   const groupStandings = useMemo(() => buildGroupStandings(simulatedMatches), [simulatedMatches]);
 
-  // Autosave con debounce.
+  // Cuadro de eliminatorias simulado: clasificados según los grupos + ganadores
+  // elegidos por el usuario, propagados ronda a ronda.
+  const bracket = useMemo(() => simulateBracket(groupStandings, knockout), [groupStandings, knockout]);
+  const bracketByRound = useMemo(() => {
+    const r: Record<string, typeof bracket> = { R32: [], R16: [], QF: [], SF: [], FINAL: [] };
+    for (const m of bracket) r[m.round].push(m);
+    return r;
+  }, [bracket]);
+  const champion = useMemo(() => {
+    const final = bracket.find((m) => m.round === "FINAL");
+    if (!final || !final.pick) return null;
+    return final.pick === "home" ? final.home : final.away;
+  }, [bracket]);
+
+  // Autosave con debounce (guarda resultados de grupos + picks de eliminatorias).
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const persist = useCallback((next: Predictions) => {
+  const persist = useCallback((results: Predictions, ko: KnockoutPicks) => {
     if (!user) return;
     setSaveState("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(() => {
-      savePredictions(user, next)
+      saveUserSim(user, { results, knockout: ko })
         .then(() => setSaveState("saved"))
         .catch(() => setSaveState("idle"));
     }, 700);
@@ -115,7 +132,7 @@ export default function QuePasariaSiPage() {
     setPredictions((prev) => {
       const cur = prev[matchId] ?? { h: 0, a: 0 };
       const next = { ...prev, [matchId]: { ...cur, [side]: n } };
-      persist(next);
+      persist(next, knockout);
       return next;
     });
   }
@@ -124,7 +141,17 @@ export default function QuePasariaSiPage() {
     setPredictions((prev) => {
       const next = { ...prev };
       delete next[matchId];
-      persist(next);
+      persist(next, knockout);
+      return next;
+    });
+  }
+
+  function pickWinner(matchId: string, side: "home" | "away") {
+    setKnockout((prev) => {
+      const next = { ...prev };
+      if (next[matchId] === side) delete next[matchId]; // click de nuevo = deseleccionar
+      else next[matchId] = side;
+      persist(predictions, next);
       return next;
     });
   }
@@ -297,9 +324,52 @@ export default function QuePasariaSiPage() {
                 </div>
               ))}
             </div>
+
+            <h2 className="results-title" style={{ marginTop: 28 }}>
+              Cuadro de eliminatorias
+              {champion && <span className="qps-champion">🏆 {champion}</span>}
+            </h2>
+            <p className="muted" style={{ marginBottom: 12, fontSize: "0.82rem" }}>
+              Los clasificados salen de tus grupos. Toca un equipo para elegir quién pasa de ronda.
+            </p>
+            <div className="qps-bracket">
+              {ROUND_LABELS.map(([round, label]) => (
+                <div key={round} className="qps-bracket-round">
+                  <h3 className="qps-round-label">{label}</h3>
+                  {bracketByRound[round].map((m) => (
+                    <div key={m.id} className={`qps-tie${m.homeReady ? "" : " qps-tie--tbd"}`}>
+                      <button
+                        className={`qps-side${m.pick === "home" ? " qps-side--win" : ""}${m.pick === "away" ? " qps-side--lose" : ""}`}
+                        disabled={!m.homeReady}
+                        onClick={() => pickWinner(m.id, "home")}
+                      >
+                        {m.home !== "Por determinar" && <Flag name={m.home} />}
+                        <span className="qps-side-name">{m.home}</span>
+                      </button>
+                      <button
+                        className={`qps-side${m.pick === "away" ? " qps-side--win" : ""}${m.pick === "home" ? " qps-side--lose" : ""}`}
+                        disabled={!m.homeReady}
+                        onClick={() => pickWinner(m.id, "away")}
+                      >
+                        {m.away !== "Por determinar" && <Flag name={m.away} />}
+                        <span className="qps-side-name">{m.away}</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
           </section>
         </div>
       )}
     </main>
   );
 }
+
+const ROUND_LABELS: [("R32" | "R16" | "QF" | "SF" | "FINAL"), string][] = [
+  ["R32", "Dieciseisavos"],
+  ["R16", "Octavos"],
+  ["QF", "Cuartos"],
+  ["SF", "Semifinales"],
+  ["FINAL", "Final"],
+];
