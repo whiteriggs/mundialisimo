@@ -2,7 +2,8 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { parseChronicle } from "@/lib/chronicle";
-import { getUsers } from "@/lib/auth";
+import { fetchUsersRest } from "@/lib/leaderboard";
+import { getGroupId } from "@/lib/group";
 import type { LeaderboardRow } from "@/lib/leaderboard";
 
 // Resalta en negrita los nombres de participantes que aparezcan en un texto.
@@ -36,7 +37,7 @@ export default function NewspaperChronicle({
   const [names, setNames] = useState<string[]>([]);
 
   useEffect(() => {
-    getUsers().then(setNames).catch(() => setNames([]));
+    fetchUsersRest(getGroupId()).then(setNames).catch(() => setNames([]));
   }, []);
 
   if (!parsed) {
@@ -90,8 +91,7 @@ export default function NewspaperChronicle({
 
       {leaderboard && leaderboard.length > 0 && (
         <div className="np-standings">
-          <h3 className="np-section-title">📊 La tabla de la porra</h3>
-          <table className="np-standings-table">
+          <h3 className="np-section-title">📊 La tabla de la porra</h3>          <table className="np-standings-table">
             <thead>
               <tr>
                 <th>#</th>

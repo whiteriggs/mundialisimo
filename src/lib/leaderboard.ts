@@ -28,7 +28,7 @@ function strArray(v?: FsValue): string[] {
 
 type BetDoc = { user: string; favorites: string[]; antiFavorites: string[]; confirmed: boolean };
 
-async function fetchUsersRest(groupId: string): Promise<string[]> {
+export async function fetchUsersRest(groupId: string): Promise<string[]> {
   try {
     const res = await fetch(`${FS}/groups/${groupId}/config/users`, { cache: "no-store" });
     if (res.ok) {

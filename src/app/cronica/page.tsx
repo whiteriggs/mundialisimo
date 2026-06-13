@@ -1,20 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getDocs } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { groupCollection } from "@/lib/db";
 import NavBar from "@/components/NavBar";
 import { getStoredUser, clearUser } from "@/lib/auth";
 import NewspaperChronicle from "@/components/NewspaperChronicle";
-import type { LeaderboardRow } from "@/lib/leaderboard";
-
-interface ChronicleEntry {
-  id: string; // YYYY-MM-DD
-  text: string;
-  leaderboard?: LeaderboardRow[];
-  generatedAt: { seconds: number } | Date;
-}
+import { fetchChronicles, type ChronicleEntry } from "@/lib/chronicles";
 
 export default function CronicaPage() {
   const router = useRouter();
@@ -27,19 +18,10 @@ export default function CronicaPage() {
     const u = getStoredUser();
     if (!u) { router.push("/login"); return; }
     setUser(u);
-    async function load() {
-      try {
-        const snap = await getDocs(groupCollection("chronicles"));
-        const entries: ChronicleEntry[] = snap.docs
-          .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d.id))
-          .map(d => ({ id: d.id, ...(d.data() as Omit<ChronicleEntry, "id">) }))
-          .sort((a, b) => b.id.localeCompare(a.id));
-        setChronicles(entries);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    fetchChronicles()
+      .then(setChronicles)
+      .catch(() => setChronicles([]))
+      .finally(() => setLoading(false));
   }, [router]);
 
   function handleLogout() {
