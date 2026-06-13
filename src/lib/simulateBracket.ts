@@ -1,4 +1,5 @@
 import type { TeamStanding } from "./standings";
+import type { Match } from "./scoring";
 
 // Motor del cuadro de eliminatorias para el simulador "Qué pasaría si…".
 // Resuelve los 16 cruces de dieciseisavos a partir de la clasificación simulada
@@ -59,19 +60,28 @@ export const BRACKET_2026: BracketMatchDef[] = [
 const TBD = "Por determinar";
 const GROUP_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
 
+// Marcador de un cruce de eliminatorias. Si hay empate en goles, `pen` indica
+// quién pasa por penaltis ("home" | "away").
+export interface KoScore {
+  h: number;
+  a: number;
+  pen?: "home" | "away";
+}
+
 export interface ResolvedBracketMatch {
   id: string;
   round: BracketMatchDef["round"];
   home: string;
   away: string;
-  homeReady: boolean; // ambos equipos conocidos
-  pick: "home" | "away" | null; // ganador elegido por el usuario
+  ready: boolean;                 // ambos equipos conocidos
+  score: KoScore | null;          // marcador puesto por el usuario
+  winner: "home" | "away" | null; // ganador resultante
 }
 
-// picks = { [matchId]: 'home' | 'away' } elecciones del usuario.
+// koScores = { [matchId]: { h, a, pen? } } marcadores que pone el usuario.
 export function simulateBracket(
   standings: Record<string, TeamStanding[]>,
-  picks: Record<string, "home" | "away">
+  koScores: Record<string, KoScore>
 ): ResolvedBracketMatch[] {
   // ¿Cada grupo tiene sus 3 jornadas completas? Solo entonces fijamos posiciones.
   const groupComplete = (g: string) => {
@@ -92,7 +102,7 @@ export function simulateBracket(
   const qualifiedThirds = new Set(thirds.slice(0, 8).map((x) => x.group));
   const usedThirds = new Set<string>();
 
-  const winners: Record<string, string> = {}; // matchId -> equipo ganador
+  const winnerTeam: Record<string, string> = {}; // matchId -> equipo ganador
 
   function resolveSide(side: Side): string {
     if (side.kind === "group") {
@@ -108,20 +118,48 @@ export function simulateBracket(
       }
       return TBD;
     }
-    // winner of another match
-    return winners[side.match] ?? TBD;
+    return winnerTeam[side.match] ?? TBD;
+  }
+
+  function winnerOf(score: KoScore | undefined): "home" | "away" | null {
+    if (!score) return null;
+    if (score.h > score.a) return "home";
+    if (score.a > score.h) return "away";
+    return score.pen ?? null; // empate → penaltis (si elegido)
   }
 
   const out: ResolvedBracketMatch[] = [];
-  // El orden de BRACKET_2026 ya es topológico (R32 → … → Final), así que al
-  // resolver en orden, los ganadores de rondas previas ya están calculados.
+  // BRACKET_2026 está en orden topológico (R32 → … → Final).
   for (const def of BRACKET_2026) {
     const home = resolveSide(def.home);
     const away = resolveSide(def.away);
     const ready = home !== TBD && away !== TBD;
-    const pick = ready ? (picks[def.id] ?? null) : null;
-    if (pick) winners[def.id] = pick === "home" ? home : away;
-    out.push({ id: def.id, round: def.round, home, away, homeReady: ready, pick });
+    const score = ready ? (koScores[def.id] ?? null) : null;
+    const winner = ready ? winnerOf(score ?? undefined) : null;
+    if (winner) winnerTeam[def.id] = winner === "home" ? home : away;
+    out.push({ id: def.id, round: def.round, home, away, ready, score, winner });
   }
   return out;
 }
+
+// Convierte los cruces resueltos en "Match" puntuables para la porra (todos los
+// que tienen marcador). En knockout, un empate cuenta como decidido por penaltis.
+export function bracketToMatches(resolved: ResolvedBracketMatch[]): Match[] {
+  const matches: Match[] = [];
+  for (const m of resolved) {
+    if (!m.ready || !m.score) continue;
+    const { h, a } = m.score;
+    matches.push({
+      id: `ko-${m.id}`,
+      home: m.home,
+      away: m.away,
+      homeGoals: h,
+      awayGoals: a,
+      phase: "knockout",
+      penalties: h === a, // empate decidido en penaltis
+      played: true,
+    });
+  }
+  return matches;
+}
+

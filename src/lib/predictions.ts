@@ -10,12 +10,17 @@ export interface Score {
 
 // results = marcadores imaginados para partidos de grupos no jugados.
 export type Predictions = Record<string, Score>;
-// knockout = ganador elegido por el usuario en cada cruce ("home" | "away").
-export type KnockoutPicks = Record<string, "home" | "away">;
+// knockout = marcador de cada cruce: { h, a, pen? }. pen = quién pasa si empate.
+export interface KoScore {
+  h: number;
+  a: number;
+  pen?: "home" | "away";
+}
+export type KnockoutScores = Record<string, KoScore>;
 
 export interface UserSim {
   results: Predictions;
-  knockout: KnockoutPicks;
+  knockout: KnockoutScores;
 }
 
 const FS = "https://firestore.googleapis.com/v1/projects/mundialisimo/databases/(default)/documents";
@@ -42,10 +47,15 @@ export async function fetchUserSim(user: string): Promise<UserSim> {
       results[matchId] = { h: Number(f.h?.integerValue ?? "0"), a: Number(f.a?.integerValue ?? "0") };
     }
     const koFields = data.fields?.knockout?.mapValue?.fields ?? {};
-    const knockout: KnockoutPicks = {};
+    const knockout: KnockoutScores = {};
     for (const [matchId, v] of Object.entries(koFields)) {
-      const val = v.stringValue;
-      if (val === "home" || val === "away") knockout[matchId] = val;
+      const f = v.mapValue?.fields ?? {};
+      const pen = f.pen?.stringValue;
+      knockout[matchId] = {
+        h: Number(f.h?.integerValue ?? "0"),
+        a: Number(f.a?.integerValue ?? "0"),
+        ...(pen === "home" || pen === "away" ? { pen } : {}),
+      };
     }
     return { results, knockout };
   } catch {

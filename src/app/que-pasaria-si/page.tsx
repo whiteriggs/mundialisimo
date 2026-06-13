@@ -6,10 +6,10 @@ import { useRouter } from "next/navigation";
 import { getStoredUser, clearUser } from "@/lib/auth";
 import { fetchAllMatches, type ApiAllMatch } from "@/lib/football-api";
 import { fetchUsersRest, fetchBetsRest, type BetDoc } from "@/lib/leaderboard";
-import { fetchUserSim, saveUserSim, type Predictions, type KnockoutPicks } from "@/lib/predictions";
+import { fetchUserSim, saveUserSim, type Predictions, type KnockoutScores } from "@/lib/predictions";
 import { buildTeamTotals, calcUserScore, type Match } from "@/lib/scoring";
 import { buildGroupStandings } from "@/lib/standings";
-import { simulateBracket } from "@/lib/simulateBracket";
+import { simulateBracket, bracketToMatches } from "@/lib/simulateBracket";
 import { teamName } from "@/lib/teams";
 import { getGroupId } from "@/lib/group";
 import Flag from "@/components/Flag";
@@ -26,7 +26,7 @@ export default function QuePasariaSiPage() {
   const [bets, setBets] = useState<BetDoc[]>([]);
   const [users, setUsers] = useState<string[]>([]);
   const [predictions, setPredictions] = useState<Predictions>({});
-  const [knockout, setKnockout] = useState<KnockoutPicks>({});
+  const [knockout, setKnockout] = useState<KnockoutScores>({});
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
 
   useEffect(() => {
@@ -64,9 +64,9 @@ export default function QuePasariaSiPage() {
     [groupMatches]
   );
 
-  // Conjunto de partidos para el cálculo: el resultado REAL siempre manda; el
+  // Partidos de grupos para el cálculo: el resultado REAL siempre manda; el
   // pronóstico solo cuenta en partidos aún no jugados.
-  const simulatedMatches = useMemo<Match[]>(() => {
+  const groupSimMatches = useMemo<Match[]>(() => {
     const real: Match[] = apiMatches
       .filter((m) => m.played && m.phase === "groups")
       .map((m) => ({
@@ -84,7 +84,18 @@ export default function QuePasariaSiPage() {
     return [...real, ...predicted];
   }, [apiMatches, pendingGroupMatches, predictions]);
 
-  const teamTotals = useMemo(() => buildTeamTotals(simulatedMatches), [simulatedMatches]);
+  const groupStandings = useMemo(() => buildGroupStandings(groupSimMatches), [groupSimMatches]);
+
+  // Cuadro de eliminatorias simulado: clasificados según los grupos + marcadores
+  // que pone el usuario, propagados ronda a ronda.
+  const bracket = useMemo(() => simulateBracket(groupStandings, knockout), [groupStandings, knockout]);
+
+  // Los goles de eliminatorias TAMBIÉN puntdan en la porra: sumamos los cruces
+  // con marcador al cómputo de cada selección.
+  const teamTotals = useMemo(
+    () => buildTeamTotals([...groupSimMatches, ...bracketToMatches(bracket)]),
+    [groupSimMatches, bracket]
+  );
 
   const leaderboard = useMemo(() => {
     return users
@@ -98,11 +109,6 @@ export default function QuePasariaSiPage() {
       .sort((a, b) => b.total - a.total);
   }, [users, bets, teamTotals]);
 
-  const groupStandings = useMemo(() => buildGroupStandings(simulatedMatches), [simulatedMatches]);
-
-  // Cuadro de eliminatorias simulado: clasificados según los grupos + ganadores
-  // elegidos por el usuario, propagados ronda a ronda.
-  const bracket = useMemo(() => simulateBracket(groupStandings, knockout), [groupStandings, knockout]);
   const bracketByRound = useMemo(() => {
     const r: Record<string, typeof bracket> = { R32: [], R16: [], QF: [], SF: [], FINAL: [] };
     for (const m of bracket) r[m.round].push(m);
@@ -110,13 +116,13 @@ export default function QuePasariaSiPage() {
   }, [bracket]);
   const champion = useMemo(() => {
     const final = bracket.find((m) => m.round === "FINAL");
-    if (!final || !final.pick) return null;
-    return final.pick === "home" ? final.home : final.away;
+    if (!final || !final.winner) return null;
+    return final.winner === "home" ? final.home : final.away;
   }, [bracket]);
 
-  // Autosave con debounce (guarda resultados de grupos + picks de eliminatorias).
+  // Autosave con debounce (guarda resultados de grupos + marcadores de eliminatorias).
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const persist = useCallback((results: Predictions, ko: KnockoutPicks) => {
+  const persist = useCallback((results: Predictions, ko: KnockoutScores) => {
     if (!user) return;
     setSaveState("saving");
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -146,11 +152,33 @@ export default function QuePasariaSiPage() {
     });
   }
 
-  function pickWinner(matchId: string, side: "home" | "away") {
+  function setKoScore(matchId: string, side: "h" | "a", value: string) {
+    const n = Math.max(0, Math.min(30, Number(value.replace(/[^0-9]/g, "")) || 0));
+    setKnockout((prev) => {
+      const cur = prev[matchId] ?? { h: 0, a: 0 };
+      const merged = { ...cur, [side]: n };
+      // Si deja de haber empate, el penalti elegido ya no aplica.
+      if (merged.h !== merged.a) delete merged.pen;
+      const next = { ...prev, [matchId]: merged };
+      persist(predictions, next);
+      return next;
+    });
+  }
+
+  function setKoPen(matchId: string, side: "home" | "away") {
+    setKnockout((prev) => {
+      const cur = prev[matchId];
+      if (!cur) return prev;
+      const next = { ...prev, [matchId]: { ...cur, pen: cur.pen === side ? undefined : side } };
+      persist(predictions, next);
+      return next;
+    });
+  }
+
+  function clearKo(matchId: string) {
     setKnockout((prev) => {
       const next = { ...prev };
-      if (next[matchId] === side) delete next[matchId]; // click de nuevo = deseleccionar
-      else next[matchId] = side;
+      delete next[matchId];
       persist(predictions, next);
       return next;
     });
@@ -330,32 +358,63 @@ export default function QuePasariaSiPage() {
               {champion && <span className="qps-champion">🏆 {champion}</span>}
             </h2>
             <p className="muted" style={{ marginBottom: 12, fontSize: "0.82rem" }}>
-              Los clasificados salen de tus grupos. Toca un equipo para elegir quién pasa de ronda.
+              Los clasificados salen de tus grupos. Pon el marcador de cada cruce —los goles también puntúan en la porra. Si hay empate, elige quién pasa por penaltis.
             </p>
             <div className="qps-bracket">
               {ROUND_LABELS.map(([round, label]) => (
                 <div key={round} className="qps-bracket-round">
                   <h3 className="qps-round-label">{label}</h3>
-                  {bracketByRound[round].map((m) => (
-                    <div key={m.id} className={`qps-tie${m.homeReady ? "" : " qps-tie--tbd"}`}>
-                      <button
-                        className={`qps-side${m.pick === "home" ? " qps-side--win" : ""}${m.pick === "away" ? " qps-side--lose" : ""}`}
-                        disabled={!m.homeReady}
-                        onClick={() => pickWinner(m.id, "home")}
-                      >
-                        {m.home !== "Por determinar" && <Flag name={m.home} />}
-                        <span className="qps-side-name">{m.home}</span>
-                      </button>
-                      <button
-                        className={`qps-side${m.pick === "away" ? " qps-side--win" : ""}${m.pick === "home" ? " qps-side--lose" : ""}`}
-                        disabled={!m.homeReady}
-                        onClick={() => pickWinner(m.id, "away")}
-                      >
-                        {m.away !== "Por determinar" && <Flag name={m.away} />}
-                        <span className="qps-side-name">{m.away}</span>
-                      </button>
-                    </div>
-                  ))}
+                  {bracketByRound[round].map((m) => {
+                    const sc = m.score;
+                    const isTie = !!sc && sc.h === sc.a;
+                    return (
+                      <div key={m.id} className={`qps-tie${m.ready ? "" : " qps-tie--tbd"}`}>
+                        <div className="qps-tie-row">
+                          <span className={`qps-side-name${m.winner === "home" ? " qps-side--win" : m.winner === "away" ? " qps-side--lose" : ""}`}>
+                            {m.home !== "Por determinar" && <Flag name={m.home} />}
+                            {m.home}
+                          </span>
+                          <div className="qps-ko-score">
+                            <input
+                              type="text" inputMode="numeric" maxLength={2}
+                              value={sc ? String(sc.h) : ""}
+                              placeholder="-" disabled={!m.ready}
+                              onChange={(e) => setKoScore(m.id, "h", e.target.value)}
+                              aria-label={`Goles ${m.home}`}
+                            />
+                            <span className="qps-dash">–</span>
+                            <input
+                              type="text" inputMode="numeric" maxLength={2}
+                              value={sc ? String(sc.a) : ""}
+                              placeholder="-" disabled={!m.ready}
+                              onChange={(e) => setKoScore(m.id, "a", e.target.value)}
+                              aria-label={`Goles ${m.away}`}
+                            />
+                          </div>
+                          <span className={`qps-side-name qps-side-name--away${m.winner === "away" ? " qps-side--win" : m.winner === "home" ? " qps-side--lose" : ""}`}>
+                            {m.away}
+                            {m.away !== "Por determinar" && <Flag name={m.away} />}
+                          </span>
+                          {sc && (
+                            <button className="qps-clear" onClick={() => clearKo(m.id)} title="Borrar marcador">×</button>
+                          )}
+                        </div>
+                        {isTie && (
+                          <div className="qps-pens">
+                            <span className="qps-pens-label">Penaltis:</span>
+                            <button
+                              className={`qps-pen-btn${sc?.pen === "home" ? " qps-pen-btn--on" : ""}`}
+                              onClick={() => setKoPen(m.id, "home")}
+                            >{m.home}</button>
+                            <button
+                              className={`qps-pen-btn${sc?.pen === "away" ? " qps-pen-btn--on" : ""}`}
+                              onClick={() => setKoPen(m.id, "away")}
+                            >{m.away}</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
             </div>

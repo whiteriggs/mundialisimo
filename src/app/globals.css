@@ -3734,47 +3734,40 @@ body[data-sidebar="expanded"] .app-shell {
 }
 
 .qps-tie {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-
-.qps-side {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 7px 8px;
   background: var(--bg-2);
   border: 1px solid var(--line);
   border-radius: 7px;
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  text-align: left;
-  transition: border-color 120ms, background 120ms, opacity 120ms;
-  overflow: hidden;
+}
+
+.qps-tie-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto;
+  align-items: center;
+  gap: 6px;
 }
 
 .qps-side-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.qps-side:disabled {
-  cursor: default;
-  color: var(--text-dim);
-  opacity: 0.7;
-}
-
-.qps-side:not(:disabled):hover {
-  border-color: var(--gold);
+.qps-side-name--away {
+  justify-content: flex-end;
 }
 
 .qps-side--win {
-  border-color: var(--gold);
-  background: rgba(246, 192, 80, 0.14);
+  color: var(--gold);
   font-weight: 800;
 }
 
@@ -3782,8 +3775,68 @@ body[data-sidebar="expanded"] .app-shell {
   opacity: 0.45;
 }
 
-.qps-tie--tbd .qps-side {
+.qps-tie--tbd .qps-side-name {
   font-style: italic;
+  color: var(--text-dim);
+}
+
+.qps-ko-score {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.qps-ko-score input {
+  width: 30px;
+  padding: 3px 0;
+  text-align: center;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.qps-ko-score input:disabled {
+  opacity: 0.4;
+}
+
+.qps-pens {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 2px;
+}
+
+.qps-pens-label {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.qps-pen-btn {
+  padding: 2px 8px;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 120ms, background 120ms, color 120ms;
+}
+
+.qps-pen-btn:hover {
+  border-color: var(--gold);
+}
+
+.qps-pen-btn--on {
+  border-color: var(--gold);
+  background: rgba(246, 192, 80, 0.16);
+  color: var(--gold);
 }
 
 .qps-team {
