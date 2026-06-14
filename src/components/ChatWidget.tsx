@@ -196,8 +196,16 @@ export default function ChatWidget() {
                         <button
                           className="chat-react-add"
                           onClick={() => setPickerFor(pickerFor === m.id ? null : m.id)}
-                          aria-label="Reaccionar"
-                        >😊﹢</button>
+                          aria-label="Añadir reacción"
+                          title="Añadir reacción"
+                        >
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9" />
+                            <path d="M9 10h.01M15 10h.01" />
+                            <path d="M9.5 15a3.5 3.5 0 0 0 5 0" />
+                          </svg>
+                          <span className="chat-react-plus">+</span>
+                        </button>
                         {pickerFor === m.id && (
                           <div className="chat-picker">
                             {REACTION_EMOJIS.map((e) => (
