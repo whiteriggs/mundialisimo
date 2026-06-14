@@ -286,6 +286,41 @@ async function anyMatchLive(env) {
   }
 }
 
+// Decide de forma autoritativa si hay que anunciar un cambio de líder. El estado
+// del último líder vive en KV (estable, serializado por el Worker), así que NO
+// sufre los parpadeos IN_PLAY⇄TIMED de la API ni se "consume" un cambio durante
+// el partido. Solo anuncia si: no hay partido en vivo Y el líder cambió.
+async function handleLeaderCheck(request, env) {
+  let payload;
+  try {
+    payload = await request.json();
+  } catch {
+    return json({ announce: false, prev: null }, { "Cache-Control": "no-store" });
+  }
+  const { group, name } = payload ?? {};
+  if (!group || !name) return json({ announce: false, prev: null }, { "Cache-Control": "no-store" });
+
+  // Mientras haya fútbol en juego, no tocamos el estado: el cambio queda
+  // pendiente y se anunciará cuando los partidos terminen.
+  try {
+    if (await anyMatchLive(env)) return json({ announce: false, prev: null, reason: "live" }, { "Cache-Control": "no-store" });
+  } catch { /* best-effort */ }
+
+  const key = `leader:${group}`;
+  let prev = null;
+  try {
+    const raw = await env.SCORES.get(key);
+    if (raw) prev = JSON.parse(raw).name ?? null;
+  } catch { /* ignore */ }
+
+  if (prev === name) return json({ announce: false, prev, reason: "same" }, { "Cache-Control": "no-store" });
+
+  await env.SCORES.put(key, JSON.stringify({ name, at: Date.now() }));
+  // Primera vez que registramos un líder para este grupo: no anunciar.
+  if (!prev) return json({ announce: false, prev: null, reason: "init" }, { "Cache-Control": "no-store" });
+  return json({ announce: true, prev }, { "Cache-Control": "no-store" });
+}
+
 async function handleNotify(request, env, ctx) {
   let payload;
   try {
@@ -335,6 +370,9 @@ export default {
     }
     if (url.pathname === "/notify" && request.method === "POST") {
       return handleNotify(request, env, ctx);
+    }
+    if (url.pathname === "/leader-check" && request.method === "POST") {
+      return handleLeaderCheck(request, env);
     }
     if (url.pathname !== "/matches") {
       return new Response("Not found", { status: 404, headers: CORS });

@@ -1,8 +1,7 @@
-import { addDoc, deleteDoc, updateDoc, setDoc, serverTimestamp, runTransaction } from "firebase/firestore";
-import { db } from "./firebase";
+import { addDoc, deleteDoc, updateDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { groupCollection, groupDoc } from "./db";
 import { getGroupId } from "./group";
-import { notifyPush } from "./push";
+import { notifyPush, leaderCheck } from "./push";
 
 // Chat del grupo. Patrón conocido del proyecto: escribir con el SDK (puntual,
 // estable) y LEER por REST con polling, evitando el WebChannel del SDK que
@@ -135,42 +134,23 @@ export async function announceChronicle(headline: string): Promise<void> {
   });
 }
 
-// Detecta cambios de líder y los anuncia una sola vez. Usa una transacción
-// sobre groups/{grupo}/meta/leader para que, aunque varios clientes lo detecten
-// a la vez, solo se publique un mensaje. Cooldown de 2 min anti flip-flop.
+// Detecta cambios de líder y los anuncia una sola vez. La DECISIÓN la toma el
+// Worker (su KV es la única fuente estable: no parpadea con la API ni sufre
+// carreras entre clientes). El cliente solo reporta el líder actual y, si el
+// Worker dice que toca anunciar, escribe el mensaje y dispara el push.
 export async function maybeAnnounceLeader(name: string, total: number): Promise<void> {
   if (!name) return;
-  const ref = groupDoc("meta", "leader");
-  let result: { prev: string | null; announce: boolean } = { prev: null, announce: false };
-  try {
-    result = await runTransaction(db, async (tx) => {
-      const snap = await tx.get(ref);
-      if (!snap.exists()) {
-        tx.set(ref, { name, total, updatedAt: serverTimestamp() });
-        return { prev: null, announce: false };
-      }
-      const data = snap.data() as { name?: string; updatedAt?: { toMillis?: () => number } };
-      const prev = data.name ?? null;
-      if (prev === name) return { prev, announce: false };
-      const lastMs = data.updatedAt?.toMillis?.() ?? 0;
-      const recent = lastMs > 0 && Date.now() - lastMs < 120_000;
-      tx.set(ref, { name, total, updatedAt: serverTimestamp() });
-      return { prev, announce: !recent };
-    });
-  } catch {
-    return;
-  }
-  if (result.announce && result.prev) {
-    await postBotMessage(
-      `🚨 ¡Cambio de líder! ${name} adelanta a ${result.prev} y se pone primero con ${total} ${total === 1 ? "punto" : "puntos"}. 👑`
-    );
-    await notifyPush({
-      title: "🚨 ¡Cambio de líder!",
-      body: `${name} adelanta a ${result.prev} y se pone primero con ${total} ${total === 1 ? "punto" : "puntos"}.`,
-      url: "/resultados/",
-      tag: "lider",
-    });
-  }
+  const { announce, prev } = await leaderCheck(name);
+  if (!announce || !prev) return;
+  await postBotMessage(
+    `🚨 ¡Cambio de líder! ${name} adelanta a ${prev} y se pone primero con ${total} ${total === 1 ? "punto" : "puntos"}. 👑`
+  );
+  await notifyPush({
+    title: "🚨 ¡Cambio de líder!",
+    body: `${name} adelanta a ${prev} y se pone primero con ${total} ${total === 1 ? "punto" : "puntos"}.`,
+    url: "/resultados/",
+    tag: "lider",
+  });
 }
 
 // ── Presencia ("en línea") ───────────────────────────────────────────────

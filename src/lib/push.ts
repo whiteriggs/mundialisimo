@@ -10,6 +10,7 @@ const VAPID_PUBLIC_KEY = "BEtPn4ygVuDfoFqrpX6x-CQp567x4gvUygbTpps9V7I4uZChXl2Nad
 
 const MATCHES_URL = process.env.NEXT_PUBLIC_LIVE_MATCHES_URL ?? "";
 const NOTIFY_URL = MATCHES_URL ? MATCHES_URL.replace(/\/matches\/?$/, "/notify") : "";
+const LEADER_URL = MATCHES_URL ? MATCHES_URL.replace(/\/matches\/?$/, "/leader-check") : "";
 
 export interface NotifyPayload {
   title: string;
@@ -121,4 +122,22 @@ export async function notifyPush(payload: NotifyPayload): Promise<void> {
       keepalive: true,
     });
   } catch { /* el envío es best-effort; no romper la UX si falla */ }
+}
+
+// Pregunta al Worker (autoridad estable) si hay que anunciar un cambio de líder.
+// El estado vive en el KV del Worker, inmune a los parpadeos de la API.
+export async function leaderCheck(name: string): Promise<{ announce: boolean; prev: string | null }> {
+  if (!LEADER_URL) return { announce: false, prev: null };
+  try {
+    const res = await fetch(LEADER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ group: getGroupId(), name }),
+    });
+    if (!res.ok) return { announce: false, prev: null };
+    const d = (await res.json()) as { announce?: boolean; prev?: string | null };
+    return { announce: !!d.announce, prev: d.prev ?? null };
+  } catch {
+    return { announce: false, prev: null };
+  }
 }
