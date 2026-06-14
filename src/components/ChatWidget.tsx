@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { getStoredUser } from "@/lib/auth";
-import { isGroupAdmin } from "@/lib/group";
+import { isGroupAdmin, getGroupId } from "@/lib/group";
 import {
   fetchMessages,
   sendMessage,
@@ -13,14 +14,16 @@ import {
   type ChatMessage,
 } from "@/lib/chat";
 
-const SEEN_KEY = "mundialisimo_chat_seen";
+function seenKey() {
+  return `mundialisimo_chat_seen_${getGroupId()}`;
+}
 
 function getSeen(): number {
   if (typeof window === "undefined") return 0;
-  return Number(localStorage.getItem(SEEN_KEY) ?? "0");
+  return Number(localStorage.getItem(seenKey()) ?? "0");
 }
 function setSeen(ts: number) {
-  try { localStorage.setItem(SEEN_KEY, String(ts)); } catch { /* ignore */ }
+  try { localStorage.setItem(seenKey(), String(ts)); } catch { /* ignore */ }
 }
 
 function fmtTime(ms: number): string {
@@ -31,6 +34,7 @@ function fmtTime(ms: number): string {
 }
 
 export default function ChatWidget() {
+  const pathname = usePathname();
   const [user, setUser] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -39,6 +43,9 @@ export default function ChatWidget() {
   const [lastSeen, setLastSeen] = useState(0);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+
+  // No mostrar el chat en la pantalla de login (aunque haya sesión guardada).
+  const onLogin = (pathname ?? "").includes("/login");
 
   useEffect(() => {
     setUser(getStoredUser());
@@ -54,11 +61,11 @@ export default function ChatWidget() {
 
   // Polling: más frecuente con el chat abierto, más espaciado cerrado.
   useEffect(() => {
-    if (!user) return;
+    if (!user || onLogin) return;
     load();
     const interval = setInterval(load, open ? 5000 : 15000);
     return () => clearInterval(interval);
-  }, [user, open, load]);
+  }, [user, open, load, onLogin]);
 
   // Recargar al volver a la pestaña.
   useEffect(() => {
@@ -112,6 +119,7 @@ export default function ChatWidget() {
   }
 
   if (!user) return null;
+  if (onLogin) return null;
 
   return (
     <>
