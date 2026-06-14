@@ -264,10 +264,14 @@ export default function ResultadosPage() {
                         {r.user}
                         {r.uid === currentUser?.toLowerCase() ? <span className="me-badge"> (tú)</span> : ""}
                         {!r.confirmed ? <span className="pending-label"> · sin confirmar</span> : ""}
-                        {r.confirmed && movements[r.uid] ? (
-                          <span className={`st-move ${movements[r.uid] > 0 ? "st-move-up" : "st-move-down"}`}>
-                            {movements[r.uid] > 0 ? "▲" : "▼"}{Math.abs(movements[r.uid])}
-                          </span>
+                        {r.confirmed && roundData.columns.length > 0 ? (
+                          movements[r.uid] ? (
+                            <span className={`st-move ${movements[r.uid] > 0 ? "st-move-up" : "st-move-down"}`}>
+                              {movements[r.uid] > 0 ? "▲" : "▼"}{Math.abs(movements[r.uid])}
+                            </span>
+                          ) : (
+                            <span className="st-move st-move-same">=</span>
+                          )
                         ) : null}
                       </td>
                       <td className="st-total">{r.confirmed ? r.total : "—"}</td>

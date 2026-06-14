@@ -1296,6 +1296,7 @@ a {
 }
 .st-move-up { color: var(--green); }
 .st-move-down { color: var(--red); }
+.st-move-same { color: var(--text-dim); }
 
 /* ── Tabs (Resultados / Clasificación) ─────────── */
 .tabs {
