@@ -8,6 +8,8 @@ import { getDoc, setDoc, collection, getDocs } from "firebase/firestore";
 import { generateText } from "@/lib/gemini";
 import { fetchAllMatches } from "@/lib/football-api";
 import NewspaperChronicle from "@/components/NewspaperChronicle";
+import { parseChronicle } from "@/lib/chronicle";
+import { announceChronicle } from "@/lib/chat";
 import { Match, buildTeamTotals, calcUserScore } from "@/lib/scoring";
 import { db } from "@/lib/firebase";
 import { groupDoc, groupCollection } from "@/lib/db";
@@ -388,6 +390,9 @@ PROHIBIDO POR DEFECTO (salvo que las INDICACIONES DEL EDITOR lo pidan expresamen
     try {
       const dateKey = new Date().toISOString().slice(0, 10);
       await setDoc(groupDoc("chronicles", dateKey), { text: chroniclePreview, leaderboard: chronicleLeaderboard, generatedAt: new Date(), generatedBy: currentUser ?? getGroupConfig().admin });
+      try {
+        await announceChronicle(parseChronicle(chroniclePreview)?.headline ?? "");
+      } catch { /* el aviso en el chat es secundario; no bloquea la publicación */ }
       setChronicleMsg("✓ Crónica publicada. Ya visible en /cronica.");
       setChroniclePreview(null);
     } catch (e) {

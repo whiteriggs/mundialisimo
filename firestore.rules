@@ -87,6 +87,15 @@ service cloud.firestore {
       allow delete: if true;
     }
 
+    // ── Meta del grupo (p.ej. líder actual para avisar de cambios) ─────────
+    match /groups/{groupId}/meta/{docId} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['name', 'total', 'updatedAt'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 40
+        && request.resource.data.total is number
+        && request.resource.data.updatedAt is timestamp;
+    }
+
     // ── Resultados de partidos (globales) ──────────────────────────────────
     // Entrada manual del admin desde la UI de Resultados.
     match /matches/{matchId} {

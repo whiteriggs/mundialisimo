@@ -1,4 +1,5 @@
-import { addDoc, deleteDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { addDoc, deleteDoc, updateDoc, serverTimestamp, runTransaction } from "firebase/firestore";
+import { db } from "./firebase";
 import { groupCollection, groupDoc } from "./db";
 import { getGroupId } from "./group";
 
@@ -8,6 +9,12 @@ import { getGroupId } from "./group";
 const FS = "https://firestore.googleapis.com/v1/projects/mundialisimo/databases/(default)/documents";
 
 export const REACTION_EMOJIS = ["👍", "😂", "🔥", "⚽", "😮", "😢"] as const;
+
+// Autor de los mensajes automáticos (crónicas nuevas, cambios de líder).
+export const BOT_AUTHOR = "LaIA";
+export function isBotAuthor(user: string): boolean {
+  return user === BOT_AUTHOR;
+}
 
 export interface ChatMessage {
   id: string;
@@ -98,3 +105,58 @@ export async function toggleReaction(
   await updateDoc(groupDoc("messages", id), { reactions: next });
   return next;
 }
+
+// Publica un mensaje automático de LaIA en el chat.
+export async function postBotMessage(text: string): Promise<void> {
+  const clean = text.trim().slice(0, 500);
+  if (!clean) return;
+  await addDoc(groupCollection("messages"), {
+    user: BOT_AUTHOR,
+    text: clean,
+    createdAt: serverTimestamp(),
+    reactions: {},
+  });
+}
+
+// Anuncia en el chat que se ha publicado una crónica nueva.
+export async function announceChronicle(headline: string): Promise<void> {
+  const h = headline.trim();
+  await postBotMessage(
+    h
+      ? `📰 ¡Edición nueva! "${h}". Pásate por la pestaña Crónica para leerla entera. ✍️`
+      : "📰 ¡Crónica nueva publicada! Pásate por la pestaña Crónica para leerla. ✍️"
+  );
+}
+
+// Detecta cambios de líder y los anuncia una sola vez. Usa una transacción
+// sobre groups/{grupo}/meta/leader para que, aunque varios clientes lo detecten
+// a la vez, solo se publique un mensaje. Cooldown de 2 min anti flip-flop.
+export async function maybeAnnounceLeader(name: string, total: number): Promise<void> {
+  if (!name) return;
+  const ref = groupDoc("meta", "leader");
+  let result: { prev: string | null; announce: boolean } = { prev: null, announce: false };
+  try {
+    result = await runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists()) {
+        tx.set(ref, { name, total, updatedAt: serverTimestamp() });
+        return { prev: null, announce: false };
+      }
+      const data = snap.data() as { name?: string; updatedAt?: { toMillis?: () => number } };
+      const prev = data.name ?? null;
+      if (prev === name) return { prev, announce: false };
+      const lastMs = data.updatedAt?.toMillis?.() ?? 0;
+      const recent = lastMs > 0 && Date.now() - lastMs < 120_000;
+      tx.set(ref, { name, total, updatedAt: serverTimestamp() });
+      return { prev, announce: !recent };
+    });
+  } catch {
+    return;
+  }
+  if (result.announce && result.prev) {
+    await postBotMessage(
+      `🚨 ¡Cambio de líder! ${name} adelanta a ${result.prev} y se pone primero con ${total} ${total === 1 ? "punto" : "puntos"}. 👑`
+    );
+  }
+}
+

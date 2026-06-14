@@ -3996,6 +3996,13 @@ body[data-sidebar="expanded"] .app-shell {
   background: rgba(246, 192, 80, 0.1);
   border-color: rgba(246, 192, 80, 0.3);
 }
+.chat-msg--bot {
+  align-self: stretch;
+  max-width: 100%;
+  background: rgba(78, 163, 255, 0.1);
+  border-color: rgba(78, 163, 255, 0.35);
+}
+.chat-msg--bot .chat-msg-user { color: var(--accent); }
 .chat-msg-head {
   display: flex;
   align-items: center;

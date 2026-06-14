@@ -8,6 +8,7 @@ import {
   sendMessage,
   deleteMessage,
   toggleReaction,
+  isBotAuthor,
   REACTION_EMOJIS,
   type ChatMessage,
 } from "@/lib/chat";
@@ -126,10 +127,11 @@ export default function ChatWidget() {
             ) : (
               messages.map((m) => {
                 const mine = m.user.toLowerCase() === user.toLowerCase();
+                const bot = isBotAuthor(m.user);
                 return (
-                  <div key={m.id} className={`chat-msg${mine ? " chat-msg--mine" : ""}`}>
+                  <div key={m.id} className={`chat-msg${mine ? " chat-msg--mine" : ""}${bot ? " chat-msg--bot" : ""}`}>
                     <div className="chat-msg-head">
-                      <span className="chat-msg-user">{m.user}</span>
+                      <span className="chat-msg-user">{bot ? "📣 LaIA" : m.user}</span>
                       <span className="chat-msg-time">{fmtTime(m.createdAt)}</span>
                       {admin && (
                         <button className="chat-msg-del" onClick={() => handleDelete(m.id)} title="Borrar mensaje">×</button>

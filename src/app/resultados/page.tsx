@@ -11,6 +11,7 @@ import { teamName, teamCode } from "@/lib/teams";
 import { buildTeamTotals, matchPoints, Match } from "@/lib/scoring";
 import { fetchAllMatches, ApiAllMatch, isLiveStatus } from "@/lib/football-api";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
+import { maybeAnnounceLeader } from "@/lib/chat";
 import { buildStaticSchedule } from "@/lib/static-schedule";
 import PointsHistoryChart, { ChartSeries } from "@/components/PointsHistoryChart";
 
@@ -106,6 +107,17 @@ export default function ResultadosPage() {
       : 0;
     return { user: u, uid, total: favPts - antiPts, favPts, antiPts, confirmed: bet?.confirmed ?? false, bet };
   }).sort((a, b) => b.total - a.total);
+
+  // Líder actual (confirmado y con puntos). Cuando cambia de nombre, se anuncia
+  // en el chat una sola vez (la transacción dedup en chat.ts evita duplicados).
+  const topLeaderName = rankings.find((r) => r.confirmed && r.total > 0)?.user ?? null;
+  const topLeaderTotal = rankings.find((r) => r.confirmed && r.total > 0)?.total ?? 0;
+  useEffect(() => {
+    if (!topLeaderName) return;
+    maybeAnnounceLeader(topLeaderName, topLeaderTotal);
+    // Solo al cambiar el NOMBRE del líder, no en cada tick de puntos.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topLeaderName]);
 
   const roundData = useMemo(() => {
     const liveIds = new Set(
