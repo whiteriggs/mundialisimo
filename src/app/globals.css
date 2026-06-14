@@ -3978,6 +3978,30 @@ body[data-sidebar="expanded"] .app-shell {
   background: var(--bg-2);
 }
 .chat-title { font-size: 14px; font-weight: 800; }
+.chat-online {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  margin-right: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.chat-online-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+}
+.chat-read {
+  margin-top: 3px;
+  text-align: right;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
 .chat-close {
   background: none; border: none; color: var(--text-dim);
   font-size: 22px; line-height: 1; cursor: pointer;

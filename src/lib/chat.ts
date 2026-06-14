@@ -1,4 +1,4 @@
-import { addDoc, deleteDoc, updateDoc, serverTimestamp, runTransaction } from "firebase/firestore";
+import { addDoc, deleteDoc, updateDoc, setDoc, serverTimestamp, runTransaction } from "firebase/firestore";
 import { db } from "./firebase";
 import { groupCollection, groupDoc } from "./db";
 import { getGroupId } from "./group";
@@ -157,6 +157,72 @@ export async function maybeAnnounceLeader(name: string, total: number): Promise<
     await postBotMessage(
       `🚨 ¡Cambio de líder! ${name} adelanta a ${result.prev} y se pone primero con ${total} ${total === 1 ? "punto" : "puntos"}. 👑`
     );
+  }
+}
+
+// ── Presencia ("en línea") ───────────────────────────────────────────────
+// Cada cliente escribe un latido cada ~20s. Se considera en línea a quien lo
+// haya hecho en los últimos ONLINE_WINDOW_MS.
+export const ONLINE_WINDOW_MS = 45_000;
+
+// Escribe el latido del usuario (setDoc con merge implícito vía set).
+export async function pingPresence(user: string): Promise<void> {
+  if (!user) return;
+  await setDoc(groupDoc("presence", user.toLowerCase()), {
+    user,
+    lastSeen: serverTimestamp(),
+  });
+}
+
+// Lee por REST quién está en línea ahora mismo (lista de nombres).
+export async function fetchOnline(): Promise<string[]> {
+  const groupId = getGroupId();
+  try {
+    const res = await fetch(`${FS}/groups/${groupId}/presence?pageSize=200`, { cache: "no-store" });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { documents?: FsDoc[] };
+    const now = Date.now();
+    return (data.documents ?? [])
+      .map((doc) => {
+        const f = doc.fields ?? {};
+        const ts = f.lastSeen?.timestampValue;
+        return { user: f.user?.stringValue ?? "", ms: ts ? Date.parse(ts) : 0 };
+      })
+      .filter((p) => p.user && now - p.ms < ONLINE_WINDOW_MS)
+      .map((p) => p.user);
+  } catch {
+    return [];
+  }
+}
+
+// ── Recibos de lectura ("leído por N") ───────────────────────────────────
+// Cada usuario guarda el timestamp del último mensaje que ha visto. Con eso se
+// deriva, para cada mensaje, quién lo ha leído (su lastRead >= createdAt).
+export async function markRead(user: string, ts: number): Promise<void> {
+  if (!user || !ts) return;
+  await setDoc(groupDoc("reads", user.toLowerCase()), {
+    user,
+    lastRead: ts,
+  });
+}
+
+// Lee por REST el último mensaje visto por cada usuario: nombre -> ms epoch.
+export async function fetchReads(): Promise<Record<string, number>> {
+  const groupId = getGroupId();
+  try {
+    const res = await fetch(`${FS}/groups/${groupId}/reads?pageSize=200`, { cache: "no-store" });
+    if (!res.ok) return {};
+    const data = (await res.json()) as { documents?: FsDoc[] };
+    const out: Record<string, number> = {};
+    for (const doc of data.documents ?? []) {
+      const f = doc.fields ?? {};
+      const user = f.user?.stringValue ?? "";
+      const lastRead = Number(f.lastRead?.integerValue ?? "0");
+      if (user) out[user] = lastRead;
+    }
+    return out;
+  } catch {
+    return {};
   }
 }
 

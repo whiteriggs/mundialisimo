@@ -96,6 +96,22 @@ service cloud.firestore {
         && request.resource.data.updatedAt is timestamp;
     }
 
+    // ── Presencia ("en línea") ─────────────────────────────────────────────
+    match /groups/{groupId}/presence/{userId} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['user', 'lastSeen'])
+        && request.resource.data.user is string && request.resource.data.user.size() <= 40
+        && request.resource.data.lastSeen is timestamp;
+    }
+
+    // ── Recibos de lectura ("leído por N") ─────────────────────────────────
+    match /groups/{groupId}/reads/{userId} {
+      allow read: if true;
+      allow write: if request.resource.data.keys().hasOnly(['user', 'lastRead'])
+        && request.resource.data.user is string && request.resource.data.user.size() <= 40
+        && request.resource.data.lastRead is int;
+    }
+
     // ── Resultados de partidos (globales) ──────────────────────────────────
     // Entrada manual del admin desde la UI de Resultados.
     match /matches/{matchId} {
