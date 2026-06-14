@@ -273,6 +273,16 @@ async function deleteSub(group, id) {
   await fetch(`${FS_BASE}/groups/${encodeURIComponent(group)}/pushSubs/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
+// ¿Hay algún partido en directo ahora mismo? Reutiliza el propio /matches (que
+// ya está cacheado en el edge), así no añade carga a la API real.
+async function anyMatchLive(request) {
+  const origin = new URL(request.url).origin;
+  const res = await fetch(`${origin}/matches`, { cf: { cacheTtl: 15 } });
+  if (!res.ok) return false;
+  const matches = await res.json();
+  return Array.isArray(matches) && matches.some((m) => LIVE_STATUSES.has(m.status));
+}
+
 async function handleNotify(request, env, ctx) {
   let payload;
   try {
@@ -282,6 +292,16 @@ async function handleNotify(request, env, ctx) {
   }
   const { group, title, body, url: clickUrl, tag, excludeUser } = payload ?? {};
   if (!group || !title) return json({ error: "missing group/title" }, { "Cache-Control": "no-store" });
+
+  // Guard de líder a prueba de clientes desfasados: aunque un navegador con
+  // código viejo dispare el aviso, el Worker NO envía el push de "cambio de
+  // líder" si hay algún partido en directo (evita marear durante el partido).
+  if (tag === "lider") {
+    try {
+      const live = await anyMatchLive(request);
+      if (live) return json({ ok: true, sent: 0, skipped: "live" }, { "Cache-Control": "no-store" });
+    } catch { /* si no se puede comprobar, seguimos (best-effort) */ }
+  }
 
   const subs = await fetchSubs(group);
   const exclude = (excludeUser ?? "").toLowerCase();
