@@ -1,12 +1,12 @@
 import { addDoc, deleteDoc, updateDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { groupCollection, groupDoc } from "./db";
-import { getGroupId } from "./group";
 import { notifyPush, leaderCheck } from "./push";
+import { readCollection } from "./fsread";
 
 // Chat del grupo. Patrón conocido del proyecto: escribir con el SDK (puntual,
 // estable) y LEER por REST con polling, evitando el WebChannel del SDK que
-// cuelga en Safari/redes móviles.
-const FS = "https://firestore.googleapis.com/v1/projects/mundialisimo/databases/(default)/documents";
+// cuelga en Safari/redes móviles. Las lecturas de polling pasan por el Worker
+// (cacheadas) para no quemar la cuota de Firestore.
 
 export const REACTION_EMOJIS = ["👍", "😂", "🔥", "⚽", "😮", "😢"] as const;
 
@@ -45,31 +45,21 @@ function parseReactions(v?: FsValue): Record<string, string[]> {
   return out;
 }
 
-// Lee los mensajes ordenados por fecha ascendente (REST GET).
+// Lee los mensajes ordenados por fecha ascendente (a través del Worker cacheado).
 export async function fetchMessages(): Promise<ChatMessage[]> {
-  const groupId = getGroupId();
-  try {
-    const res = await fetch(
-      `${FS}/groups/${groupId}/messages?pageSize=300&orderBy=createdAt`,
-      { cache: "no-store" }
-    );
-    if (!res.ok) return [];
-    const data = (await res.json()) as { documents?: FsDoc[] };
-    return (data.documents ?? []).map((doc): ChatMessage => {
-      const id = doc.name.split("/").pop() ?? "";
-      const f = doc.fields ?? {};
-      const ts = f.createdAt?.timestampValue;
-      return {
-        id,
-        user: f.user?.stringValue ?? "",
-        text: f.text?.stringValue ?? "",
-        createdAt: ts ? Date.parse(ts) : 0,
-        reactions: parseReactions(f.reactions),
-      };
-    });
-  } catch {
-    return [];
-  }
+  const docs = (await readCollection("messages", { orderBy: "createdAt" })) as FsDoc[];
+  return docs.map((doc): ChatMessage => {
+    const id = doc.name.split("/").pop() ?? "";
+    const f = doc.fields ?? {};
+    const ts = f.createdAt?.timestampValue;
+    return {
+      id,
+      user: f.user?.stringValue ?? "",
+      text: f.text?.stringValue ?? "",
+      createdAt: ts ? Date.parse(ts) : 0,
+      reactions: parseReactions(f.reactions),
+    };
+  });
 }
 
 // Envía un mensaje (escritura con el SDK).
@@ -167,25 +157,18 @@ export async function pingPresence(user: string): Promise<void> {
   });
 }
 
-// Lee por REST quién está en línea ahora mismo (lista de nombres).
+// Lee quién está en línea ahora mismo (a través del Worker cacheado).
 export async function fetchOnline(): Promise<string[]> {
-  const groupId = getGroupId();
-  try {
-    const res = await fetch(`${FS}/groups/${groupId}/presence?pageSize=200`, { cache: "no-store" });
-    if (!res.ok) return [];
-    const data = (await res.json()) as { documents?: FsDoc[] };
-    const now = Date.now();
-    return (data.documents ?? [])
-      .map((doc) => {
-        const f = doc.fields ?? {};
-        const ts = f.lastSeen?.timestampValue;
-        return { user: f.user?.stringValue ?? "", ms: ts ? Date.parse(ts) : 0 };
-      })
-      .filter((p) => p.user && now - p.ms < ONLINE_WINDOW_MS)
-      .map((p) => p.user);
-  } catch {
-    return [];
-  }
+  const docs = (await readCollection("presence")) as FsDoc[];
+  const now = Date.now();
+  return docs
+    .map((doc) => {
+      const f = doc.fields ?? {};
+      const ts = f.lastSeen?.timestampValue;
+      return { user: f.user?.stringValue ?? "", ms: ts ? Date.parse(ts) : 0 };
+    })
+    .filter((p) => p.user && now - p.ms < ONLINE_WINDOW_MS)
+    .map((p) => p.user);
 }
 
 // ── Recibos de lectura ("leído por N") ───────────────────────────────────
@@ -199,23 +182,16 @@ export async function markRead(user: string, ts: number): Promise<void> {
   });
 }
 
-// Lee por REST el último mensaje visto por cada usuario: nombre -> ms epoch.
+// Lee el último mensaje visto por cada usuario (a través del Worker cacheado).
 export async function fetchReads(): Promise<Record<string, number>> {
-  const groupId = getGroupId();
-  try {
-    const res = await fetch(`${FS}/groups/${groupId}/reads?pageSize=200`, { cache: "no-store" });
-    if (!res.ok) return {};
-    const data = (await res.json()) as { documents?: FsDoc[] };
-    const out: Record<string, number> = {};
-    for (const doc of data.documents ?? []) {
-      const f = doc.fields ?? {};
-      const user = f.user?.stringValue ?? "";
-      const lastRead = Number(f.lastRead?.integerValue ?? "0");
-      if (user) out[user] = lastRead;
-    }
-    return out;
-  } catch {
-    return {};
+  const docs = (await readCollection("reads")) as FsDoc[];
+  const out: Record<string, number> = {};
+  for (const doc of docs) {
+    const f = doc.fields ?? {};
+    const user = f.user?.stringValue ?? "";
+    const lastRead = Number(f.lastRead?.integerValue ?? "0");
+    if (user) out[user] = lastRead;
   }
+  return out;
 }
 

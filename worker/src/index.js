@@ -273,6 +273,57 @@ async function deleteSub(group, id) {
   await fetch(`${FS_BASE}/groups/${encodeURIComponent(group)}/pushSubs/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
+// Colecciones de grupo legibles (cacheadas) a través del Worker, para no quemar
+// la cuota de lecturas de Firestore con el polling de 13 clientes. El Worker lee
+// Firestore UNA vez por ventana de caché y sirve el mismo resultado a todos.
+const READ_TTL = { messages: 5, presence: 8, reads: 8, bets: 15, config: 30, chronicles: 30 };
+
+async function handleRead(request, env, ctx) {
+  const url = new URL(request.url);
+  const group = url.searchParams.get("group") ?? "";
+  const col = url.searchParams.get("col") ?? "";
+  const orderBy = url.searchParams.get("orderBy") ?? "";
+  if (!/^[a-z0-9_-]+$/i.test(group) || !(col in READ_TTL)) {
+    return json({ error: "bad params" }, { "Cache-Control": "no-store" });
+  }
+
+  const ttl = READ_TTL[col];
+  const canonical = new URL(`/read?group=${group}&col=${col}&orderBy=${orderBy}`, url.origin).toString();
+  const cacheKey = new Request(canonical, { method: "GET" });
+  const cache = caches.default;
+  const hit = await cache.match(cacheKey);
+  if (hit) return hit;
+
+  const pageSize = col === "messages" ? 300 : 200;
+  let fsUrl = `${FS_BASE}/groups/${encodeURIComponent(group)}/${col}?pageSize=${pageSize}`;
+  if (orderBy) fsUrl += `&orderBy=${encodeURIComponent(orderBy)}`;
+
+  let bodyText;
+  try {
+    const res = await fetch(fsUrl, { cf: { cacheTtl: ttl } });
+    bodyText = await res.text();
+    if (!res.ok) {
+      // Propagar el estado (p. ej. 429) sin cachear, para no fijar un error.
+      return new Response(bodyText, {
+        status: res.status,
+        headers: { "Content-Type": "application/json; charset=utf-8", ...CORS, "Cache-Control": "no-store" },
+      });
+    }
+  } catch {
+    return json({ documents: [] }, { "Cache-Control": "no-store" });
+  }
+
+  const response = new Response(bodyText, {
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      ...CORS,
+      "Cache-Control": `public, max-age=${ttl}`,
+    },
+  });
+  ctx.waitUntil(cache.put(cacheKey, response.clone()));
+  return response;
+}
+
 // ¿Hay algún partido en directo ahora mismo? Lee el snapshot consolidado del KV
 // (que /matches mantiene fresco mientras los clientes pollean). Evita que el
 // Worker se llame a sí mismo, cosa que Cloudflare no garantiza.
@@ -373,6 +424,9 @@ export default {
     }
     if (url.pathname === "/leader-check" && request.method === "POST") {
       return handleLeaderCheck(request, env);
+    }
+    if (url.pathname === "/read" && request.method === "GET") {
+      return handleRead(request, env, ctx);
     }
     if (url.pathname !== "/matches") {
       return new Response("Not found", { status: 404, headers: CORS });

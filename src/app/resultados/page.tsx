@@ -5,11 +5,12 @@ import { useCallback, useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { groupCollection } from "@/lib/db";
-import { getStoredUser, clearUser, getUsers } from "@/lib/auth";
+import { getStoredUser, clearUser } from "@/lib/auth";
 import { teamName, teamCode } from "@/lib/teams";
 import { buildTeamTotals, matchPoints, Match } from "@/lib/scoring";
 import { fetchAllMatches, ApiAllMatch, isLiveStatus } from "@/lib/football-api";
+import { fetchBetsRest, fetchUsersRest } from "@/lib/leaderboard";
+import { getGroupId } from "@/lib/group";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import { maybeAnnounceLeader } from "@/lib/chat";
 import { buildStaticSchedule } from "@/lib/static-schedule";
@@ -35,14 +36,14 @@ export default function ResultadosPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [apiAll, manualSnap, betSnap, users] = await Promise.all([
+      const [apiAll, manualSnap, betList, users] = await Promise.all([
         fetchAllMatches().catch((err) => {
           setApiError(err.message);
           return [] as ApiAllMatch[];
         }),
         getDocs(collection(db, "matches")),
-        getDocs(groupCollection("bets")),
-        getUsers(),
+        fetchBetsRest(getGroupId()),
+        fetchUsersRest(getGroupId()),
       ]);
       setUserList(users);
 
@@ -70,15 +71,12 @@ export default function ResultadosPage() {
       setManualMatches(manual);
 
       setBets(
-        betSnap.docs.map((d) => {
-          const raw = d.data() as Partial<Omit<BetDoc, "user">>;
-          return {
-            user: d.id,
-            favorites: raw.favorites ?? [],
-            antiFavorites: raw.antiFavorites ?? [],
-            confirmed: raw.confirmed ?? false,
-          };
-        })
+        betList.map((b) => ({
+          user: b.user,
+          favorites: b.favorites,
+          antiFavorites: b.antiFavorites,
+          confirmed: b.confirmed,
+        }))
       );
     } finally {
       setLoading(false);

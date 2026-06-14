@@ -3,17 +3,13 @@ import { USERS } from "./auth";
 import { fetchAllMatches, isLiveStatus } from "./football-api";
 import { buildTeamTotals, type Match } from "./scoring";
 import { teamName } from "./teams";
+import { readCollection } from "./fsread";
 
 export interface LeaderboardRow {
   user: string;
   total: number;
   confirmed: boolean;
 }
-
-// Lee Firestore por REST (GET normal), NO por el SDK. El SDK usa WebChannel, que
-// es inestable en Safari/redes móviles y dejaba la tabla sin cargar. Un GET REST
-// no tiene ese problema y las reglas permiten lectura pública de estos docs.
-const FS = "https://firestore.googleapis.com/v1/projects/mundialisimo/databases/(default)/documents";
 
 type FsValue = {
   stringValue?: string;
@@ -29,32 +25,25 @@ function strArray(v?: FsValue): string[] {
 type BetDoc = { user: string; favorites: string[]; antiFavorites: string[]; confirmed: boolean };
 export type { BetDoc };
 
+// Lecturas a través del Worker (cacheadas) para no quemar la cuota de Firestore
+// con el polling de muchos clientes.
 export async function fetchUsersRest(groupId: string): Promise<string[]> {
-  try {
-    const res = await fetch(`${FS}/groups/${groupId}/config/users`, { cache: "no-store" });
-    if (res.ok) {
-      const d = (await res.json()) as FsDoc;
-      const list = strArray(d.fields?.list);
-      if (list.length > 0) return list;
-    }
-  } catch { /* ignore */ }
+  const docs = (await readCollection("config")) as FsDoc[];
+  const usersDoc = docs.find((d) => d.name.endsWith("/config/users"));
+  const list = strArray(usersDoc?.fields?.list);
+  if (list.length > 0) return list;
   return groupId === DEFAULT_GROUP ? USERS : [];
 }
 
 export async function fetchBetsRest(groupId: string): Promise<BetDoc[]> {
-  try {
-    const res = await fetch(`${FS}/groups/${groupId}/bets`, { cache: "no-store" });
-    if (!res.ok) return [];
-    const d = (await res.json()) as { documents?: FsDoc[] };
-    return (d.documents ?? []).map((doc) => ({
-      user: doc.name.split("/").pop() ?? "",
-      favorites: strArray(doc.fields?.favorites),
-      antiFavorites: strArray(doc.fields?.antiFavorites),
-      confirmed: doc.fields?.confirmed?.booleanValue ?? false,
-    }));
-  } catch {
-    return [];
-  }
+  void groupId; // el grupo activo lo resuelve readCollection vía getGroupId
+  const docs = (await readCollection("bets")) as FsDoc[];
+  return docs.map((doc) => ({
+    user: doc.name.split("/").pop() ?? "",
+    favorites: strArray(doc.fields?.favorites),
+    antiFavorites: strArray(doc.fields?.antiFavorites),
+    confirmed: doc.fields?.confirmed?.booleanValue ?? false,
+  }));
 }
 
 // Calcula la clasificación actual de la porra del grupo activo, usando los
