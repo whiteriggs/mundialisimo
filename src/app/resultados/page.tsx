@@ -150,6 +150,28 @@ export default function ResultadosPage() {
     return { columns, perMatch, liveIds };
   }, [allApiMatches, manualMatches, rankings]);
 
+  // Movimiento de puestos respecto a ANTES del último partido (columna más
+  // reciente). Positivo = subió, negativo = bajó. Solo entre confirmados.
+  const movements = useMemo(() => {
+    const cols = roundData.columns.length;
+    const out: Record<string, number> = {};
+    if (cols === 0) return out;
+    const confirmed = rankings.filter((r) => r.confirmed);
+    // Posición actual (ya vienen ordenados por total).
+    const currentPos: Record<string, number> = {};
+    confirmed.forEach((r, i) => { currentPos[r.uid] = i; });
+    // Posición previa: total sin la última columna jugada.
+    const prev = confirmed
+      .map((r) => {
+        const last = roundData.perMatch[r.uid]?.[cols - 1];
+        const prevTotal = r.total - (Number.isNaN(last) ? 0 : (last ?? 0));
+        return { uid: r.uid, prevTotal };
+      })
+      .sort((a, b) => b.prevTotal - a.prevTotal);
+    prev.forEach((r, i) => { out[r.uid] = i - currentPos[r.uid]; });
+    return out;
+  }, [roundData, rankings]);
+
   // Histórico de puntos acumulados por participante (para la gráfica).
   const history = useMemo(() => {
     const labels = roundData.columns.map((m) => `${teamCode(m.home)}-${teamCode(m.away)}`);
@@ -242,6 +264,11 @@ export default function ResultadosPage() {
                         {r.user}
                         {r.uid === currentUser?.toLowerCase() ? <span className="me-badge"> (tú)</span> : ""}
                         {!r.confirmed ? <span className="pending-label"> · sin confirmar</span> : ""}
+                        {r.confirmed && movements[r.uid] ? (
+                          <span className={`st-move ${movements[r.uid] > 0 ? "st-move-up" : "st-move-down"}`}>
+                            {movements[r.uid] > 0 ? "▲" : "▼"}{Math.abs(movements[r.uid])}
+                          </span>
+                        ) : null}
                       </td>
                       <td className="st-total">{r.confirmed ? r.total : "—"}</td>
                       {roundData.columns.map((m, ci) => {

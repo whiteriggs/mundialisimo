@@ -1287,6 +1287,16 @@ a {
   color: var(--text-dim);
 }
 
+.st-move {
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.st-move-up { color: var(--green); }
+.st-move-down { color: var(--red); }
+
 /* ── Tabs (Resultados / Clasificación) ─────────── */
 .tabs {
   display: flex;
