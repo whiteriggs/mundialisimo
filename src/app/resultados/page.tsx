@@ -112,12 +112,15 @@ export default function ResultadosPage() {
   // en el chat una sola vez (la transacción dedup en chat.ts evita duplicados).
   const topLeaderName = rankings.find((r) => r.confirmed && r.total > 0)?.user ?? null;
   const topLeaderTotal = rankings.find((r) => r.confirmed && r.total > 0)?.total ?? 0;
+  // Solo avisar del cambio de líder cuando NO hay partidos en directo, para no
+  // marear con mensajes mientras la clasificación baila durante un partido.
+  const anyLive = allApiMatches.some((m) => isLiveStatus(m.status));
   useEffect(() => {
-    if (!topLeaderName) return;
+    if (!topLeaderName || anyLive) return;
     maybeAnnounceLeader(topLeaderName, topLeaderTotal);
-    // Solo al cambiar el NOMBRE del líder, no en cada tick de puntos.
+    // Solo al cambiar el NOMBRE del líder (y sin partidos en vivo).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topLeaderName]);
+  }, [topLeaderName, anyLive]);
 
   const roundData = useMemo(() => {
     const liveIds = new Set(
