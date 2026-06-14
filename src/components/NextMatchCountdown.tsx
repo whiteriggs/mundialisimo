@@ -62,7 +62,7 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
       })
       .catch(() => {});
   }, []);
-  useLiveRefresh(refresh);
+  useLiveRefresh(refresh, live ? 12_000 : 30_000);
 
   useEffect(() => {
     if (upcoming.length === 0) {

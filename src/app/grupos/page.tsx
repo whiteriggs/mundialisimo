@@ -82,7 +82,9 @@ export default function GruposPage() {
     loadData().finally(() => setLoading(false));
   }, [router, loadData]);
 
-  useLiveRefresh(loadData);
+  // Refresco rápido (12s) si hay partidos en directo; normal (30s) si no.
+  const anyLive = allApiMatches.some((m) => isLiveStatus(m.status));
+  useLiveRefresh(loadData, anyLive ? 12_000 : 30_000);
 
   // Clasificación de grupos calculada en el cliente a partir de los partidos en
   // vivo (Worker) + resultados manuales. Cuenta también los partidos en juego

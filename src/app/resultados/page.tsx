@@ -92,7 +92,10 @@ export default function ResultadosPage() {
     loadData();
   }, [router, loadData]);
 
-  useLiveRefresh(loadData);
+  // Hay partidos en directo → refrescar rápido (12s) para que todos los
+  // dispositivos converjan; si no, ritmo normal (30s).
+  const anyLive = allApiMatches.some((m) => isLiveStatus(m.status));
+  useLiveRefresh(loadData, anyLive ? 12_000 : 30_000);
 
   const teamTotals = buildTeamTotals([...matches, ...manualMatches]);
 
@@ -114,7 +117,6 @@ export default function ResultadosPage() {
   const topLeaderTotal = rankings.find((r) => r.confirmed && r.total > 0)?.total ?? 0;
   // Solo avisar del cambio de líder cuando NO hay partidos en directo, para no
   // marear con mensajes mientras la clasificación baila durante un partido.
-  const anyLive = allApiMatches.some((m) => isLiveStatus(m.status));
   useEffect(() => {
     if (!topLeaderName || anyLive) return;
     maybeAnnounceLeader(topLeaderName, topLeaderTotal);

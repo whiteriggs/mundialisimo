@@ -16,8 +16,8 @@ const COMPETITION = "WC";
 const LIVE_STATUSES = new Set(["IN_PLAY", "PAUSED"]);
 
 // Edge cache y frescura para el navegador (segundos).
-const EDGE_TTL = 30;
-const BROWSER_TTL = 20;
+const EDGE_TTL = 15;
+const BROWSER_TTL = 10;
 
 // Resultados forzados a mano (la API los dio y luego los borró). Se tratan como
 // un FINISHED confirmado. Clave = id del partido en football-data.org.

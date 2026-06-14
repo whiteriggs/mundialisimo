@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useCallback, useState } from "react";
 import { getStoredUser, clearUser } from "@/lib/auth";
-import { fetchKnockoutMatches, ApiKnockoutMatch, fetchAllMatches } from "@/lib/football-api";
+import { fetchKnockoutMatches, ApiKnockoutMatch, fetchAllMatches, isLiveStatus } from "@/lib/football-api";
 import { makeBracketResolver } from "@/lib/knockout";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
 import Flag from "@/components/Flag";
@@ -250,6 +250,7 @@ export default function EliminatoriasPage() {
   const [finalMatch, setFinalMatch] = useState<BMatch>(FINAL_MATCH);
   const [apiNote, setApiNote]       = useState<string | null>(null);
   const [hasProvisional, setHasProvisional] = useState(false);
+  const [anyLive, setAnyLive] = useState(false);
 
   useEffect(() => {
     const u = getStoredUser();
@@ -260,6 +261,7 @@ export default function EliminatoriasPage() {
   const loadData = useCallback(async () => {
     try {
       const [knockout, all] = await Promise.all([fetchKnockoutMatches(), fetchAllMatches()]);
+      setAnyLive(all.some((m) => isLiveStatus(m.status)));
       const base = knockout.length
         ? buildBracketFromApi(knockout)
         : { left: LEFT_HALF, right: RIGHT_HALF, final: FINAL_MATCH };
@@ -293,7 +295,7 @@ export default function EliminatoriasPage() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
-  useLiveRefresh(loadData);
+  useLiveRefresh(loadData, anyLive ? 12_000 : 30_000);
 
   function handleLogout() {
     clearUser();
