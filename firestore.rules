@@ -112,6 +112,19 @@ service cloud.firestore {
         && request.resource.data.lastRead is int;
     }
 
+    // ── Suscripciones push (notificaciones, opt-in) ────────────────────────
+    // La suscripción no permite enviar push sin la clave privada VAPID (secret
+    // del Worker), así que exponerla aquí solo permite cifrar, no notificar.
+    match /groups/{groupId}/pushSubs/{subId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasOnly(['user', 'endpoint', 'p256dh', 'auth', 'updatedAt'])
+        && request.resource.data.user is string && request.resource.data.user.size() <= 40
+        && request.resource.data.endpoint is string && request.resource.data.endpoint.size() <= 600
+        && request.resource.data.p256dh is string && request.resource.data.p256dh.size() <= 200
+        && request.resource.data.auth is string && request.resource.data.auth.size() <= 100;
+      allow delete: if true;
+    }
+
     // ── Resultados de partidos (globales) ──────────────────────────────────
     // Entrada manual del admin desde la UI de Resultados.
     match /matches/{matchId} {

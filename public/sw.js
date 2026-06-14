@@ -1,4 +1,4 @@
-const CACHE = 'mundialisimo-v51';
+const CACHE = 'mundialisimo-v52';
 
 self.addEventListener('install', () => self.skipWaiting());
 
@@ -59,3 +59,41 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// ── Notificaciones push ──────────────────────────────────────────────────
+// El payload llega cifrado y lo descifra el navegador; aquí solo mostramos la
+// notificación. Si el usuario ya tiene la app enfocada, no molestamos.
+self.addEventListener('push', (event) => {
+  event.waitUntil((async () => {
+    let data = { title: 'Mundialísimo', body: '', url: '/', tag: 'mundialisimo' };
+    try { if (event.data) data = { ...data, ...event.data.json() }; } catch { /* payload no-JSON */ }
+
+    const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const appFocused = clientsList.some((c) => c.focused || c.visibilityState === 'visible');
+    if (appFocused) return; // está usando la app: no notificar
+
+    const base = self.location.pathname.replace(/sw\.js$/, '');
+    await self.registration.showNotification(data.title, {
+      body: data.body,
+      tag: data.tag,
+      icon: `${base}icons/icon-192x192.png`,
+      badge: `${base}icons/icon-192x192.png`,
+      data: { url: data.url },
+    });
+  })());
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetPath = (event.notification.data && event.notification.data.url) || '/';
+  const base = self.location.pathname.replace(/sw\.js$/, '');
+  const targetUrl = new URL(targetPath.replace(/^\//, ''), self.location.origin + base).href;
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of all) {
+      if ('focus' in c) { c.navigate(targetUrl).catch(() => {}); return c.focus(); }
+    }
+    if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+  })());
+});
+

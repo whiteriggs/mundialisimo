@@ -17,6 +17,13 @@ import {
   REACTION_EMOJIS,
   type ChatMessage,
 } from "@/lib/chat";
+import {
+  isPushSupported,
+  getPushEnabled,
+  subscribeToPush,
+  unsubscribeFromPush,
+  notifyPush,
+} from "@/lib/push";
 
 function seenKey() {
   return `mundialisimo_chat_seen_${getGroupId()}`;
@@ -48,6 +55,8 @@ export default function ChatWidget() {
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [online, setOnline] = useState<string[]>([]);
   const [reads, setReads] = useState<Record<string, number>>({});
+  const [pushOn, setPushOn] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
 
   // No mostrar el chat en la pantalla de login (aunque haya sesión guardada).
@@ -56,6 +65,7 @@ export default function ChatWidget() {
   useEffect(() => {
     setUser(getStoredUser());
     setLastSeen(getSeen());
+    setPushOn(getPushEnabled());
   }, []);
 
   const admin = useMemo(() => isGroupAdmin(user), [user]);
@@ -116,6 +126,13 @@ export default function ChatWidget() {
     setDraft("");
     try {
       await sendMessage(user, text);
+      notifyPush({
+        title: `💬 ${user}`,
+        body: text.slice(0, 140),
+        url: "/resultados/",
+        tag: "chat",
+        excludeUser: user,
+      });
       await load();
       const el = listRef.current;
       if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
@@ -123,6 +140,22 @@ export default function ChatWidget() {
       setDraft(text); // restaurar si falla
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleTogglePush() {
+    if (!user || pushBusy) return;
+    setPushBusy(true);
+    try {
+      if (pushOn) {
+        await unsubscribeFromPush();
+        setPushOn(false);
+      } else {
+        const ok = await subscribeToPush(user);
+        setPushOn(ok);
+      }
+    } finally {
+      setPushBusy(false);
     }
   }
 
@@ -162,6 +195,17 @@ export default function ChatWidget() {
               <span className="chat-online-dot" />
               {onlineCount} en línea
             </span>
+            {isPushSupported() && (
+              <button
+                className={`chat-bell${pushOn ? " chat-bell--on" : ""}`}
+                onClick={handleTogglePush}
+                disabled={pushBusy}
+                aria-label={pushOn ? "Desactivar notificaciones" : "Activar notificaciones"}
+                title={pushOn ? "Notificaciones activadas (toca para desactivar)" : "Activar notificaciones"}
+              >
+                {pushOn ? "🔔" : "🔕"}
+              </button>
+            )}
             <button className="chat-close" onClick={() => setOpen(false)} aria-label="Cerrar chat">×</button>
           </div>
           <div className="chat-list" ref={listRef}>

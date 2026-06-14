@@ -3,6 +3,11 @@ main = "src/index.js"
 compatibility_date = "2025-06-01"
 workers_dev = true
 
+# Clave pública VAPID para Web Push (no es secreta). La privada va como secret:
+#   wrangler secret put VAPID_PRIVATE_KEY
+[vars]
+VAPID_PUBLIC_KEY = "BEtPn4ygVuDfoFqrpX6x-CQp567x4gvUygbTpps9V7I4uZChXl2NadMJbkaeqzHmmXyhezrpAyIrmhvAAP7qeMM"
+
 # KV para persistir los marcadores consolidados entre peticiones.
 # El id real se rellena al crear el namespace:
 #   wrangler kv namespace create SCORES

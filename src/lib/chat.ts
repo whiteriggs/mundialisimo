@@ -2,6 +2,7 @@ import { addDoc, deleteDoc, updateDoc, setDoc, serverTimestamp, runTransaction }
 import { db } from "./firebase";
 import { groupCollection, groupDoc } from "./db";
 import { getGroupId } from "./group";
+import { notifyPush } from "./push";
 
 // Chat del grupo. Patrón conocido del proyecto: escribir con el SDK (puntual,
 // estable) y LEER por REST con polling, evitando el WebChannel del SDK que
@@ -126,6 +127,12 @@ export async function announceChronicle(headline: string): Promise<void> {
       ? `📰 ¡Edición nueva! "${h}". Pásate por la pestaña Crónica para leerla entera. ✍️`
       : "📰 ¡Crónica nueva publicada! Pásate por la pestaña Crónica para leerla. ✍️"
   );
+  await notifyPush({
+    title: "📰 Mundialísimo · Crónica nueva",
+    body: h ? `"${h}"` : "LaIA ha publicado una crónica nueva.",
+    url: "/cronica/",
+    tag: "cronica",
+  });
 }
 
 // Detecta cambios de líder y los anuncia una sola vez. Usa una transacción
@@ -157,6 +164,12 @@ export async function maybeAnnounceLeader(name: string, total: number): Promise<
     await postBotMessage(
       `🚨 ¡Cambio de líder! ${name} adelanta a ${result.prev} y se pone primero con ${total} ${total === 1 ? "punto" : "puntos"}. 👑`
     );
+    await notifyPush({
+      title: "🚨 ¡Cambio de líder!",
+      body: `${name} adelanta a ${result.prev} y se pone primero con ${total} ${total === 1 ? "punto" : "puntos"}.`,
+      url: "/resultados/",
+      tag: "lider",
+    });
   }
 }
 
