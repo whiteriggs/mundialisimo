@@ -71,47 +71,6 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // ── Chat del grupo ─────────────────────────────────────────────────────
-    // Mensajes visibles para todos. Crear con forma/tamaño acotados; editar solo
-    // el mapa de reacciones; borrar permitido (el admin lo hace desde la UI).
-    match /groups/{groupId}/messages/{msgId} {
-      allow read: if true;
-      allow create: if request.resource.data.keys().hasOnly(['user', 'text', 'createdAt', 'reactions'])
-        && request.resource.data.user is string && request.resource.data.user.size() <= 40
-        && request.resource.data.text is string && request.resource.data.text.size() > 0
-        && request.resource.data.text.size() <= 500
-        && request.resource.data.createdAt is timestamp
-        && (!('reactions' in request.resource.data) || request.resource.data.reactions is map);
-      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
-        && request.resource.data.reactions is map;
-      allow delete: if true;
-    }
-
-    // ── Meta del grupo (p.ej. líder actual para avisar de cambios) ─────────
-    match /groups/{groupId}/meta/{docId} {
-      allow read: if true;
-      allow write: if request.resource.data.keys().hasOnly(['name', 'total', 'updatedAt'])
-        && request.resource.data.name is string && request.resource.data.name.size() <= 40
-        && request.resource.data.total is number
-        && request.resource.data.updatedAt is timestamp;
-    }
-
-    // ── Presencia ("en línea") ─────────────────────────────────────────────
-    match /groups/{groupId}/presence/{userId} {
-      allow read: if true;
-      allow write: if request.resource.data.keys().hasOnly(['user', 'lastSeen'])
-        && request.resource.data.user is string && request.resource.data.user.size() <= 40
-        && request.resource.data.lastSeen is timestamp;
-    }
-
-    // ── Recibos de lectura ("leído por N") ─────────────────────────────────
-    match /groups/{groupId}/reads/{userId} {
-      allow read: if true;
-      allow write: if request.resource.data.keys().hasOnly(['user', 'lastRead'])
-        && request.resource.data.user is string && request.resource.data.user.size() <= 40
-        && request.resource.data.lastRead is int;
-    }
-
     // ── Suscripciones push (notificaciones, opt-in) ────────────────────────
     // La suscripción no permite enviar push sin la clave privada VAPID (secret
     // del Worker), así que exponerla aquí solo permite cifrar, no notificar.

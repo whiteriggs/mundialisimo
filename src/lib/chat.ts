@@ -1,12 +1,12 @@
-import { addDoc, deleteDoc, updateDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { groupCollection, groupDoc } from "./db";
 import { notifyPush, leaderCheck } from "./push";
-import { readCollection } from "./fsread";
+import { getGroupId } from "./group";
 
-// Chat del grupo. Patrón conocido del proyecto: escribir con el SDK (puntual,
-// estable) y LEER por REST con polling, evitando el WebChannel del SDK que
-// cuelga en Safari/redes móviles. Las lecturas de polling pasan por el Worker
-// (cacheadas) para no quemar la cuota de Firestore.
+// Chat del grupo. El historial vive en el KV del Worker (no en Firestore): así
+// LEER el chat cuesta 1 lectura sin importar cuántos mensajes haya, y no se
+// agota la cuota de Firestore con el polling de muchos clientes. Las escrituras
+// (enviar, reaccionar, borrar) pasan por el Worker.
+const MATCHES_URL = process.env.NEXT_PUBLIC_LIVE_MATCHES_URL ?? "";
+const CHAT_URL = MATCHES_URL ? MATCHES_URL.replace(/\/matches\/?$/, "/chat") : "";
 
 export const REACTION_EMOJIS = ["👍", "😂", "🔥", "⚽", "😮", "😢"] as const;
 
@@ -20,67 +20,73 @@ export interface ChatMessage {
   id: string;
   user: string;
   text: string;
-  createdAt: number; // ms epoch (0 si aún sin confirmar el server timestamp)
+  createdAt: number; // ms epoch
   reactions: Record<string, string[]>; // emoji -> lista de usuarios
 }
 
-type FsValue = {
-  stringValue?: string;
-  integerValue?: string;
-  timestampValue?: string;
-  mapValue?: { fields?: Record<string, FsValue> };
-  arrayValue?: { values?: FsValue[] };
-};
-type FsDoc = { name: string; fields?: Record<string, FsValue> };
-
-function parseReactions(v?: FsValue): Record<string, string[]> {
-  const fields = v?.mapValue?.fields ?? {};
+function normalizeReactions(r: unknown): Record<string, string[]> {
   const out: Record<string, string[]> = {};
-  for (const [emoji, val] of Object.entries(fields)) {
-    const users = (val.arrayValue?.values ?? [])
-      .map((u) => u.stringValue ?? "")
-      .filter(Boolean);
-    if (users.length) out[emoji] = users;
+  if (r && typeof r === "object") {
+    for (const [emoji, users] of Object.entries(r as Record<string, unknown>)) {
+      if (Array.isArray(users)) {
+        const list = users.filter((u): u is string => typeof u === "string");
+        if (list.length) out[emoji] = list;
+      }
+    }
   }
   return out;
 }
 
-// Lee los mensajes ordenados por fecha ascendente (a través del Worker cacheado).
+// Lee los mensajes (a través del Worker; el KV es la fuente de verdad).
 export async function fetchMessages(): Promise<ChatMessage[]> {
-  const docs = (await readCollection("messages", { orderBy: "createdAt" })) as FsDoc[];
-  return docs.map((doc): ChatMessage => {
-    const id = doc.name.split("/").pop() ?? "";
-    const f = doc.fields ?? {};
-    const ts = f.createdAt?.timestampValue;
-    return {
-      id,
-      user: f.user?.stringValue ?? "",
-      text: f.text?.stringValue ?? "",
-      createdAt: ts ? Date.parse(ts) : 0,
-      reactions: parseReactions(f.reactions),
-    };
-  });
+  if (!CHAT_URL) return [];
+  try {
+    const url = new URL(CHAT_URL);
+    url.searchParams.set("group", getGroupId());
+    const res = await fetch(url.toString(), { cache: "no-store" });
+    if (!res.ok) return [];
+    const data = (await res.json()) as { messages?: unknown[] };
+    return (data.messages ?? []).map((raw): ChatMessage => {
+      const m = raw as Partial<ChatMessage>;
+      return {
+        id: String(m.id ?? ""),
+        user: String(m.user ?? ""),
+        text: String(m.text ?? ""),
+        createdAt: Number(m.createdAt ?? 0),
+        reactions: normalizeReactions(m.reactions),
+      };
+    });
+  } catch {
+    return [];
+  }
 }
 
-// Envía un mensaje (escritura con el SDK).
-export async function sendMessage(user: string, text: string): Promise<void> {
-  const clean = text.trim().slice(0, 500);
-  if (!clean) return;
-  await addDoc(groupCollection("messages"), {
-    user,
-    text: clean,
-    createdAt: serverTimestamp(),
-    reactions: {},
+async function chatPost(body: Record<string, unknown>): Promise<unknown> {
+  if (!CHAT_URL) return null;
+  const res = await fetch(CHAT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ group: getGroupId(), ...body }),
   });
+  if (!res.ok) throw new Error(`chat ${res.status}`);
+  return res.json();
+}
+
+// Envía un mensaje y devuelve el mensaje creado (para pintarlo al instante).
+export async function sendMessage(user: string, text: string): Promise<ChatMessage | null> {
+  const clean = text.trim().slice(0, 500);
+  if (!clean) return null;
+  const res = (await chatPost({ action: "send", user, text: clean })) as { message?: ChatMessage } | null;
+  return res?.message ?? null;
 }
 
 // Borra un mensaje (solo lo usa el admin desde la UI).
 export async function deleteMessage(id: string): Promise<void> {
-  await deleteDoc(groupDoc("messages", id));
+  await chatPost({ action: "delete", id });
 }
 
-// Alterna la reacción del usuario a un mensaje. Lee el estado actual desde la
-// copia en memoria y reescribe solo el mapa de reacciones.
+// Alterna la reacción del usuario a un mensaje. Calcula el nuevo estado local y
+// lo manda al Worker; devuelve el estado optimista para refrescar la UI ya.
 export async function toggleReaction(
   id: string,
   emoji: string,
@@ -92,7 +98,7 @@ export async function toggleReaction(
   const list = next[emoji] ?? [];
   next[emoji] = list.includes(user) ? list.filter((u) => u !== user) : [...list, user];
   if (next[emoji].length === 0) delete next[emoji];
-  await updateDoc(groupDoc("messages", id), { reactions: next });
+  await chatPost({ action: "react", id, emoji, user });
   return next;
 }
 
@@ -100,12 +106,7 @@ export async function toggleReaction(
 export async function postBotMessage(text: string): Promise<void> {
   const clean = text.trim().slice(0, 500);
   if (!clean) return;
-  await addDoc(groupCollection("messages"), {
-    user: BOT_AUTHOR,
-    text: clean,
-    createdAt: serverTimestamp(),
-    reactions: {},
-  });
+  await chatPost({ action: "send", user: BOT_AUTHOR, text: clean });
 }
 
 // Anuncia en el chat que se ha publicado una crónica nueva.
@@ -141,57 +142,5 @@ export async function maybeAnnounceLeader(name: string, total: number): Promise<
     url: "/resultados/",
     tag: "lider",
   });
-}
-
-// ── Presencia ("en línea") ───────────────────────────────────────────────
-// Cada cliente escribe un latido cada ~20s. Se considera en línea a quien lo
-// haya hecho en los últimos ONLINE_WINDOW_MS.
-export const ONLINE_WINDOW_MS = 45_000;
-
-// Escribe el latido del usuario (setDoc con merge implícito vía set).
-export async function pingPresence(user: string): Promise<void> {
-  if (!user) return;
-  await setDoc(groupDoc("presence", user.toLowerCase()), {
-    user,
-    lastSeen: serverTimestamp(),
-  });
-}
-
-// Lee quién está en línea ahora mismo (a través del Worker cacheado).
-export async function fetchOnline(): Promise<string[]> {
-  const docs = (await readCollection("presence")) as FsDoc[];
-  const now = Date.now();
-  return docs
-    .map((doc) => {
-      const f = doc.fields ?? {};
-      const ts = f.lastSeen?.timestampValue;
-      return { user: f.user?.stringValue ?? "", ms: ts ? Date.parse(ts) : 0 };
-    })
-    .filter((p) => p.user && now - p.ms < ONLINE_WINDOW_MS)
-    .map((p) => p.user);
-}
-
-// ── Recibos de lectura ("leído por N") ───────────────────────────────────
-// Cada usuario guarda el timestamp del último mensaje que ha visto. Con eso se
-// deriva, para cada mensaje, quién lo ha leído (su lastRead >= createdAt).
-export async function markRead(user: string, ts: number): Promise<void> {
-  if (!user || !ts) return;
-  await setDoc(groupDoc("reads", user.toLowerCase()), {
-    user,
-    lastRead: ts,
-  });
-}
-
-// Lee el último mensaje visto por cada usuario (a través del Worker cacheado).
-export async function fetchReads(): Promise<Record<string, number>> {
-  const docs = (await readCollection("reads")) as FsDoc[];
-  const out: Record<string, number> = {};
-  for (const doc of docs) {
-    const f = doc.fields ?? {};
-    const user = f.user?.stringValue ?? "";
-    const lastRead = Number(f.lastRead?.integerValue ?? "0");
-    if (user) out[user] = lastRead;
-  }
-  return out;
 }
 

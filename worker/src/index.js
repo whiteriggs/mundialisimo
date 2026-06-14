@@ -273,10 +273,113 @@ async function deleteSub(group, id) {
   await fetch(`${FS_BASE}/groups/${encodeURIComponent(group)}/pushSubs/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
+// ── Chat en KV ───────────────────────────────────────────────────────────
+// El historial vive en una sola clave KV por grupo (`chat:{group}`). Así LEER
+// el chat entero cuesta 1 lectura KV (no N lecturas Firestore por documento),
+// lo que evita agotar la cuota cuando hay polling de muchos clientes. Las
+// escrituras (enviar, reaccionar, borrar) pasan por el Worker y solo ocurren
+// con actividad humana real, muy por debajo de los límites.
+const CHAT_MAX = 250;          // mensajes que se conservan por grupo
+const CHAT_GET_TTL = 3;        // s de caché de edge para GET /chat
+
+async function chatRead(env, group) {
+  try {
+    const raw = await env.SCORES.get(`chat:${group}`);
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    return Array.isArray(data.messages) ? data.messages : [];
+  } catch {
+    return [];
+  }
+}
+
+async function chatWrite(env, group, messages) {
+  await env.SCORES.put(`chat:${group}`, JSON.stringify({ messages, updatedAt: Date.now() }));
+}
+
+async function handleChatGet(request, env, ctx) {
+  const url = new URL(request.url);
+  const group = url.searchParams.get("group") ?? "";
+  if (!/^[a-z0-9_-]+$/i.test(group)) return json({ messages: [] }, { "Cache-Control": "no-store" });
+
+  const canonical = new URL(`/chat?group=${group}`, url.origin).toString();
+  const cacheKey = new Request(canonical, { method: "GET" });
+  const cache = caches.default;
+  const hit = await cache.match(cacheKey);
+  if (hit) return hit;
+
+  const messages = await chatRead(env, group);
+  const response = json({ messages }, { "Cache-Control": `public, max-age=${CHAT_GET_TTL}` });
+  if (ctx) ctx.waitUntil(cache.put(cacheKey, response.clone()));
+  return response;
+}
+
+async function handleChatPost(request, env, ctx) {
+  let payload;
+  try {
+    payload = await request.json();
+  } catch {
+    return json({ error: "bad json" }, { "Cache-Control": "no-store" });
+  }
+  const { group, action } = payload ?? {};
+  if (!/^[a-z0-9_-]+$/i.test(group ?? "")) return json({ error: "bad group" }, { "Cache-Control": "no-store" });
+
+  let messages = await chatRead(env, group);
+
+  if (action === "send") {
+    const user = String(payload.user ?? "").slice(0, 40).trim();
+    const text = String(payload.text ?? "").slice(0, 500).trim();
+    if (!user || !text) return json({ error: "empty" }, { "Cache-Control": "no-store" });
+    const msg = { id: crypto.randomUUID(), user, text, createdAt: Date.now(), reactions: {} };
+    messages = [...messages, msg].slice(-CHAT_MAX);
+    await chatWrite(env, group, messages);
+    if (ctx) ctx.waitUntil(invalidateChatCache(request, group));
+    return json({ ok: true, message: msg }, { "Cache-Control": "no-store" });
+  }
+
+  if (action === "react") {
+    const id = String(payload.id ?? "");
+    const emoji = String(payload.emoji ?? "").slice(0, 8);
+    const user = String(payload.user ?? "").slice(0, 40);
+    if (!id || !emoji || !user) return json({ error: "bad react" }, { "Cache-Control": "no-store" });
+    messages = messages.map((m) => {
+      if (m.id !== id) return m;
+      const reactions = { ...(m.reactions ?? {}) };
+      const list = reactions[emoji] ?? [];
+      reactions[emoji] = list.includes(user) ? list.filter((u) => u !== user) : [...list, user];
+      if (reactions[emoji].length === 0) delete reactions[emoji];
+      return { ...m, reactions };
+    });
+    await chatWrite(env, group, messages);
+    if (ctx) ctx.waitUntil(invalidateChatCache(request, group));
+    return json({ ok: true }, { "Cache-Control": "no-store" });
+  }
+
+  if (action === "delete") {
+    const id = String(payload.id ?? "");
+    messages = messages.filter((m) => m.id !== id);
+    await chatWrite(env, group, messages);
+    if (ctx) ctx.waitUntil(invalidateChatCache(request, group));
+    return json({ ok: true }, { "Cache-Control": "no-store" });
+  }
+
+  return json({ error: "bad action" }, { "Cache-Control": "no-store" });
+}
+
+// Borra la copia cacheada de GET /chat para que el cambio se vea en el próximo
+// fetch sin esperar al TTL.
+async function invalidateChatCache(request, group) {
+  try {
+    const origin = new URL(request.url).origin;
+    const canonical = new URL(`/chat?group=${group}`, origin).toString();
+    await caches.default.delete(new Request(canonical, { method: "GET" }));
+  } catch { /* ignore */ }
+}
+
 // Colecciones de grupo legibles (cacheadas) a través del Worker, para no quemar
 // la cuota de lecturas de Firestore con el polling de 13 clientes. El Worker lee
 // Firestore UNA vez por ventana de caché y sirve el mismo resultado a todos.
-const READ_TTL = { messages: 5, presence: 8, reads: 8, bets: 15, config: 30, chronicles: 30 };
+const READ_TTL = { bets: 30, config: 60, chronicles: 60 };
 
 async function handleRead(request, env, ctx) {
   const url = new URL(request.url);
@@ -427,6 +530,12 @@ export default {
     }
     if (url.pathname === "/read" && request.method === "GET") {
       return handleRead(request, env, ctx);
+    }
+    if (url.pathname === "/chat" && request.method === "GET") {
+      return handleChatGet(request, env, ctx);
+    }
+    if (url.pathname === "/chat" && request.method === "POST") {
+      return handleChatPost(request, env, ctx);
     }
     if (url.pathname !== "/matches") {
       return new Response("Not found", { status: 404, headers: CORS });

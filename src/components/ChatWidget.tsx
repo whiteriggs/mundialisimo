@@ -10,10 +10,6 @@ import {
   deleteMessage,
   toggleReaction,
   isBotAuthor,
-  pingPresence,
-  fetchOnline,
-  markRead,
-  fetchReads,
   REACTION_EMOJIS,
   type ChatMessage,
 } from "@/lib/chat";
@@ -53,8 +49,6 @@ export default function ChatWidget() {
   const [sending, setSending] = useState(false);
   const [lastSeen, setLastSeen] = useState(0);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
-  const [online, setOnline] = useState<string[]>([]);
-  const [reads, setReads] = useState<Record<string, number>>({});
   const [pushOn, setPushOn] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -71,10 +65,7 @@ export default function ChatWidget() {
   const admin = useMemo(() => isGroupAdmin(user), [user]);
 
   const load = useCallback(async () => {
-    const [msgs, on, rd] = await Promise.all([fetchMessages(), fetchOnline(), fetchReads()]);
-    setMessages(msgs);
-    setOnline(on);
-    setReads(rd);
+    setMessages(await fetchMessages());
   }, []);
 
   // Polling: más frecuente con el chat abierto, más espaciado cerrado.
@@ -84,15 +75,6 @@ export default function ChatWidget() {
     const interval = setInterval(load, open ? 5000 : 15000);
     return () => clearInterval(interval);
   }, [user, open, load, onLogin]);
-
-  // Latido de presencia mientras la app está abierta (cada 20s + al arrancar).
-  useEffect(() => {
-    if (!user || onLogin) return;
-    const beat = () => { if (document.visibilityState === "visible") pingPresence(user); };
-    beat();
-    const interval = setInterval(beat, 20_000);
-    return () => clearInterval(interval);
-  }, [user, onLogin]);
 
   // Recargar al volver a la pestaña.
   useEffect(() => {
@@ -108,16 +90,13 @@ export default function ChatWidget() {
     [messages, lastSeen, user]
   );
 
-  // Al abrir, marcar todo como leído (local + remoto) y bajar al final.
+  // Al abrir, marcar todo como leído y bajar al final.
   useEffect(() => {
     if (!open) return;
-    if (latestTs) {
-      setSeen(latestTs); setLastSeen(latestTs);
-      if (user) markRead(user, latestTs);
-    }
+    if (latestTs) { setSeen(latestTs); setLastSeen(latestTs); }
     const el = listRef.current;
     if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
-  }, [open, latestTs, user]);
+  }, [open, latestTs]);
 
   async function handleSend() {
     const text = draft.trim();
@@ -125,7 +104,8 @@ export default function ChatWidget() {
     setSending(true);
     setDraft("");
     try {
-      await sendMessage(user, text);
+      const msg = await sendMessage(user, text);
+      if (msg) setMessages((prev) => [...prev, msg]);
       notifyPush({
         title: `💬 ${user}`,
         body: text.slice(0, 140),
@@ -133,7 +113,6 @@ export default function ChatWidget() {
         tag: "chat",
         excludeUser: user,
       });
-      await load();
       const el = listRef.current;
       if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
     } catch {
@@ -174,27 +153,12 @@ export default function ChatWidget() {
   if (!user) return null;
   if (onLogin) return null;
 
-  const meLc = user.toLowerCase();
-  const onlineCount = online.filter((u) => u.toLowerCase() !== meLc).length;
-  const onlineNames = online.filter((u) => u.toLowerCase() !== meLc);
-
-  // Para un mensaje mío, lista de quién lo ha leído (excluyéndome).
-  function readersOf(m: ChatMessage): string[] {
-    return Object.entries(reads)
-      .filter(([u, ts]) => u.toLowerCase() !== meLc && ts >= m.createdAt && m.createdAt > 0)
-      .map(([u]) => u);
-  }
-
   return (
     <>
       {open && (
         <div className="chat-card" role="dialog" aria-label="Chat del grupo">
           <div className="chat-head">
             <span className="chat-title">💬 Chat</span>
-            <span className="chat-online" title={onlineNames.join(", ") || "Nadie más conectado"}>
-              <span className="chat-online-dot" />
-              {onlineCount} en línea
-            </span>
             {isPushSupported() && (
               <button
                 className={`chat-bell${pushOn ? " chat-bell--on" : ""}`}
@@ -259,14 +223,6 @@ export default function ChatWidget() {
                         )}
                       </div>
                     </div>
-                    {mine && !bot && (() => {
-                      const readers = readersOf(m);
-                      return readers.length > 0 ? (
-                        <div className="chat-read" title={readers.join(", ")}>
-                          ✓✓ Leído por {readers.length}
-                        </div>
-                      ) : null;
-                    })()}
                   </div>
                 );
               })
