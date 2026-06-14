@@ -273,14 +273,17 @@ async function deleteSub(group, id) {
   await fetch(`${FS_BASE}/groups/${encodeURIComponent(group)}/pushSubs/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
-// ¿Hay algún partido en directo ahora mismo? Reutiliza el propio /matches (que
-// ya está cacheado en el edge), así no añade carga a la API real.
-async function anyMatchLive(request) {
-  const origin = new URL(request.url).origin;
-  const res = await fetch(`${origin}/matches`, { cf: { cacheTtl: 15 } });
-  if (!res.ok) return false;
-  const matches = await res.json();
-  return Array.isArray(matches) && matches.some((m) => LIVE_STATUSES.has(m.status));
+// ¿Hay algún partido en directo ahora mismo? Lee el snapshot consolidado del KV
+// (que /matches mantiene fresco mientras los clientes pollean). Evita que el
+// Worker se llame a sí mismo, cosa que Cloudflare no garantiza.
+async function anyMatchLive(env) {
+  try {
+    const storeRaw = (await env.SCORES.get("store")) ?? "{}";
+    const matches = JSON.parse(storeRaw).__matches ?? [];
+    return Array.isArray(matches) && matches.some((m) => LIVE_STATUSES.has(m.status));
+  } catch {
+    return false;
+  }
 }
 
 async function handleNotify(request, env, ctx) {
@@ -298,7 +301,7 @@ async function handleNotify(request, env, ctx) {
   // líder" si hay algún partido en directo (evita marear durante el partido).
   if (tag === "lider") {
     try {
-      const live = await anyMatchLive(request);
+      const live = await anyMatchLive(env);
       if (live) return json({ ok: true, sent: 0, skipped: "live" }, { "Cache-Control": "no-store" });
     } catch { /* si no se puede comprobar, seguimos (best-effort) */ }
   }
