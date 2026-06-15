@@ -1,6 +1,7 @@
 import { setDoc } from "firebase/firestore";
 import { groupDoc } from "./db";
 import { getGroupId } from "./group";
+import { loadCachedValue, saveCachedValue } from "./fsread";
 
 // Pronóstico de un partido de grupos: goles local y visitante.
 export interface Score {
@@ -32,13 +33,17 @@ type FsValue = {
 };
 
 // Lee la simulación del usuario por REST (GET), evitando el WebChannel del SDK
-// que es inestable en Safari.
+// que es inestable en Safari. Si la lectura falla (p. ej. 429), devuelve la
+// última copia local en vez de vaciar la simulación del usuario.
 export async function fetchUserSim(user: string): Promise<UserSim> {
   const groupId = getGroupId();
-  const empty: UserSim = { results: {}, knockout: {} };
+  const cacheName = `sim_${user.toLowerCase()}`;
   try {
     const res = await fetch(`${FS}/groups/${groupId}/predictions/${user.toLowerCase()}`, { cache: "no-store" });
-    if (!res.ok) return empty;
+    if (!res.ok) {
+      // Fallo (p. ej. 429): conservar lo último bueno si lo hay.
+      return loadCachedValue<UserSim>(cacheName) ?? { results: {}, knockout: {} };
+    }
     const data = (await res.json()) as { fields?: { results?: FsValue; knockout?: FsValue } };
     const resultsFields = data.fields?.results?.mapValue?.fields ?? {};
     const results: Predictions = {};
@@ -57,9 +62,14 @@ export async function fetchUserSim(user: string): Promise<UserSim> {
         ...(pen === "home" || pen === "away" ? { pen } : {}),
       };
     }
-    return { results, knockout };
+    const sim: UserSim = { results, knockout };
+    // Guardar copia local solo si tiene contenido (no pisar una sim buena con vacío).
+    if (Object.keys(results).length > 0 || Object.keys(knockout).length > 0) {
+      saveCachedValue(cacheName, sim);
+    }
+    return sim;
   } catch {
-    return empty;
+    return loadCachedValue<UserSim>(cacheName) ?? { results: {}, knockout: {} };
   }
 }
 

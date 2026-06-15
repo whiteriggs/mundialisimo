@@ -43,6 +43,31 @@ function writeCache(groupId: string, col: string, docs: FsDocRaw[]) {
   }
 }
 
+// ── Caché genérica de valores ya parseados ───────────────────────────────
+// Para lecturas que NO devuelven el formato { documents: [] } (crónicas,
+// simulación del usuario…). Guarda la última versión buena y la devuelve si una
+// lectura posterior falla (p. ej. 429 "cuota agotada"), para no vaciar la UI.
+function valueKey(name: string) {
+  return `mundialisimo_vcache_${getGroupId()}_${name}`;
+}
+export function loadCachedValue<T>(name: string): T | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(valueKey(name));
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+export function saveCachedValue<T>(name: string, value: T): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(valueKey(name), JSON.stringify(value));
+  } catch {
+    /* ignore */
+  }
+}
+
 // Colecciones cuyo polling movemos al Worker. orderBy opcional.
 export async function readCollection(
   col: string,
