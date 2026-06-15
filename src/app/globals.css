@@ -3904,6 +3904,23 @@ body[data-sidebar="expanded"] .app-shell {
   .qps-grid { grid-template-columns: 1fr; }
 }
 
+/* ── Aviso de cuota Firestore agotada (Admin) ─────────────────────────── */
+.quota-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  background: rgba(224, 78, 78, 0.12);
+  border: 1px solid rgba(224, 78, 78, 0.4);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.quota-alert-icon { font-size: 16px; line-height: 1.2; }
+.quota-alert strong { color: var(--red); }
+
 /* ── Chat flotante del grupo ──────────────────────────────────────────── */
 .chat-chip {
   position: fixed;

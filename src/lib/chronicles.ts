@@ -1,5 +1,5 @@
 import { getGroupId } from "./group";
-import { loadCachedValue, saveCachedValue } from "./fsread";
+import { loadCachedValue, saveCachedValue, markQuotaExceeded } from "./fsread";
 import type { LeaderboardRow } from "./leaderboard";
 
 // Lee las crónicas por REST (GET normal), NO con el SDK de Firestore. El SDK usa
@@ -57,6 +57,8 @@ export async function fetchChronicles(): Promise<ChronicleEntry[]> {
         saveCachedValue("chronicles", entries);
         return entries;
       }
+    } else if (res.status === 429) {
+      markQuotaExceeded();
     }
   } catch {
     /* sin red o error: usar copia local */

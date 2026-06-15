@@ -14,6 +14,7 @@ import { Match, buildTeamTotals, calcUserScore } from "@/lib/scoring";
 import { db } from "@/lib/firebase";
 import { groupDoc, groupCollection } from "@/lib/db";
 import { getGroupConfig, isGroupAdmin } from "@/lib/group";
+import { readCollection, quotaHitAgoMs } from "@/lib/fsread";
 import {
   getStoredUser,
   clearUser,
@@ -83,6 +84,22 @@ export default function AdminPage() {
     loadUsers();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
+
+  // ── Detección de cuota Firestore agotada (429) ────────────────
+  // Sondea una lectura ligera por el Worker cada 30s; si devuelve 429 se marca
+  // y mostramos un aviso. `quotaActive` = hubo un 429 en los últimos 5 min.
+  const [quotaActive, setQuotaActive] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    const check = async () => {
+      await readCollection("config"); // marca el 429 internamente si ocurre
+      const ago = quotaHitAgoMs();
+      if (alive) setQuotaActive(ago !== null && ago < 5 * 60_000);
+    };
+    check();
+    const id = setInterval(check, 30_000);
+    return () => { alive = false; clearInterval(id); };
+  }, []);
 
   // ── Helpers ───────────────────────────────────────────────────
   async function loadUsers() {
@@ -462,6 +479,18 @@ PROHIBIDO POR DEFECTO (salvo que las INDICACIONES DEL EDITOR lo pidan expresamen
           </div>
         </div>
       </section>
+
+      {quotaActive && (
+        <div className="admin-container">
+          <div className="quota-alert" role="alert">
+            <span className="quota-alert-icon">⚠️</span>
+            <div>
+              <strong>Cuota de Firestore agotada (error 429).</strong>
+              <span> La app está sirviendo los últimos datos guardados; la clasificación y crónicas no se actualizan hasta que la cuota se reinicie (sobre las 09:00). Los partidos en vivo y el chat siguen funcionando.</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="admin-container">
         {/* Tabs */}

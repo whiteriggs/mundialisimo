@@ -1,7 +1,7 @@
 import { setDoc } from "firebase/firestore";
 import { groupDoc } from "./db";
 import { getGroupId } from "./group";
-import { loadCachedValue, saveCachedValue } from "./fsread";
+import { loadCachedValue, saveCachedValue, markQuotaExceeded } from "./fsread";
 
 // Pronóstico de un partido de grupos: goles local y visitante.
 export interface Score {
@@ -42,6 +42,7 @@ export async function fetchUserSim(user: string): Promise<UserSim> {
     const res = await fetch(`${FS}/groups/${groupId}/predictions/${user.toLowerCase()}`, { cache: "no-store" });
     if (!res.ok) {
       // Fallo (p. ej. 429): conservar lo último bueno si lo hay.
+      if (res.status === 429) markQuotaExceeded();
       return loadCachedValue<UserSim>(cacheName) ?? { results: {}, knockout: {} };
     }
     const data = (await res.json()) as { fields?: { results?: FsValue; knockout?: FsValue } };

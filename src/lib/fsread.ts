@@ -1,5 +1,17 @@
 import { getGroupId } from "./group";
 
+// Marca de tiempo del último 429 ("cuota agotada") detectado en cualquier
+// lectura de Firestore. La pantalla de Admin la consulta para avisar. Es global
+// al runtime del navegador (no por grupo) porque la cuota es del proyecto.
+let lastQuotaHitMs = 0;
+export function markQuotaExceeded(): void {
+  lastQuotaHitMs = Date.now();
+}
+// Devuelve los ms desde el último 429, o null si no ha habido ninguno reciente.
+export function quotaHitAgoMs(): number | null {
+  return lastQuotaHitMs > 0 ? Date.now() - lastQuotaHitMs : null;
+}
+
 // Lectura de colecciones de grupo a través del Worker (cacheada en el edge) en
 // vez de pegar directamente a Firestore. Motivo: el polling de 13 clientes cada
 // pocos segundos agota la cuota de lecturas del plan gratuito de Firestore. El
@@ -96,6 +108,7 @@ export async function readCollection(
         if (cached) return cached;
         return docs;
       }
+      if (res.status === 429) markQuotaExceeded();
       // 429 u otros: caemos al fallback directo de abajo.
     } catch {
       /* fallback */
@@ -118,6 +131,7 @@ export async function readCollection(
       if (cached) return cached;
       return docs;
     }
+    if (res.status === 429) markQuotaExceeded();
   } catch {
     /* sin red o error: usar copia local */
   }
