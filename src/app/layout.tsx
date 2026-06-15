@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PwaRegister from "@/components/PwaRegister";
 import ChatWidget from "@/components/ChatWidget";
+import MaintenanceBanner from "@/components/MaintenanceBanner";
 
 const bp = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
 const buildRun = parseInt(process.env.NEXT_PUBLIC_BUILD_RUN ?? "0");
@@ -43,6 +44,7 @@ export default function RootLayout({
       </head>
       <body>
         <PwaRegister />
+        <MaintenanceBanner />
         {children}
         <ChatWidget />
       </body>
