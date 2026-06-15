@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { readCollection, quotaHitAgoMs, nextQuotaResetMs } from "@/lib/fsread";
+import { probeQuotaExceeded, nextQuotaResetMs } from "@/lib/fsread";
 
 // Aviso global "Servidor en mantenimiento" cuando se detecta la cuota de
 // Firestore agotada (429). Visible en todas las pantallas (menos login). Sondea
@@ -23,14 +23,13 @@ export default function MaintenanceBanner() {
   const [active, setActive] = useState(false);
   const [countdown, setCountdown] = useState("");
 
-  // Sondeo del estado de cuota cada 30s.
+  // Sondeo del estado de cuota cada 30s (refleja el estado ACTUAL).
   useEffect(() => {
     if (onLogin) return;
     let alive = true;
     const check = async () => {
-      await readCollection("config"); // marca el 429 internamente si ocurre
-      const ago = quotaHitAgoMs();
-      if (alive) setActive(ago !== null && ago < 5 * 60_000);
+      const down = await probeQuotaExceeded();
+      if (alive) setActive(down);
     };
     check();
     const id = setInterval(check, 30_000);

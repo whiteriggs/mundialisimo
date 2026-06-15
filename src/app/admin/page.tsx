@@ -14,7 +14,7 @@ import { Match, buildTeamTotals, calcUserScore } from "@/lib/scoring";
 import { db } from "@/lib/firebase";
 import { groupDoc, groupCollection } from "@/lib/db";
 import { getGroupConfig, isGroupAdmin } from "@/lib/group";
-import { readCollection, quotaHitAgoMs, nextQuotaResetMs } from "@/lib/fsread";
+import { probeQuotaExceeded, nextQuotaResetMs } from "@/lib/fsread";
 import {
   getStoredUser,
   clearUser,
@@ -93,9 +93,8 @@ export default function AdminPage() {
   useEffect(() => {
     let alive = true;
     const check = async () => {
-      await readCollection("config"); // marca el 429 internamente si ocurre
-      const ago = quotaHitAgoMs();
-      if (alive) setQuotaActive(ago !== null && ago < 5 * 60_000);
+      const down = await probeQuotaExceeded();
+      if (alive) setQuotaActive(down);
     };
     check();
     const id = setInterval(check, 30_000);

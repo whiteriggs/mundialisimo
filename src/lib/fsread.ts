@@ -7,9 +7,37 @@ let lastQuotaHitMs = 0;
 export function markQuotaExceeded(): void {
   lastQuotaHitMs = Date.now();
 }
+// Limpia la marca cuando una lectura vuelve a funcionar.
+export function clearQuotaHit(): void {
+  lastQuotaHitMs = 0;
+}
 // Devuelve los ms desde el último 429, o null si no ha habido ninguno reciente.
 export function quotaHitAgoMs(): number | null {
   return lastQuotaHitMs > 0 ? Date.now() - lastQuotaHitMs : null;
+}
+
+// Sondea el estado de la cuota con una lectura REAL al Worker. Devuelve true si
+// está agotada (429) AHORA, false si responde bien. Refleja el estado actual,
+// no un 429 pasado (así el aviso desaparece en cuanto la cuota se restablece).
+export async function probeQuotaExceeded(): Promise<boolean> {
+  if (!READ_URL) return false;
+  try {
+    const u = new URL(READ_URL);
+    u.searchParams.set("group", getGroupId());
+    u.searchParams.set("col", "config");
+    const res = await fetch(u.toString(), { cache: "no-store" });
+    if (res.status === 429) {
+      markQuotaExceeded();
+      return true;
+    }
+    if (res.ok) {
+      clearQuotaHit();
+      return false;
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 // Próximo reinicio de la cuota gratuita de Firestore. Google reinicia las cuotas
