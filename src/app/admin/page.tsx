@@ -14,7 +14,7 @@ import { Match, buildTeamTotals, calcUserScore } from "@/lib/scoring";
 import { db } from "@/lib/firebase";
 import { groupDoc, groupCollection } from "@/lib/db";
 import { getGroupConfig, isGroupAdmin } from "@/lib/group";
-import { readCollection, quotaHitAgoMs } from "@/lib/fsread";
+import { readCollection, quotaHitAgoMs, nextQuotaResetMs } from "@/lib/fsread";
 import {
   getStoredUser,
   clearUser,
@@ -89,6 +89,7 @@ export default function AdminPage() {
   // Sondea una lectura ligera por el Worker cada 30s; si devuelve 429 se marca
   // y mostramos un aviso. `quotaActive` = hubo un 429 en los últimos 5 min.
   const [quotaActive, setQuotaActive] = useState(false);
+  const [quotaCountdown, setQuotaCountdown] = useState("");
   useEffect(() => {
     let alive = true;
     const check = async () => {
@@ -100,6 +101,23 @@ export default function AdminPage() {
     const id = setInterval(check, 30_000);
     return () => { alive = false; clearInterval(id); };
   }, []);
+
+  // Contador descendente hasta el próximo reinicio de cuota (medianoche Pacífico).
+  useEffect(() => {
+    if (!quotaActive) return;
+    const tick = () => {
+      const ms = nextQuotaResetMs() - Date.now();
+      if (ms <= 0) { setQuotaCountdown("ahora mismo"); return; }
+      const h = Math.floor(ms / 3_600_000);
+      const m = Math.floor((ms % 3_600_000) / 60_000);
+      const s = Math.floor((ms % 60_000) / 1000);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      setQuotaCountdown(`${pad(h)}:${pad(m)}:${pad(s)}`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [quotaActive]);
 
   // ── Helpers ───────────────────────────────────────────────────
   async function loadUsers() {
@@ -486,7 +504,12 @@ PROHIBIDO POR DEFECTO (salvo que las INDICACIONES DEL EDITOR lo pidan expresamen
             <span className="quota-alert-icon">⚠️</span>
             <div>
               <strong>Cuota de Firestore agotada (error 429).</strong>
-              <span> La app está sirviendo los últimos datos guardados; la clasificación y crónicas no se actualizan hasta que la cuota se reinicie (sobre las 09:00). Los partidos en vivo y el chat siguen funcionando.</span>
+              <span> La app está sirviendo los últimos datos guardados; la clasificación y crónicas no se actualizan hasta que la cuota se reinicie. Los partidos en vivo y el chat siguen funcionando.</span>
+              {quotaCountdown && (
+                <div className="quota-countdown">
+                  Se reinicia en <strong>{quotaCountdown}</strong> (medianoche hora del Pacífico)
+                </div>
+              )}
             </div>
           </div>
         </div>

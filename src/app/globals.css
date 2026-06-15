@@ -3920,6 +3920,15 @@ body[data-sidebar="expanded"] .app-shell {
 }
 .quota-alert-icon { font-size: 16px; line-height: 1.2; }
 .quota-alert strong { color: var(--red); }
+.quota-countdown {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.quota-countdown strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
 
 /* ── Chat flotante del grupo ──────────────────────────────────────────── */
 .chat-chip {

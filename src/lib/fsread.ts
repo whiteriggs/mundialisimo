@@ -12,6 +12,26 @@ export function quotaHitAgoMs(): number | null {
   return lastQuotaHitMs > 0 ? Date.now() - lastQuotaHitMs : null;
 }
 
+// Próximo reinicio de la cuota gratuita de Firestore. Google reinicia las cuotas
+// diarias a MEDIANOCHE hora del Pacífico (America/Los_Angeles). Calculamos ese
+// instante de forma robusta (sin librerías) midiendo el desfase real de la zona
+// — así funciona tanto en horario de verano (PDT) como de invierno (PST).
+export function nextQuotaResetMs(): number {
+  const now = new Date();
+  // Hora actual EN el Pacífico, como componentes.
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+  }).formatToParts(now);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? "0");
+  let hh = get("hour");
+  if (hh === 24) hh = 0; // algunos entornos devuelven 24 a medianoche
+  const ptSecondsIntoDay = hh * 3600 + get("minute") * 60 + get("second");
+  const secondsUntilMidnight = 24 * 3600 - ptSecondsIntoDay;
+  return now.getTime() + secondsUntilMidnight * 1000;
+}
+
 // Lectura de colecciones de grupo a través del Worker (cacheada en el edge) en
 // vez de pegar directamente a Firestore. Motivo: el polling de 13 clientes cada
 // pocos segundos agota la cuota de lecturas del plan gratuito de Firestore. El
