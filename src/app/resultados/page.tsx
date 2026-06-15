@@ -41,7 +41,9 @@ export default function ResultadosPage() {
           setApiError(err.message);
           return [] as ApiAllMatch[];
         }),
-        getDocs(collection(db, "matches")),
+        // Los partidos manuales son una colección global pequeña; si Firestore
+        // da error (p. ej. 429), no debe tumbar el resto de la carga.
+        getDocs(collection(db, "matches")).catch(() => null),
         fetchBetsRest(getGroupId()),
         fetchUsersRest(getGroupId()),
       ]);
@@ -64,11 +66,13 @@ export default function ResultadosPage() {
         }));
       setMatches(scored);
 
-      const manual: Match[] = manualSnap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as Omit<Match, "id">),
-      }));
-      setManualMatches(manual);
+      if (manualSnap) {
+        const manual: Match[] = manualSnap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<Match, "id">),
+        }));
+        setManualMatches(manual);
+      }
 
       setBets(
         betList.map((b) => ({

@@ -17,6 +17,32 @@ export interface FsDocRaw {
   fields?: Record<string, unknown>;
 }
 
+// Copia local de la última lectura BUENA por grupo+colección. Sirve de red de
+// seguridad: si Firestore da error (p. ej. 429 "cuota agotada"), devolvemos la
+// última copia conocida en vez de vaciar la tabla de clasificación.
+function cacheKey(groupId: string, col: string) {
+  return `mundialisimo_cache_${groupId}_${col}`;
+}
+function readCache(groupId: string, col: string): FsDocRaw[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(cacheKey(groupId, col));
+    if (!raw) return null;
+    const arr = JSON.parse(raw) as FsDocRaw[];
+    return Array.isArray(arr) && arr.length > 0 ? arr : null;
+  } catch {
+    return null;
+  }
+}
+function writeCache(groupId: string, col: string, docs: FsDocRaw[]) {
+  if (typeof window === "undefined" || docs.length === 0) return;
+  try {
+    localStorage.setItem(cacheKey(groupId, col), JSON.stringify(docs));
+  } catch {
+    /* localStorage lleno/no disponible: ignorar */
+  }
+}
+
 // Colecciones cuyo polling movemos al Worker. orderBy opcional.
 export async function readCollection(
   col: string,
@@ -34,7 +60,16 @@ export async function readCollection(
       const res = await fetch(u.toString(), { cache: "no-store" });
       if (res.ok) {
         const data = (await res.json()) as { documents?: FsDocRaw[] };
-        return data.documents ?? [];
+        const docs = data.documents ?? [];
+        if (docs.length > 0) {
+          writeCache(groupId, col, docs);
+          return docs;
+        }
+        // Respuesta vacía: puede ser un glitch o un 200 sin datos. Si tenemos
+        // una copia buena previa, preferimos no vaciar la pantalla.
+        const cached = readCache(groupId, col);
+        if (cached) return cached;
+        return docs;
       }
       // 429 u otros: caemos al fallback directo de abajo.
     } catch {
@@ -47,10 +82,22 @@ export async function readCollection(
     let url = `${FS}/groups/${groupId}/${col}?pageSize=${pageSize}`;
     if (orderBy) url += `&orderBy=${orderBy}`;
     const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) return [];
-    const data = (await res.json()) as { documents?: FsDocRaw[] };
-    return data.documents ?? [];
+    if (res.ok) {
+      const data = (await res.json()) as { documents?: FsDocRaw[] };
+      const docs = data.documents ?? [];
+      if (docs.length > 0) {
+        writeCache(groupId, col, docs);
+        return docs;
+      }
+      const cached = readCache(groupId, col);
+      if (cached) return cached;
+      return docs;
+    }
   } catch {
-    return [];
+    /* sin red o error: usar copia local */
   }
+
+  // Todo ha fallado (incluido 429): devolver la última copia buena conocida.
+  return readCache(groupId, col) ?? [];
 }
+
