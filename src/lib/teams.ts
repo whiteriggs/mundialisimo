@@ -3,6 +3,7 @@ export type Team = {
   name: string;
   group: string;
   price: number;
+  fifaSeed?: number; // FIFA pre-tournament seeding (0 = top seed in group)
 };
 
 export const GROUP_POOL: Record<string, string[]> = {
@@ -18,6 +19,27 @@ export const GROUP_POOL: Record<string, string[]> = {
   J: ["Argentina", "Argelia", "Austria", "Jordania"],
   K: ["Portugal", "RD Congo", "Uzbekistán", "Colombia"],
   L: ["Inglaterra", "Croacia", "Ghana", "Panamá"],
+};
+
+/**
+ * FIFA seeding order for tiebreaker resolution (if Pts and GD are tied).
+ * Different from GROUP_POOL: GROUP_POOL order determines price points for betting,
+ * while FIFA_GROUP_SEEDING determines tournament seeding for official tiebreakers.
+ * Order: seed 0 (highest priority) → seed 3 (lowest priority)
+ */
+export const FIFA_GROUP_SEEDING: Record<string, string[]> = {
+  A: ["México", "Rep. Corea", "Sudáfrica", "Rep. Checa"],
+  B: ["Suiza", "Canadá", "Catar", "Bosnia y Herz."],
+  C: ["Brasil", "Escocia", "Marruecos", "Haití"],
+  D: ["EE.UU.", "Turquía", "Australia", "Paraguay"],
+  E: ["Alemania", "Costa Marfil", "Curazao", "Ecuador"],
+  F: ["Países Bajos", "Suecia", "Japón", "Túnez"],
+  G: ["Bélgica", "Nueva Zelanda", "Irán", "Egipto"],
+  H: ["Uruguay", "Arabia Saudí", "España", "Cabo Verde"],
+  I: ["Francia", "Noruega", "Senegal", "Irak"],
+  J: ["Argentina", "Austria", "Jordania", "Argelia"],
+  K: ["Portugal", "Uzbekistán", "RD Congo", "Colombia"],
+  L: ["Inglaterra", "Ghana", "Croacia", "Panamá"],
 };
 
 export const TEAMS: Team[] = Object.entries(GROUP_POOL).flatMap(([group, names]) =>
