@@ -78,6 +78,47 @@ function pickScore(score) {
   return { home, away };
 }
 
+async function enrichLiveScores(apiMatches, apiKey) {
+  const base = Array.isArray(apiMatches) ? apiMatches : [];
+  const candidates = base.filter((m) => {
+    if (!LIVE_STATUSES.has(m?.status)) return false;
+    const s = pickScore(m?.score);
+    return s.home === null && s.away === null;
+  });
+
+  if (!candidates.length) return base;
+
+  const patches = new Map();
+  await Promise.all(
+    candidates.slice(0, 12).map(async (m) => {
+      try {
+        const res = await fetch(`${BASE}/competitions/${COMPETITION}/matches/${m.id}`, {
+          headers: { "X-Auth-Token": apiKey },
+        });
+        if (!res.ok) return;
+        const detail = await res.json();
+        const dm = detail?.match;
+        if (!dm) return;
+        const s = pickScore(dm.score);
+        if (s.home === null && s.away === null && !LIVE_STATUSES.has(dm.status)) return;
+        patches.set(String(m.id), {
+          score: dm.score ?? m.score,
+          status: dm.status ?? m.status,
+        });
+      } catch {
+        // ignore per-match errors
+      }
+    })
+  );
+
+  if (!patches.size) return base;
+  return base.map((m) => {
+    const p = patches.get(String(m.id));
+    if (!p) return m;
+    return { ...m, score: p.score ?? m.score, status: p.status ?? m.status };
+  });
+}
+
 // Combina la respuesta de la API con el estado guardado en KV, conservando
 // marcadores conocidos frente a los `null` intermitentes de la API.
 function consolidate(apiMatches, store) {
@@ -573,7 +614,8 @@ export default {
 
     const storeRaw = (await env.SCORES.get("store")) ?? "{}";
     const store = JSON.parse(storeRaw);
-    const { matches, next } = consolidate(apiData.matches, store);
+    const hydratedMatches = await enrichLiveScores(apiData.matches, env.FOOTBALL_DATA_KEY);
+    const { matches, next } = consolidate(hydratedMatches, store);
 
     // Guardar el estado consolidado + un snapshot para el modo degradado.
     next.__matches = matches;
