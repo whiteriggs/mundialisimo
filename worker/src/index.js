@@ -80,8 +80,18 @@ function pickScore(score) {
 
 async function enrichLiveScores(apiMatches, apiKey) {
   const base = Array.isArray(apiMatches) ? apiMatches : [];
+  const now = Date.now();
+  const isNearKickoffTimed = (m) => {
+    if (m?.status !== "TIMED") return false;
+    const t = Date.parse(m?.utcDate ?? "");
+    if (!Number.isFinite(t)) return false;
+    // Algunas veces la API deja TIMED durante minutos tras el inicio.
+    // Ventana amplia para rescatar marcador desde el endpoint de detalle.
+    return t <= now + 15 * 60 * 1000 && t >= now - 6 * 60 * 60 * 1000;
+  };
+
   const candidates = base.filter((m) => {
-    if (!LIVE_STATUSES.has(m?.status)) return false;
+    if (!LIVE_STATUSES.has(m?.status) && !isNearKickoffTimed(m)) return false;
     const s = pickScore(m?.score);
     return s.home === null && s.away === null;
   });
