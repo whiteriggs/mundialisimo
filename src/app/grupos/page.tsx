@@ -128,6 +128,20 @@ export default function GruposPage() {
     [groups]
   );
 
+  // Tabla de mejores terceros: ordenada por Pts → DG → GF → letra de grupo.
+  // Solo se muestran grupos que ya han jugado al menos 1 partido.
+  const bestThirds = useMemo(() => {
+    return groups
+      .filter((g) => g.table[2] && g.table[2].playedGames > 0)
+      .map((g) => ({ letter: groupLetter(g.group), row: g.table[2] }))
+      .sort((a, b) => {
+        if (b.row.points !== a.row.points) return b.row.points - a.row.points;
+        if (b.row.goalDifference !== a.row.goalDifference) return b.row.goalDifference - a.row.goalDifference;
+        if (b.row.goalsFor !== a.row.goalsFor) return b.row.goalsFor - a.row.goalsFor;
+        return a.letter.localeCompare(b.letter);
+      });
+  }, [groups]);
+
   function handleLogout() {
     clearUser();
     router.push("/login");
@@ -282,6 +296,7 @@ export default function GruposPage() {
           )}
 
           {tab === "grupos" && matchCount > 0 && (
+            <>
             <div className="groups-standings-grid">
               {groups.map((g) => {
                 const letter = groupLetter(g.group);
@@ -326,6 +341,56 @@ export default function GruposPage() {
                 );
               })}
             </div>
+
+            {bestThirds.length > 0 && (
+              <div className="results-section">
+                <h3 className="group-standing-title" style={{ marginBottom: 12 }}>
+                  Mejores terceros clasificados
+                </h3>
+                <p className="api-notice" style={{ marginBottom: 10 }}>
+                  Los 8 mejores terceros (de los 12 grupos) pasan a dieciseisavos. Orden: Pts → DG → GF → grupo.
+                </p>
+                <div style={{ overflowX: "auto" }}>
+                  <table className="standing-table" style={{ width: "100%" }}>
+                    <thead>
+                      <tr>
+                        <th className="st-pos">#</th>
+                        <th className="st-pos">Gr.</th>
+                        <th className="st-name">Equipo</th>
+                        <th title="Partidos jugados">PJ</th>
+                        <th title="Victorias">V</th>
+                        <th title="Empates">E</th>
+                        <th title="Derrotas">D</th>
+                        <th title="Goles a favor">GF</th>
+                        <th title="Goles en contra">GC</th>
+                        <th title="Diferencia de goles">DG</th>
+                        <th title="Puntos" className="st-pts">Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bestThirds.map(({ letter, row }, idx) => (
+                        <tr key={letter} className={idx < 8 ? "row-qualifier" : "row-eliminated"}>
+                          <td className="st-pos">{idx + 1}</td>
+                          <td className="st-pos">{letter}</td>
+                          <td className="st-name"><Flag name={row.team.name} />{row.team.name}</td>
+                          <td>{row.playedGames}</td>
+                          <td>{row.won}</td>
+                          <td>{row.draw}</td>
+                          <td>{row.lost}</td>
+                          <td>{row.goalsFor}</td>
+                          <td>{row.goalsAgainst}</td>
+                          <td className={row.goalDifference > 0 ? "gd-pos" : row.goalDifference < 0 ? "gd-neg" : ""}>
+                            {sign(row.goalDifference)}
+                          </td>
+                          <td className="st-pts">{row.points}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            </>
           )}
 
           {tab === "resultados" && (

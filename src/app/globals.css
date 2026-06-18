@@ -1826,6 +1826,13 @@ a {
   color: var(--gold);
 }
 
+.row-eliminated .st-name {
+  opacity: 0.45;
+}
+.row-eliminated td {
+  opacity: 0.45;
+}
+
 .gd-pos { color: #4caf75; }
 .gd-neg { color: #e04e4e; }
 
