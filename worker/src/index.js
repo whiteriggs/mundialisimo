@@ -13,7 +13,7 @@
 
 const BASE = "https://api.football-data.org/v4";
 const COMPETITION = "WC";
-const LIVE_STATUSES = new Set(["IN_PLAY", "PAUSED"]);
+const LIVE_STATUSES = new Set(["IN_PLAY", "PAUSED", "LIVE"]);
 
 // Edge cache y frescura para el navegador (segundos).
 const EDGE_TTL = 15;
@@ -72,6 +72,12 @@ function json(body, extraHeaders = {}) {
   });
 }
 
+function pickScore(score) {
+  const home = score?.fullTime?.home ?? score?.regularTime?.home ?? score?.halfTime?.home ?? null;
+  const away = score?.fullTime?.away ?? score?.regularTime?.away ?? score?.halfTime?.away ?? null;
+  return { home, away };
+}
+
 // Combina la respuesta de la API con el estado guardado en KV, conservando
 // marcadores conocidos frente a los `null` intermitentes de la API.
 function consolidate(apiMatches, store) {
@@ -83,8 +89,9 @@ function consolidate(apiMatches, store) {
       const override = SCORE_OVERRIDES[id];
       const known = store[id];
 
-      const apiHome = override ? override.homeGoals : (m.score?.fullTime?.home ?? null);
-      const apiAway = override ? override.awayGoals : (m.score?.fullTime?.away ?? null);
+      const picked = pickScore(m.score);
+      const apiHome = override ? override.homeGoals : picked.home;
+      const apiAway = override ? override.awayGoals : picked.away;
       const apiHasScore = apiHome !== null || apiAway !== null;
 
       const knownHome = known?.homeGoals ?? null;
