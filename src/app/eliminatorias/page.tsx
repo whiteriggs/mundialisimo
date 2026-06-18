@@ -332,8 +332,8 @@ export default function EliminatoriasPage() {
           ? <p className="api-notice" style={{ marginBottom: 20 }}>{apiNote}</p>
           : <p className="api-notice" style={{ marginBottom: 20 }}>
               {hasProvisional
-                ? "Posiciones marcadas «·prov» = clasificación PROVISIONAL según los grupos en curso (cambiarán hasta el final de los grupos). Los terceros son una estimación."
-                : "Los cruces de dieciseisavos son fijos. M.3º = mejor tercer clasificado de los grupos indicados."}
+                ? "Posiciones marcadas «·prov» = clasificación PROVISIONAL según los grupos en curso (cambiarán hasta el final de los grupos). Los huecos M.3º se mantienen oficiales hasta publicación FIFA."
+                : "Los cruces de dieciseisavos son fijos. M.3º se muestra como placeholder oficial hasta que FIFA publique los cruces."}
             </p>
         }
 

@@ -14,9 +14,9 @@ export interface ResolvedSide {
 // empezado a jugar. Los grupos sin partidos y los huecos de rondas posteriores
 // ("Gan. ...", "Por determinar") se devuelven sin tocar.
 //
-// IMPORTANTE: la asignación de mejores terceros es una ESTIMACIÓN. La oficial usa
-// una tabla FIFA según qué grupos aportan terceros; aquí hacemos "mejor esfuerzo"
-// (mejor tercero disponible entre los candidatos del hueco, sin duplicar).
+// IMPORTANTE: para "M.3º ..." NO resolvemos equipos de forma provisional,
+// porque la asignación oficial depende de tablas FIFA de combinaciones.
+// Se mantienen placeholders hasta que la API publique los cruces oficiales.
 export function makeBracketResolver(matches: ApiAllMatch[]): (text: string) => ResolvedSide {
   const groupMatches: Match[] = matches
     .filter((m) => m.phase === "groups" && (m.played || isLiveStatus(m.status)))
@@ -34,20 +34,6 @@ export function makeBracketResolver(matches: ApiAllMatch[]): (text: string) => R
   const standings = buildGroupStandings(groupMatches);
   const hasPlayed = (g: string) => (standings[g]?.some((t) => t.played > 0)) ?? false;
 
-  // Ranking provisional de terceros (solo grupos con partidos jugados).
-  const thirds = GROUP_LETTERS
-    .filter((g) => hasPlayed(g) && standings[g]?.[2])
-    .map((g) => ({ group: g, t: standings[g][2] }))
-    .sort(
-      (a, b) =>
-        b.t.pts - a.t.pts ||
-        b.t.gd - a.t.gd ||
-        b.t.gf - a.t.gf ||
-        a.t.name.localeCompare(b.t.name, "es")
-    );
-  const qualifiedThirds = new Set(thirds.slice(0, 8).map((x) => x.group));
-  const usedThirds = new Set<string>();
-
   function resolveDirect(text: string): string | null {
     const m = text.match(/^([12])º Gr\.\s*([A-L])$/);
     if (!m) return null;
@@ -57,25 +43,9 @@ export function makeBracketResolver(matches: ApiAllMatch[]): (text: string) => R
     return standings[group]?.[pos]?.name ?? null;
   }
 
-  function resolveThird(text: string): string | null {
-    const m = text.match(/^M\.3º\s*(.+)$/);
-    if (!m) return null;
-    const candidates = m[1].split("/").map((s) => s.trim());
-    // Mejor tercero clasificado (top-8 provisional) entre los candidatos, sin repetir.
-    for (const x of thirds) {
-      if (candidates.includes(x.group) && qualifiedThirds.has(x.group) && !usedThirds.has(x.group)) {
-        usedThirds.add(x.group);
-        return x.t.name;
-      }
-    }
-    return null;
-  }
-
   return (text: string): ResolvedSide => {
     const direct = resolveDirect(text);
     if (direct) return { name: direct, provisional: true };
-    const third = resolveThird(text);
-    if (third) return { name: third, provisional: true };
     return { name: text, provisional: false };
   };
 }
