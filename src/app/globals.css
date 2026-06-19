@@ -3352,6 +3352,11 @@ body[data-sidebar="expanded"] .app-shell {
   color: #14110c;
 }
 
+/* Override para admin page, que pone color blanco a todos los h2 dentro de .admin-panel */
+.admin-panel .np-headline {
+  color: #14110c;
+}
+
 .np-standfirst {
   text-align: center;
   font-style: italic;
