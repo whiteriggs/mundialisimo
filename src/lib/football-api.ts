@@ -9,9 +9,22 @@ const COMPETITION = "WC";
 const LIVE_MATCHES_URL = process.env.NEXT_PUBLIC_LIVE_MATCHES_URL ?? "";
 
 // Estados de football-data.org que representan un partido en juego.
-const LIVE_STATUSES = new Set(["IN_PLAY", "PAUSED"]);
+const LIVE_STATUSES = new Set(["IN_PLAY", "PAUSED", "LIVE"]);
 export function isLiveStatus(status: string | null | undefined): boolean {
   return status != null && LIVE_STATUSES.has(status);
+}
+
+// Duración máxima estimada de un partido (90' + descanso + añadidos + posible
+// prórroga holgada). Se usa para considerar "en directo" un partido que ya ha
+// empezado por horario aunque la API tarde en cambiar su estado a IN_PLAY.
+export const MATCH_LIVE_WINDOW_MS = 2.5 * 60 * 60 * 1000;
+
+// ¿El partido ya ha arrancado (por reloj) y sigue dentro de la ventana en la
+// que podría estar jugándose? No mira el estado de la API, solo la hora.
+export function isWithinLiveWindow(utcDate: string): boolean {
+  const start = new Date(utcDate).getTime();
+  const now = Date.now();
+  return start <= now && start + MATCH_LIVE_WINDOW_MS > now;
 }
 
 // Añade un parámetro anticaché para que el polling en vivo no reciba la copia

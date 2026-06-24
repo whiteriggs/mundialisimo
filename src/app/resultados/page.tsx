@@ -8,7 +8,7 @@ import { db } from "@/lib/firebase";
 import { getStoredUser, clearUser } from "@/lib/auth";
 import { teamName, teamCode } from "@/lib/teams";
 import { buildTeamTotals, matchPoints, Match } from "@/lib/scoring";
-import { fetchAllMatches, ApiAllMatch, isLiveStatus } from "@/lib/football-api";
+import { fetchAllMatches, ApiAllMatch, isLiveStatus, isWithinLiveWindow } from "@/lib/football-api";
 import { fetchBetsRest, fetchUsersRest } from "@/lib/leaderboard";
 import { getGroupId } from "@/lib/group";
 import { useLiveRefresh } from "@/lib/useLiveRefresh";
@@ -22,6 +22,14 @@ type BetDoc = {
   antiFavorites: string[];
   confirmed: boolean;
 };
+
+// Un partido cuenta como "en directo" para la clasificación si la API lo marca
+// como en juego O si ya ha empezado por horario y aún no consta como jugado
+// (la API a veces tarda en cambiar el estado a IN_PLAY). Mismo criterio que el
+// chip de "En directo", para que tabla y chip vayan siempre sincronizados.
+function isLiveColumn(m: ApiAllMatch): boolean {
+  return isLiveStatus(m.status) || (!m.played && isWithinLiveWindow(m.utcDate));
+}
 
 export default function ResultadosPage() {
   const router = useRouter();
@@ -50,10 +58,10 @@ export default function ResultadosPage() {
       setUserList(users);
 
       setAllApiMatches(apiAll.length > 0 ? apiAll : buildStaticSchedule());
-      // Incluye partidos en vivo (IN_PLAY/PAUSED) con su marcador parcial para
-      // que la clasificación de la porra se mueva en directo.
+      // Incluye partidos en vivo (o ya empezados por horario) con su marcador
+      // parcial para que la clasificación de la porra se mueva en directo.
       const scored: Match[] = apiAll
-        .filter((m) => m.played || isLiveStatus(m.status))
+        .filter((m) => m.played || isLiveColumn(m))
         .map((m) => ({
           id: m.id,
           home: m.home,
@@ -96,7 +104,7 @@ export default function ResultadosPage() {
 
   // Hay partidos en directo → refrescar rápido (12s) para que todos los
   // dispositivos converjan; si no, ritmo normal (30s).
-  const anyLive = allApiMatches.some((m) => isLiveStatus(m.status));
+  const anyLive = allApiMatches.some(isLiveColumn);
   useLiveRefresh(loadData, anyLive ? 12_000 : 30_000);
 
   const teamTotals = buildTeamTotals([...matches, ...manualMatches]);
@@ -128,7 +136,7 @@ export default function ResultadosPage() {
 
   const roundData = useMemo(() => {
     const liveIds = new Set(
-      allApiMatches.filter((m) => isLiveStatus(m.status)).map((m) => m.id)
+      allApiMatches.filter(isLiveColumn).map((m) => m.id)
     );
     // Partidos jugados o en vivo como columnas (cronológico): API por fecha, luego manuales.
     const apiPlayed: Match[] = allApiMatches
