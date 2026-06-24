@@ -205,6 +205,15 @@ export default function ResultadosPage() {
 
   const playedMatches = matches.filter((m) => m.played);
 
+  // Orden de columnas SOLO para mostrar la tabla: más reciente primero, para no
+  // tener que hacer scroll hasta el final. Conservamos el índice cronológico
+  // original (`idx`) para leer las puntuaciones de `perMatch` sin alterarlas.
+  // El cálculo de movimientos y la gráfica de evolución siguen siendo
+  // cronológicos (no se tocan).
+  const displayColumns = roundData.columns
+    .map((m, idx) => ({ m, idx }))
+    .reverse();
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -251,7 +260,7 @@ export default function ResultadosPage() {
                     <th className="st-rank">#</th>
                     <th className="st-name">Participante</th>
                     <th className="st-total">Total</th>
-                    {roundData.columns.map((m) => (
+                    {displayColumns.map(({ m }) => (
                       <th key={m.id} className={`st-match${roundData.liveIds.has(m.id) ? " st-match-live" : ""}`}>
                         <span className="st-match-teams">{teamCode(m.home)}-{teamCode(m.away)}</span>
                         <span className="st-match-score">{m.homeGoals}–{m.awayGoals}{m.penalties ? "p" : ""}</span>
@@ -282,8 +291,8 @@ export default function ResultadosPage() {
                         ) : null}
                       </td>
                       <td className="st-total">{r.confirmed ? r.total : "—"}</td>
-                      {roundData.columns.map((m, ci) => {
-                        const pts = roundData.perMatch[r.uid]?.[ci];
+                      {displayColumns.map(({ m, idx }) => {
+                        const pts = roundData.perMatch[r.uid]?.[idx];
                         return (
                           <td
                             key={m.id}
