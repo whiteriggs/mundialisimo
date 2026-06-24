@@ -30,10 +30,11 @@ const MATCH_DURATION_MS = 2.5 * 60 * 60 * 1000;
 export default function NextMatchCountdown({ compact = false }: { compact?: boolean }) {
   const [upcoming, setUpcoming] = useState<ApiAllMatch[]>([]);
   // Puede haber más de un partido en directo a la vez (jornadas con horarios
-  // solapados). `liveMatches` los recoge todos; `match` es el próximo a jugarse
-  // cuando no hay ninguno en directo.
+  // solapados). `liveMatches` los recoge todos.
   const [liveMatches, setLiveMatches] = useState<ApiAllMatch[]>([]);
-  const [match, setMatch] = useState<ApiAllMatch | null>(null);
+  // Próximos partidos a jugarse: puede haber más de uno si arrancan a la misma
+  // hora. `left` es la cuenta atrás compartida (todos tienen el mismo kickoff).
+  const [nextMatches, setNextMatches] = useState<ApiAllMatch[]>([]);
   const [left, setLeft] = useState<Remaining>(null);
   const live = liveMatches.length > 0;
 
@@ -70,7 +71,7 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
 
   useEffect(() => {
     if (upcoming.length === 0) {
-      setMatch(null);
+      setNextMatches([]);
       setLiveMatches([]);
       return;
     }
@@ -85,21 +86,29 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
       setLiveMatches(liveNow);
       if (liveNow.length > 0) {
         // Hay partidos en juego: no mostramos cuenta atrás.
-        setMatch(null);
+        setNextMatches([]);
         setLeft(null);
         return;
       }
-      // Nada en directo: el próximo que aún no ha empezado.
-      const next = upcoming.find((m) => new Date(m.utcDate).getTime() > now) ?? null;
-      setMatch(next);
-      setLeft(next ? remainingTo(next.utcDate) : null);
+      // Nada en directo: el/los próximo(s) a jugarse. Si varios comparten el
+      // mismo kickoff, los mostramos todos.
+      const future = upcoming.filter((m) => new Date(m.utcDate).getTime() > now);
+      if (future.length === 0) {
+        setNextMatches([]);
+        setLeft(null);
+        return;
+      }
+      const firstKo = new Date(future[0].utcDate).getTime();
+      const next = future.filter((m) => new Date(m.utcDate).getTime() === firstKo);
+      setNextMatches(next);
+      setLeft(remainingTo(future[0].utcDate));
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [upcoming]);
 
-  if (!match && !live) return null;
+  if (nextMatches.length === 0 && !live) return null;
 
   const kickoffOf = (m: ApiAllMatch) =>
     new Date(m.utcDate).toLocaleString("es-ES", {
@@ -138,25 +147,29 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
         </div>
       );
     }
-    // Próximo partido: cuenta atrás.
-    if (!match) return null;
+    // Próximo(s) partido(s): cuenta atrás compartida. Si hay varios a la misma
+    // hora, una pill por cada uno.
+    if (nextMatches.length === 0) return null;
     const time = left
       ? left.d > 0
         ? `${left.d}d ${pad(left.h)}:${pad(left.m)}:${pad(left.s)}`
         : `${pad(left.h)}:${pad(left.m)}:${pad(left.s)}`
       : null;
-    return (
+    const nextPill = (m: ApiAllMatch) => (
       <div
+        key={m.id}
         className="next-match-pill"
-        title={`Próximo partido: ${match.home} vs ${match.away} · ${kickoffOf(match)}`}
+        title={`Próximo partido: ${m.home} vs ${m.away} · ${kickoffOf(m)}`}
       >
         <span className="next-match-pill-label">Próximo</span>
-        <Flag name={match.home} />
+        <Flag name={m.home} />
         <span className="next-match-pill-vs">vs</span>
-        <Flag name={match.away} />
+        <Flag name={m.away} />
         <span className="next-match-pill-time">{time}</span>
       </div>
     );
+    if (nextMatches.length === 1) return nextPill(nextMatches[0]);
+    return <div className="next-match-pills">{nextMatches.map(nextPill)}</div>;
   }
 
   // Versión grande (tarjeta). En directo puede haber varios partidos a la vez:
@@ -235,6 +248,11 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
       </div>
     );
   }
-  if (!match) return null;
-  return renderCard(match, false);
+  if (nextMatches.length === 0) return null;
+  if (nextMatches.length === 1) return renderCard(nextMatches[0], false);
+  return (
+    <div className="next-match-stack">
+      {nextMatches.map((m) => renderCard(m, false))}
+    </div>
+  );
 }
