@@ -2814,6 +2814,17 @@ a {
     flex: 0 0 100%;
     justify-content: center;
   }
+
+  /* El contenedor de varios partidos en directo también vuelve al flujo
+     normal (fila propia) para no solaparse con el logo. Cada pill ocupa su
+     línea, centrada. */
+  .next-match-pills {
+    position: static;
+    transform: none;
+    width: 100%;
+    max-width: 100%;
+    flex: 0 0 100%;
+  }
 }
 
 /* ── Barra lateral de navegación (estilo VS Code) ───────── */
