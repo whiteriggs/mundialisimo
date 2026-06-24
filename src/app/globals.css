@@ -2551,6 +2551,13 @@ a {
   padding: 1rem 1.1rem;
 }
 
+/* Varias tarjetas de partido en directo apiladas (jornadas solapadas). */
+.next-match-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .next-match-eyebrow {
   font-size: 0.72rem;
   letter-spacing: 0.08em;

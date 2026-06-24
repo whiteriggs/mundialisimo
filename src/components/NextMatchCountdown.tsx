@@ -159,31 +159,28 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
     );
   }
 
-  // Versión grande (tarjeta): el primer partido en directo o el próximo.
-  const main = live ? liveMatches[0] : match;
-  if (!main) return null;
-  const kickoff = kickoffOf(main);
-
-  return (
-    <div className="next-match card">
-      <span className="next-match-eyebrow">{live ? "En directo" : "Próximo partido"}</span>
+  // Versión grande (tarjeta). En directo puede haber varios partidos a la vez:
+  // se pinta una tarjeta por cada uno. Si no hay ninguno, el próximo a jugarse.
+  const renderCard = (m: ApiAllMatch, isLive: boolean) => (
+    <div key={m.id} className="next-match card">
+      <span className="next-match-eyebrow">{isLive ? "En directo" : "Próximo partido"}</span>
       <div className="next-match-teams">
         <span className="next-match-team">
-          <Flag name={main.home} />
-          {main.home}
+          <Flag name={m.home} />
+          {m.home}
         </span>
-        {live && main.homeGoals !== null && main.awayGoals !== null ? (
-          <span className="next-match-score">{main.homeGoals}-{main.awayGoals}</span>
+        {isLive && m.homeGoals !== null && m.awayGoals !== null ? (
+          <span className="next-match-score">{m.homeGoals}-{m.awayGoals}</span>
         ) : (
           <span className="next-match-vs">vs</span>
         )}
         <span className="next-match-team">
-          <Flag name={main.away} />
-          {main.away}
+          <Flag name={m.away} />
+          {m.away}
         </span>
       </div>
-      <div className="next-match-kickoff">{kickoff}</div>
-      {live ? (
+      <div className="next-match-kickoff">{kickoffOf(m)}</div>
+      {isLive ? (
         <div className="next-match-clock next-match-live-row">
           <span className="next-match-live-dot">●</span>
           <span className="next-match-live-text">En juego</span>
@@ -214,7 +211,7 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
       )}
       <div className="next-match-tv">
         <span className="next-match-tv-label">Dónde verlo</span>
-        {tvChannelsFor(main).map((ch) => (
+        {tvChannelsFor(m).map((ch) => (
           <a
             key={ch.name}
             className={`tv-chip tv-${ch.kind}`}
@@ -229,4 +226,15 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
       </div>
     </div>
   );
+
+  if (live) {
+    if (liveMatches.length === 1) return renderCard(liveMatches[0], true);
+    return (
+      <div className="next-match-stack">
+        {liveMatches.map((m) => renderCard(m, true))}
+      </div>
+    );
+  }
+  if (!match) return null;
+  return renderCard(match, false);
 }
