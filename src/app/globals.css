@@ -2698,6 +2698,26 @@ a {
   width: fit-content;
 }
 
+/* Contenedor para cuando hay varios partidos en directo a la vez. */
+.next-match-pills {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  max-width: calc(100vw - 120px);
+}
+.next-match-pills .next-match-pill {
+  position: static;
+  left: auto;
+  top: auto;
+  transform: none;
+}
+
 .next-match-pill img {
   width: 24px;
   height: 18px;

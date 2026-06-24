@@ -29,9 +29,13 @@ const MATCH_DURATION_MS = 2.5 * 60 * 60 * 1000;
 
 export default function NextMatchCountdown({ compact = false }: { compact?: boolean }) {
   const [upcoming, setUpcoming] = useState<ApiAllMatch[]>([]);
+  // Puede haber más de un partido en directo a la vez (jornadas con horarios
+  // solapados). `liveMatches` los recoge todos; `match` es el próximo a jugarse
+  // cuando no hay ninguno en directo.
+  const [liveMatches, setLiveMatches] = useState<ApiAllMatch[]>([]);
   const [match, setMatch] = useState<ApiAllMatch | null>(null);
   const [left, setLeft] = useState<Remaining>(null);
-  const [live, setLive] = useState(false);
+  const live = liveMatches.length > 0;
 
   useEffect(() => {
     let alive = true;
@@ -67,92 +71,115 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
   useEffect(() => {
     if (upcoming.length === 0) {
       setMatch(null);
+      setLiveMatches([]);
       return;
     }
     const tick = () => {
       const now = Date.now();
-      // Partido activo = el primero cuyo final estimado (inicio + duración) aún
-      // no ha pasado. Así seguimos mostrándolo "en directo" mientras se juega y
-      // solo saltamos al siguiente cuando este termina. Todo en memoria, sin
-      // recargar ni volver a llamar a la API.
-      const current =
-        upcoming.find(
-          (m) => new Date(m.utcDate).getTime() + MATCH_DURATION_MS > now,
-        ) ?? null;
-      setMatch(current);
-      if (!current) {
+      // Partidos en directo = los que ya han empezado y cuyo final estimado
+      // (inicio + duración) aún no ha pasado. Puede haber varios a la vez.
+      const liveNow = upcoming.filter((m) => {
+        const start = new Date(m.utcDate).getTime();
+        return start <= now && start + MATCH_DURATION_MS > now;
+      });
+      setLiveMatches(liveNow);
+      if (liveNow.length > 0) {
+        // Hay partidos en juego: no mostramos cuenta atrás.
+        setMatch(null);
         setLeft(null);
-        setLive(false);
         return;
       }
-      const remaining = remainingTo(current.utcDate);
-      setLeft(remaining);
-      setLive(remaining === null);
+      // Nada en directo: el próximo que aún no ha empezado.
+      const next = upcoming.find((m) => new Date(m.utcDate).getTime() > now) ?? null;
+      setMatch(next);
+      setLeft(next ? remainingTo(next.utcDate) : null);
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [upcoming]);
 
-  if (!match) return null;
+  if (!match && !live) return null;
 
-  const kickoff = new Date(match.utcDate).toLocaleString("es-ES", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const kickoffOf = (m: ApiAllMatch) =>
+    new Date(m.utcDate).toLocaleString("es-ES", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
 
   if (compact) {
+    // En directo: una pill por cada partido en juego (pueden ser varios a la vez).
+    if (live) {
+      return (
+        <div className="next-match-pills">
+          {liveMatches.map((m) => {
+            const hasScore = m.homeGoals !== null && m.awayGoals !== null;
+            return (
+              <div
+                key={m.id}
+                className="next-match-pill is-live"
+                title={`En directo: ${m.home} vs ${m.away} · ${kickoffOf(m)}`}
+              >
+                <span className="next-match-pill-label">En directo</span>
+                <Flag name={m.home} />
+                {hasScore ? (
+                  <span className="next-match-pill-score">{m.homeGoals}-{m.awayGoals}</span>
+                ) : (
+                  <span className="next-match-pill-vs">vs</span>
+                )}
+                <Flag name={m.away} />
+                <span className="next-match-pill-time next-match-pill-live">●</span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+    // Próximo partido: cuenta atrás.
+    if (!match) return null;
     const time = left
       ? left.d > 0
         ? `${left.d}d ${pad(left.h)}:${pad(left.m)}:${pad(left.s)}`
         : `${pad(left.h)}:${pad(left.m)}:${pad(left.s)}`
       : null;
-    const hasScore = match.homeGoals !== null && match.awayGoals !== null;
     return (
       <div
-        className={`next-match-pill${live ? " is-live" : ""}`}
-        title={
-          live
-            ? `En directo: ${match.home} vs ${match.away} · ${kickoff}`
-            : `Próximo partido: ${match.home} vs ${match.away} · ${kickoff}`
-        }
+        className="next-match-pill"
+        title={`Próximo partido: ${match.home} vs ${match.away} · ${kickoffOf(match)}`}
       >
-        <span className="next-match-pill-label">{live ? "En directo" : "Próximo"}</span>
+        <span className="next-match-pill-label">Próximo</span>
         <Flag name={match.home} />
-        {live && hasScore ? (
-          <span className="next-match-pill-score">{match.homeGoals}-{match.awayGoals}</span>
-        ) : (
-          <span className="next-match-pill-vs">vs</span>
-        )}
+        <span className="next-match-pill-vs">vs</span>
         <Flag name={match.away} />
-        {live ? (
-          <span className="next-match-pill-time next-match-pill-live">●</span>
-        ) : (
-          <span className="next-match-pill-time">{time}</span>
-        )}
+        <span className="next-match-pill-time">{time}</span>
       </div>
     );
   }
+
+  // Versión grande (tarjeta): el primer partido en directo o el próximo.
+  const main = live ? liveMatches[0] : match;
+  if (!main) return null;
+  const kickoff = kickoffOf(main);
 
   return (
     <div className="next-match card">
       <span className="next-match-eyebrow">{live ? "En directo" : "Próximo partido"}</span>
       <div className="next-match-teams">
         <span className="next-match-team">
-          <Flag name={match.home} />
-          {match.home}
+          <Flag name={main.home} />
+          {main.home}
         </span>
-        {live && match.homeGoals !== null && match.awayGoals !== null ? (
-          <span className="next-match-score">{match.homeGoals}-{match.awayGoals}</span>
+        {live && main.homeGoals !== null && main.awayGoals !== null ? (
+          <span className="next-match-score">{main.homeGoals}-{main.awayGoals}</span>
         ) : (
           <span className="next-match-vs">vs</span>
         )}
         <span className="next-match-team">
-          <Flag name={match.away} />
-          {match.away}
+          <Flag name={main.away} />
+          {main.away}
         </span>
       </div>
       <div className="next-match-kickoff">{kickoff}</div>
@@ -187,7 +214,7 @@ export default function NextMatchCountdown({ compact = false }: { compact?: bool
       )}
       <div className="next-match-tv">
         <span className="next-match-tv-label">Dónde verlo</span>
-        {tvChannelsFor(match).map((ch) => (
+        {tvChannelsFor(main).map((ch) => (
           <a
             key={ch.name}
             className={`tv-chip tv-${ch.kind}`}
