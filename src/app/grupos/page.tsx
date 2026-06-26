@@ -196,8 +196,16 @@ export default function GruposPage() {
     });
   }
 
+  // Clave de agrupación por día en la zona LOCAL del usuario (no UTC), para que
+  // el día del encabezado coincida siempre con la hora local de los partidos.
+  function localDayKey(utcDate: string): string {
+    return new Intl.DateTimeFormat("en-CA", {
+      year: "numeric", month: "2-digit", day: "2-digit"
+    }).format(new Date(utcDate)); // "2026-06-11"
+  }
+
   const matchesByDay = allApiMatches.reduce<Map<string, ApiAllMatch[]>>((acc, m) => {
-    const day = m.utcDate.slice(0, 10);
+    const day = localDayKey(m.utcDate);
     if (!acc.has(day)) acc.set(day, []);
     acc.get(day)!.push(m);
     return acc;

@@ -17,12 +17,13 @@ for (const [g, names] of Object.entries(GROUP_POOL)) {
   for (const n of names) TEAM_GROUP[n] = g;
 }
 
-// ── Helpers de fecha en hora española (Europe/Madrid) ──────────────────────
-const TZ = "Europe/Madrid";
+// ── Helpers de fecha en la hora LOCAL del usuario ──────────────────────────
+// Sin `timeZone`: Intl usa la zona del navegador (donde se conecta el usuario).
+// Todos los helpers comparten zona, así la agrupación por día y las cabeceras
+// quedan siempre coherentes con la hora de cada partido.
 
 const dayKey = (utc: string) =>
   new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -30,14 +31,12 @@ const dayKey = (utc: string) =>
 
 const kickoffTime = (utc: string) =>
   new Intl.DateTimeFormat("es-ES", {
-    timeZone: TZ,
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(utc));
 
 const chipParts = (utc: string) => {
   const parts = new Intl.DateTimeFormat("es-ES", {
-    timeZone: TZ,
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -52,7 +51,6 @@ const chipParts = (utc: string) => {
 
 const longDate = (utc: string) =>
   new Intl.DateTimeFormat("es-ES", {
-    timeZone: TZ,
     weekday: "long",
     day: "numeric",
     month: "long",
