@@ -92,6 +92,16 @@ const ICON = {
       <path d="M21 21l-3.5-3.5" />
     </>
   ),
+  probabilidades: I(
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="3" />
+      <circle cx="8" cy="9" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="16" cy="9" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="8" cy="15" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="16" cy="15" r="1.1" fill="currentColor" stroke="none" />
+    </>
+  ),
 } as const;
 
 const NAV_LINKS: { href: string; label: string; icon: keyof typeof ICON }[] = [
@@ -101,6 +111,7 @@ const NAV_LINKS: { href: string; label: string; icon: keyof typeof ICON }[] = [
   { href: "/grupos", label: "Grupos/Resultados", icon: "grupos" },
   { href: "/eliminatorias", label: "Eliminatorias", icon: "eliminatorias" },
   { href: "/que-pasaria-si", label: "Qué pasaría si…", icon: "simulador" },
+  { href: "/probabilidades", label: "Probabilidades", icon: "probabilidades" },
   { href: "/cronica", label: "Crónica", icon: "cronica" },
   { href: "/reglas", label: "Reglas", icon: "reglas" },
 ];

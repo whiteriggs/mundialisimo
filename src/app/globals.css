@@ -1365,6 +1365,34 @@ a {
 .standings-table tbody tr.row-me { --cell-bg: #15212e; }
 .standings-table tbody tr:hover { --cell-bg: var(--bg-2); }
 
+/* ── Tabla de probabilidades ───────────────────── */
+.prob-table .prob-col {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.prob-table thead th.prob-col {
+  font-weight: 600;
+}
+.prob-table .prob-win {
+  color: var(--gold);
+  font-weight: 800;
+}
+.prob-table .prob-alive {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 12px;
+}
+.prob-table .prob-fav { color: var(--green); }
+.prob-table .prob-anti { color: var(--red); }
+.prob-note {
+  margin-top: 12px;
+  max-width: 70ch;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 /* Columnas fijas a la izquierda */
 .st-rank {
   position: sticky;
