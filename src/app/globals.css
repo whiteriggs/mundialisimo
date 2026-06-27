@@ -1393,6 +1393,110 @@ a {
   line-height: 1.5;
 }
 
+/* Filas seleccionables y celda de puntos con rango */
+.prob-row { cursor: pointer; }
+.prob-row:hover { --cell-bg: var(--bg-2); }
+.standings-table tbody tr.prob-row-focus { --cell-bg: #1c2433; }
+.standings-table tbody tr.prob-row-focus.row-me { --cell-bg: #22304a; }
+.prob-mean { font-weight: 700; }
+.prob-range {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.prob-teamcell { display: flex; align-items: center; gap: 8px; }
+.prob-teamcell img { width: 22px; height: 16px; }
+
+/* Texto explicativo */
+.prob-explainer,
+.prob-legend {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  max-width: 760px;
+}
+.prob-explainer h3,
+.prob-legend h3 { margin: 0 0 8px; font-size: 15px; }
+.prob-explainer p { margin: 0; line-height: 1.55; font-size: 14px; color: var(--text); }
+.prob-legend ul { margin: 0; padding-left: 18px; }
+.prob-legend li { margin: 4px 0; line-height: 1.5; font-size: 13px; }
+.prob-help { font-size: 12px; margin: 0 0 10px; }
+
+/* Tarjetas MVP / lastre */
+.prob-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.prob-card {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.prob-card-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.prob-card-team { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.prob-card-team img { width: 26px; height: 19px; }
+.prob-card-pts { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 800; }
+.prob-card-good { color: var(--green); }
+.prob-card-bad { color: var(--red); }
+.prob-card-foot { margin-top: 8px; font-size: 12px; color: var(--text-dim); }
+
+/* Bloques de la ficha */
+.prob-block { margin-top: 18px; }
+.prob-block-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.prob-block h3 { margin: 0 0 4px; font-size: 15px; }
+.prob-best { font-size: 13px; color: var(--text-dim); }
+
+/* Barra de distribución de puesto */
+.prob-posbar {
+  display: flex;
+  width: 100%;
+  height: 30px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+}
+.prob-posseg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2px;
+  color: #14110c;
+  font-size: 11px;
+  font-weight: 800;
+  transition: filter 0.15s;
+}
+.prob-posseg:hover { filter: brightness(1.12); }
+
+/* Cara a cara */
+.prob-h2h { display: flex; flex-direction: column; gap: 6px; max-width: 560px; }
+.prob-h2h-row { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.prob-h2h-name { flex: 0 0 110px; font-size: 13px; font-weight: 600; }
+.prob-h2h-bar {
+  flex: 1;
+  height: 14px;
+  background: var(--bg-3);
+  border-radius: 7px;
+  overflow: hidden;
+}
+.prob-h2h-fill { height: 100%; border-radius: 7px; }
+.prob-h2h-fill.win { background: var(--green); }
+.prob-h2h-fill.lose { background: var(--red); }
+.prob-h2h-pct { flex: 0 0 46px; text-align: right; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.prob-h2h-pct.win { color: var(--green); }
+.prob-h2h-pct.lose { color: var(--red); }
+
 /* Columnas fijas a la izquierda */
 .st-rank {
   position: sticky;
