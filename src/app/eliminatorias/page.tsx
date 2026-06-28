@@ -146,6 +146,11 @@ function buildBracketFromApi(matches: ApiKnockoutMatch[]): {
 } {
   const by = (stage: string) => matches.filter((m) => m.stage === stage).map(apiToBMatch);
   const at = (arr: BMatch[], i: number): BMatch => arr[i] ?? TBD;
+  // Una ronda solo se toma de la API si ya trae equipos reales; mientras sus
+  // partidos sean "Por determinar", mantenemos las etiquetas del cuadro
+  // estático ("Gan. 1ºE/3º", fechas, etc.).
+  const ready = (arr: BMatch[]) =>
+    arr.some((m) => !(m.home === "Por determinar" && m.away === "Por determinar"));
 
   const r32 = by("ROUND_OF_32");
   const r16 = by("ROUND_OF_16");
@@ -153,23 +158,22 @@ function buildBracketFromApi(matches: ApiKnockoutMatch[]): {
   const sf  = by("SEMI_FINALS");
   const fin = by("FINAL");
 
-  // Para cada ronda: si la API ya trae partidos, usarlos; si no, mantener el
-  // cuadro estático (cruces por grupos + fechas). La API de football-data sólo
-  // publica R32/R16 cuando se sortean, así que antes de eso usamos el estático.
+  // R32 se coloca por separado (emparejamiento por ancla), así que aquí siempre
+  // partimos del cuadro estático para esa ronda.
   const left: BHalf = [
-    r32.length ? [[at(r32,0), at(r32,1)], [at(r32,2), at(r32,3)], [at(r32,4), at(r32,5)], [at(r32,6), at(r32,7)]] : LEFT_HALF[0],
-    r16.length ? [[at(r16,0), at(r16,1)], [at(r16,2), at(r16,3)]] : LEFT_HALF[1],
-    qf.length  ? [[at(qf,0),  at(qf,1)]] : LEFT_HALF[2],
-    sf.length  ? [[at(sf,0)]] : LEFT_HALF[3],
+    LEFT_HALF[0],
+    ready(r16) ? [[at(r16,0), at(r16,1)], [at(r16,2), at(r16,3)]] : LEFT_HALF[1],
+    ready(qf)  ? [[at(qf,0),  at(qf,1)]] : LEFT_HALF[2],
+    ready(sf)  ? [[at(sf,0)]] : LEFT_HALF[3],
   ];
   const right: BHalf = [
-    sf.length  ? [[at(sf,1)]] : RIGHT_HALF[0],
-    qf.length  ? [[at(qf,2),  at(qf,3)]] : RIGHT_HALF[1],
-    r16.length ? [[at(r16,4), at(r16,5)], [at(r16,6), at(r16,7)]] : RIGHT_HALF[2],
-    r32.length ? [[at(r32,8), at(r32,9)], [at(r32,10), at(r32,11)], [at(r32,12), at(r32,13)], [at(r32,14), at(r32,15)]] : RIGHT_HALF[3],
+    ready(sf)  ? [[at(sf,1)]] : RIGHT_HALF[0],
+    ready(qf)  ? [[at(qf,2),  at(qf,3)]] : RIGHT_HALF[1],
+    ready(r16) ? [[at(r16,4), at(r16,5)], [at(r16,6), at(r16,7)]] : RIGHT_HALF[2],
+    RIGHT_HALF[3],
   ];
 
-  return { left, right, final: fin[0] ?? { ...FINAL_MATCH } };
+  return { left, right, final: ready(fin) ? fin[0] : { ...FINAL_MATCH } };
 }
 
 function MatchCard({ m, isFinal = false }: { m: BMatch; isFinal?: boolean }) {
@@ -266,23 +270,30 @@ export default function EliminatoriasPage() {
         ? buildBracketFromApi(knockout)
         : { left: LEFT_HALF, right: RIGHT_HALF, final: FINAL_MATCH };
 
-      // Rellena los huecos del cuadro (dieciseisavos) con la clasificación
-      // provisional de los grupos que ya han empezado. Los equipos reales que ya
-      // dé la API pasan intactos; solo se resuelven los placeholders "1º Gr. X" etc.
+      // Rellena los dieciseisavos. Cada hueco del cuadro estático tiene un lado
+      // "ancla" ya conocido (1º/2º de un grupo). Buscamos el partido REAL de la
+      // API que contiene ese equipo y lo colocamos ahí: así los terceros quedan
+      // asignados como manda FIFA, sin depender del orden del array de la API.
       const resolve = makeBracketResolver(all);
+      const r32Api = knockout.filter((m) => m.stage === "ROUND_OF_32");
       let prov = false;
-      const fillCol = (col: BHalf[number]) =>
+      const fillR32 = (col: BHalf[number]) =>
         col.map((pair) =>
           pair.map((m): BMatch => {
             const h = resolve(m.home);
             const a = resolve(m.away);
+            const anchors = [h.provisional ? h.name : null, a.provisional ? a.name : null].filter(
+              Boolean
+            ) as string[];
+            const api = r32Api.find((x) => anchors.includes(x.home) || anchors.includes(x.away));
+            if (api) return apiToBMatch(api); // equipos reales (incluye terceros) + marcador
             if (h.provisional || a.provisional) prov = true;
             return { ...m, home: h.name, away: a.name, homeProv: h.provisional, awayProv: a.provisional };
           })
         );
       // R32 está en la columna 0 del lado izquierdo y la 3 del derecho.
-      const left = base.left.map((col, ci) => (ci === 0 ? fillCol(col) : col));
-      const right = base.right.map((col, ci) => (ci === 3 ? fillCol(col) : col));
+      const left = base.left.map((col, ci) => (ci === 0 ? fillR32(col) : col));
+      const right = base.right.map((col, ci) => (ci === 3 ? fillR32(col) : col));
 
       setLeftHalf(left);
       setRightHalf(right);

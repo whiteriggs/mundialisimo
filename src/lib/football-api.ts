@@ -188,8 +188,16 @@ export async function fetchFinishedMatches(): Promise<Match[]> {
 }
 
 // ── Knockout bracket ───────────────────────────────────────────────────────
+// football-data.org usa "LAST_32"/"LAST_16" para los dieciseisavos/octavos del
+// Mundial 2026 (48 equipos). Los normalizamos a los nombres canónicos que usa
+// el resto de la app ("ROUND_OF_32"/"ROUND_OF_16").
+const STAGE_CANON: Record<string, string> = {
+  LAST_32: "ROUND_OF_32",
+  LAST_16: "ROUND_OF_16",
+};
 const KNOCKOUT_STAGES = new Set([
-  "ROUND_OF_32", "ROUND_OF_16", "QUARTER_FINALS", "SEMI_FINALS", "FINAL",
+  "ROUND_OF_32", "LAST_32", "ROUND_OF_16", "LAST_16",
+  "QUARTER_FINALS", "SEMI_FINALS", "FINAL",
 ]);
 
 export type ApiKnockoutMatch = {
@@ -214,7 +222,7 @@ export async function fetchKnockoutMatches(): Promise<ApiKnockoutMatch[]> {
     .filter((m) => KNOCKOUT_STAGES.has(m.stage))
     .map((m): ApiKnockoutMatch => ({
       id: m.id,
-      stage: m.stage,
+      stage: STAGE_CANON[m.stage] ?? m.stage,
       home: m.home,
       away: m.away,
       homeGoals: m.homeGoals,
