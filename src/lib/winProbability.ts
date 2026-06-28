@@ -83,11 +83,16 @@ interface BracketOutcome {
 }
 
 // ── Resuelve el cuadro de eliminatorias en UNA simulación ────────────────────
+// realR32Slots: si el sorteo de dieciseisavos ya está hecho, fija los cruces
+// reales (id de partido FIFA → equipos) para que la simulación use el cuadro
+// oficial en vez de re-derivar los terceros. Si está vacío, se deriva de la
+// clasificación (como antes de que acabe la fase de grupos).
 function resolveBracket(
   standings: Record<string, TeamStanding[]>,
   eff: Record<string, number>,
   realKO: Map<string, { h: number; a: number }>,
-  rng: () => number
+  rng: () => number,
+  realR32Slots: Record<string, { home: string; away: string }> = {}
 ): BracketOutcome {
   const thirds = GROUP_LETTERS.map((g) => ({ group: g, t: standings[g]?.[2] }))
     .filter((x) => x.t)
@@ -136,8 +141,9 @@ function resolveBracket(
   };
 
   for (const def of BRACKET_2026) {
-    const home = resolveSide(def.home);
-    const away = resolveSide(def.away);
+    const fixed = realR32Slots[def.id];
+    const home = fixed ? fixed.home : resolveSide(def.home);
+    const away = fixed ? fixed.away : resolveSide(def.away);
     if (home === TBD || away === TBD) continue;
     sides[def.id] = { home, away, round: def.round };
     play(def.id, home, away, "knockout");
@@ -165,6 +171,32 @@ function percentile(sorted: number[], p: number): number {
   if (sorted.length === 0) return 0;
   const idx = Math.min(sorted.length - 1, Math.max(0, Math.round(p * (sorted.length - 1))));
   return sorted[idx];
+}
+
+// Mapea los dieciseisavos REALES (ya sorteados) a su hueco del cuadro FIFA, por
+// "ancla": cada hueco tiene un lado 1º/2º de grupo ya conocido; el partido real
+// que contiene ese equipo es el de ese hueco. Así la simulación parte del cuadro
+// oficial (terceros incluidos) en vez de re-derivarlo. Vacío si aún no hay sorteo.
+function buildRealR32Slots(
+  apiMatches: ApiAllMatch[],
+  standings: Record<string, TeamStanding[]>
+): Record<string, { home: string; away: string }> {
+  const real = apiMatches.filter(
+    (m) =>
+      (m.stage === "LAST_32" || m.stage === "ROUND_OF_32") &&
+      m.home !== TBD && m.away !== TBD
+  );
+  if (real.length === 0) return {};
+  const anchorOf = (side: Side): string | null =>
+    side.kind === "group" ? standings[side.group]?.[side.pos - 1]?.name ?? null : null;
+  const out: Record<string, { home: string; away: string }> = {};
+  for (const def of BRACKET_2026) {
+    if (def.round !== "R32") continue;
+    const anchors = [anchorOf(def.home), anchorOf(def.away)].filter(Boolean) as string[];
+    const rm = real.find((m) => anchors.includes(m.home) || anchors.includes(m.away));
+    if (rm) out[def.id] = { home: rm.home, away: rm.away };
+  }
+  return out;
 }
 
 /**
@@ -219,6 +251,10 @@ export function computeWinProbabilities(
 
   const eff = effectiveRatings(realGroup);
 
+  // Si los dieciseisavos ya están sorteados, fijamos el cuadro real (terceros
+  // incluidos) para que la simulación parta del bracket oficial.
+  const realR32Slots = buildRealR32Slots(apiMatches, buildGroupStandings(realGroup));
+
   const realKO = new Map<string, { h: number; a: number }>();
   for (const m of realKOList) realKO.set(pairKey(m.home, m.away), { h: m.homeGoals, a: m.awayGoals });
 
@@ -253,7 +289,7 @@ export function computeWinProbabilities(
     });
 
     const standings = buildGroupStandings([...realGroup, ...simGroup]);
-    const bracket = resolveBracket(standings, eff, realKO, rng);
+    const bracket = resolveBracket(standings, eff, realKO, rng, realR32Slots);
 
     const totals = buildTeamTotals([...realGroup, ...simGroup, ...bracket.matches]);
     for (const t in totals) teamPointsSum[t] = (teamPointsSum[t] ?? 0) + totals[t];
