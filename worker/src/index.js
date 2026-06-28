@@ -175,9 +175,14 @@ function consolidate(apiMatches, store) {
 
       const penalties = m.score?.duration === "PENALTY_SHOOTOUT" || Boolean(known?.penalties);
 
+      // Ganador oficial según football-data ("HOME_TEAM"/"AWAY_TEAM"/"DRAW").
+      // Imprescindible para saber quién pasa cuando hay tanda de penaltis (el
+      // marcador a 90'/prórroga queda empatado). Se conserva en KV.
+      const winner = m.score?.winner ?? known?.winner ?? null;
+
       // Persistir en KV solo lo que aporta estado (marcador o confirmado).
       if (hasScore || confirmed) {
-        next[id] = { homeGoals, awayGoals, confirmed, status, penalties };
+        next[id] = { homeGoals, awayGoals, confirmed, status, penalties, winner };
       }
 
       return {
@@ -192,6 +197,7 @@ function consolidate(apiMatches, store) {
         awayGoals,
         phase: stageToPhase(m.stage),
         penalties,
+        winner,
         played,
         matchday: m.matchday ?? null,
       };

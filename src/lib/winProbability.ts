@@ -92,7 +92,7 @@ interface BracketOutcome {
 function resolveBracket(
   standings: Record<string, TeamStanding[]>,
   eff: Record<string, number>,
-  realKO: Map<string, { h: number; a: number }>,
+  realKO: Map<string, { h: number; a: number; winner?: "home" | "away" }>,
   rng: () => number,
   realR32Slots: Record<string, { home: string; away: string }> = {}
 ): BracketOutcome {
@@ -134,6 +134,7 @@ function resolveBracket(
     let winnerSide: "home" | "away";
     if (h > a) winnerSide = "home";
     else if (a > h) winnerSide = "away";
+    else if (real?.winner) winnerSide = real.winner; // penaltis REALES ya jugados
     else winnerSide = shootoutWinner(eff[home] ?? 1600, eff[away] ?? 1600, rng);
     winnerTeam[id] = winnerSide === "home" ? home : away;
     out.push({
@@ -258,8 +259,13 @@ export function computeWinProbabilities(
   // incluidos) para que la simulación parta del bracket oficial.
   const realR32Slots = buildRealR32Slots(apiMatches, buildGroupStandings(realGroup));
 
-  const realKO = new Map<string, { h: number; a: number }>();
-  for (const m of realKOList) realKO.set(pairKey(m.home, m.away), { h: m.homeGoals, a: m.awayGoals });
+  const realKO = new Map<string, { h: number; a: number; winner?: "home" | "away" }>();
+  for (const m of apiMatches) {
+    if (m.played && (m.phase === "knockout" || m.phase === "third")) {
+      const w = m.winner === "HOME_TEAM" ? "home" : m.winner === "AWAY_TEAM" ? "away" : undefined;
+      realKO.set(pairKey(m.home, m.away), { h: m.homeGoals ?? 0, a: m.awayGoals ?? 0, winner: w });
+    }
+  }
 
   const seed =
     realGroup.length * 131 + realKOList.length * 977 +

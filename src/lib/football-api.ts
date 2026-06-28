@@ -232,12 +232,15 @@ export async function fetchKnockoutMatches(): Promise<ApiKnockoutMatch[]> {
       penalties: m.penalties,
       date: new Date(m.utcDate).toLocaleDateString("es-ES", { day: "numeric", month: "short" }),
       winner:
-        m.homeGoals !== null && m.awayGoals !== null
+        m.homeGoals !== null && m.awayGoals !== null && m.homeGoals !== m.awayGoals
           ? m.homeGoals > m.awayGoals
             ? "home"
-            : m.awayGoals > m.homeGoals
-            ? "away"
-            : null
+            : "away"
+          : // Empate (o sin goles): si se decidió por penaltis, manda el ganador oficial.
+          m.winner === "HOME_TEAM"
+          ? "home"
+          : m.winner === "AWAY_TEAM"
+          ? "away"
           : null,
     }));
 }
@@ -255,8 +258,9 @@ export type ApiAllMatch = {
   awayGoals: number | null;
   phase: Phase;
   penalties: boolean;
-  played: boolean;
-};
+  played: boolean;  // Ganador oficial ("HOME_TEAM"/"AWAY_TEAM"/"DRAW"/null). Necesario para saber
+  // quién pasa cuando una eliminatoria se decide en los penaltis.
+  winner?: string | null;};
 
 export async function fetchAllMatches(): Promise<ApiAllMatch[]> {
   // 0. Fuente en vivo: Worker de Cloudflare (datos frescos, con CORS).
@@ -309,6 +313,7 @@ export async function fetchAllMatches(): Promise<ApiAllMatch[]> {
       phase: stageToPhase(m.stage),
       penalties: m.score?.duration === "PENALTY_SHOOTOUT",
       played: m.status === "FINISHED",
+      winner: m.score?.winner ?? null,
       matchday: m.matchday ?? null,
     }));
 }
