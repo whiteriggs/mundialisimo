@@ -26,6 +26,8 @@ export interface UserProbability {
   bestPos: number;    // puesto más probable (1 = primero)
   mvp: TeamContribution | null;    // favorito que más le aporta
   lastre: TeamContribution | null; // antifavorito que más le resta
+  favPts: number;     // puntos esperados que SUMAN todos sus favoritos
+  antiPts: number;    // puntos esperados que RESTAN todos sus antifavoritos
   aliveFav: number;   // favoritos aún no eliminados
   totalFav: number;
   aliveAnti: number;  // antifavoritos aún no eliminados
@@ -240,6 +242,7 @@ export function computeWinProbabilities(
       winPct: 0, podiumPct: 0, lastPct: 0, meanScore: 0, p10: 0, p90: 0,
       posDist: new Array(Math.max(n, 1)).fill(0), bestPos: 1,
       mvp: null, lastre: null,
+      favPts: 0, antiPts: 0,
       aliveFav: p.bet.favorites.filter((t) => !eliminated.has(teamName(t))).length,
       totalFav: p.bet.favorites.length,
       aliveAnti: p.bet.antiFavorites.filter((t) => !eliminated.has(teamName(t))).length,
@@ -341,6 +344,8 @@ export function computeWinProbabilities(
     u.bestPos = u.posDist.reduce((bi, v, k, arr) => (v > arr[bi] ? k : bi), 0) + 1;
     u.mvp = bestTeam(players[i].bet.favorites);
     u.lastre = bestTeam(players[i].bet.antiFavorites);
+    u.favPts = players[i].bet.favorites.reduce((s, id) => s + (expTeam[teamName(id)] ?? 0), 0);
+    u.antiPts = players[i].bet.antiFavorites.reduce((s, id) => s + (expTeam[teamName(id)] ?? 0), 0);
     u.beats = players
       .map((p, j) => ({ user: p.user, pct: i === j ? 0 : (beatCount[i][j] / sims) * 100, j }))
       .filter((x) => x.j !== i)

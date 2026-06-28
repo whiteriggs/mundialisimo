@@ -187,6 +187,27 @@ export default function ProbabilidadesPage() {
                 {focus.user.toLowerCase() === uid ? " (tú)" : ""}
               </h2>
 
+              {/* Balance esperado: cuánto suman los favoritos y restan los antis */}
+              <div className="prob-balance">
+                <div className="prob-bal-item prob-bal-fav">
+                  <span className="prob-bal-label">Tus favoritos suman</span>
+                  <span className="prob-bal-val">+{Math.round(focus.favPts)}</span>
+                </div>
+                <div className="prob-bal-item prob-bal-anti">
+                  <span className="prob-bal-label">Tus antifavoritos restan</span>
+                  <span className="prob-bal-val">−{Math.round(focus.antiPts)}</span>
+                </div>
+                <div className="prob-bal-item prob-bal-net">
+                  <span className="prob-bal-label">Puntos esperados (neto)</span>
+                  <span className="prob-bal-val">{Math.round(focus.favPts - focus.antiPts)}</span>
+                </div>
+              </div>
+              <p className="muted prob-help">
+                De media, los puntos que te aportan tus favoritos menos los que te restan tus antifavoritos.
+                Por eso puedes ir líder aunque tengas varios antis clasificados: si tus favoritos son fuertes,
+                lo que suman supera de sobra lo que restan los antis (sobre todo si son selecciones flojas).
+              </p>
+
               <div className="prob-cards">
                 <div className="prob-card">
                   <div className="prob-card-label">Su jugador más rentable</div>

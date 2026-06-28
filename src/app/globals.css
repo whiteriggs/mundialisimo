@@ -1425,6 +1425,38 @@ a {
 .prob-legend li { margin: 4px 0; line-height: 1.5; font-size: 13px; }
 .prob-help { font-size: 12px; margin: 0 0 10px; }
 
+/* Balance esperado favoritos / antifavoritos */
+.prob-balance {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.prob-bal-item {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.prob-bal-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+}
+.prob-bal-val {
+  font-size: 24px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.prob-bal-fav .prob-bal-val { color: var(--green); }
+.prob-bal-anti .prob-bal-val { color: var(--red); }
+.prob-bal-net { border-color: var(--gold); }
+.prob-bal-net .prob-bal-val { color: var(--gold); }
+
 /* Tarjetas MVP / lastre */
 .prob-cards {
   display: grid;
