@@ -139,6 +139,16 @@ function apiToBMatch(m: ApiKnockoutMatch): BMatch {
   };
 }
 
+// Código corto de un hueco de dieciseisavos a partir de sus etiquetas, p. ej.
+// "1º Gr. E" + "M.3º A/B/C/D/F" → "1ºE/3º". Coincide con las etiquetas de
+// octavos ("Gan. 1ºE/3º"), lo que permite propagar el ganador a la ronda siguiente.
+function r32Code(label: string): string | null {
+  const m = label.match(/^([12])º Gr\.\s*([A-L])$/);
+  if (m) return `${m[1]}º${m[2]}`;
+  if (label.startsWith("M.3º")) return "3º";
+  return null;
+}
+
 function buildBracketFromApi(matches: ApiKnockoutMatch[]): {
   left: BHalf;
   right: BHalf;
@@ -157,19 +167,21 @@ function buildBracketFromApi(matches: ApiKnockoutMatch[]): {
   const qf  = by("QUARTER_FINALS");
   const sf  = by("SEMI_FINALS");
   const fin = by("FINAL");
+  void r32; void r16; // R32 y R16 se colocan aparte (ancla + propagación de ganador).
 
   // R32 se coloca por separado (emparejamiento por ancla), así que aquí siempre
-  // partimos del cuadro estático para esa ronda.
+  // partimos del cuadro estático para esa ronda. Octavos también se gestiona
+  // aparte (propagación del ganador de dieciseisavos), así que igual.
   const left: BHalf = [
     LEFT_HALF[0],
-    ready(r16) ? [[at(r16,0), at(r16,1)], [at(r16,2), at(r16,3)]] : LEFT_HALF[1],
+    LEFT_HALF[1],
     ready(qf)  ? [[at(qf,0),  at(qf,1)]] : LEFT_HALF[2],
     ready(sf)  ? [[at(sf,0)]] : LEFT_HALF[3],
   ];
   const right: BHalf = [
     ready(sf)  ? [[at(sf,1)]] : RIGHT_HALF[0],
     ready(qf)  ? [[at(qf,2),  at(qf,3)]] : RIGHT_HALF[1],
-    ready(r16) ? [[at(r16,4), at(r16,5)], [at(r16,6), at(r16,7)]] : RIGHT_HALF[2],
+    RIGHT_HALF[2],
     RIGHT_HALF[3],
   ];
 
@@ -276,7 +288,12 @@ export default function EliminatoriasPage() {
       // asignados como manda FIFA, sin depender del orden del array de la API.
       const resolve = makeBracketResolver(all);
       const r32Api = knockout.filter((m) => m.stage === "ROUND_OF_32");
+      const r16Api = knockout.filter(
+        (m) => m.stage === "ROUND_OF_16" && !(m.home === "Por determinar" && m.away === "Por determinar")
+      );
       let prov = false;
+      // Ganadores de dieciseisavos por código de hueco (p. ej. "2ºA/2ºB" → Canadá).
+      const r32Winners: Record<string, string> = {};
       const fillR32 = (col: BHalf[number]) =>
         col.map((pair) =>
           pair.map((m): BMatch => {
@@ -286,14 +303,46 @@ export default function EliminatoriasPage() {
               Boolean
             ) as string[];
             const api = r32Api.find((x) => anchors.includes(x.home) || anchors.includes(x.away));
-            if (api) return apiToBMatch(api); // equipos reales (incluye terceros) + marcador
+            const codeH = r32Code(m.home);
+            const codeA = r32Code(m.away);
+            if (api) {
+              const b = apiToBMatch(api);
+              if (b.finished && b.winner && codeH && codeA) {
+                r32Winners[`${codeH}/${codeA}`] = b.winner === "home" ? b.home : b.away;
+              }
+              return b; // equipos reales (incluye terceros) + marcador
+            }
             if (h.provisional || a.provisional) prov = true;
             return { ...m, home: h.name, away: a.name, homeProv: h.provisional, awayProv: a.provisional };
           })
         );
-      // R32 está en la columna 0 del lado izquierdo y la 3 del derecho.
-      const left = base.left.map((col, ci) => (ci === 0 ? fillR32(col) : col));
-      const right = base.right.map((col, ci) => (ci === 3 ? fillR32(col) : col));
+
+      // Octavos: el ganador de cada dieciseisavos pasa a su hueco ("Gan. 2ºA/2ºB").
+      // Si la API ya trae el partido de octavos con marcador, se usa ese.
+      const winnerOf = (label: string): string | null => {
+        const mm = label.match(/^Gan\. (.+)$/);
+        return mm ? r32Winners[mm[1]] ?? null : null;
+      };
+      const fillR16 = (col: BHalf[number]) =>
+        col.map((pair) =>
+          pair.map((m): BMatch => {
+            const wh = winnerOf(m.home);
+            const wa = winnerOf(m.away);
+            const known = [wh, wa].filter(Boolean) as string[];
+            const api = known.length
+              ? r16Api.find((x) => known.includes(x.home) || known.includes(x.away))
+              : undefined;
+            if (api) return apiToBMatch(api);
+            return { ...m, home: wh ?? m.home, away: wa ?? m.away };
+          })
+        );
+
+      // R32 está en la columna 0 (izq.) y 3 (der.); R16 en la 1 (izq.) y 2 (der.).
+      // Calculamos primero los ganadores de R32 de AMBOS lados y luego los octavos.
+      const leftR32 = fillR32(LEFT_HALF[0]);
+      const rightR32 = fillR32(RIGHT_HALF[3]);
+      const left = base.left.map((col, ci) => (ci === 0 ? leftR32 : ci === 1 ? fillR16(col) : col));
+      const right = base.right.map((col, ci) => (ci === 3 ? rightR32 : ci === 2 ? fillR16(col) : col));
 
       setLeftHalf(left);
       setRightHalf(right);
