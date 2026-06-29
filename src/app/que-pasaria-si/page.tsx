@@ -29,6 +29,19 @@ export default function QuePasariaSiPage() {
   const [knockout, setKnockout] = useState<KnockoutScores>({});
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
 
+  // El topbar es sticky y en móvil crece (fila del chip); medimos su alto para
+  // anclar el mini-marcador justo debajo, sin solaparlo.
+  const topbarRef = useRef<HTMLElement>(null);
+  const [boardTop, setBoardTop] = useState(56);
+  useEffect(() => {
+    const measure = () => {
+      if (topbarRef.current) setBoardTop(topbarRef.current.offsetHeight + 6);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [loading]);
+
   useEffect(() => {
     const u = getStoredUser();
     if (!u) { router.push("/login"); return; }
@@ -191,16 +204,18 @@ export default function QuePasariaSiPage() {
 
   const predictedCount = pendingGroupMatches.filter((m) => predictions[m.id]).length;
 
-  // Agrupar TODOS los partidos por día (jugados y por jugar).
+  // Solo los partidos de grupos POR JUGAR, agrupados por día. Los ya jugados no
+  // se muestran (el resultado real ya cuenta en el cálculo); desaparecen según
+  // se van disputando.
   const byDay = useMemo(() => {
     const map = new Map<string, ApiAllMatch[]>();
-    for (const m of groupMatches) {
+    for (const m of pendingGroupMatches) {
       const day = m.utcDate.slice(0, 10);
       if (!map.has(day)) map.set(day, []);
       map.get(day)!.push(m);
     }
     return map;
-  }, [groupMatches]);
+  }, [pendingGroupMatches]);
 
   function fmtDay(iso: string) {
     return new Date(iso).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
@@ -208,7 +223,7 @@ export default function QuePasariaSiPage() {
 
   return (
     <main className="app-shell">
-      <header className="topbar">
+      <header className="topbar" ref={topbarRef}>
         <div className="brand">
           <span className="dot" />
           <h1>Mundialisimo</h1>
@@ -217,6 +232,22 @@ export default function QuePasariaSiPage() {
         <NavBar user={user} />
         <button className="mini-action" onClick={handleLogout}>Cerrar sesión</button>
       </header>
+
+      {/* Mini-marcador de la porra, siempre visible arriba a la derecha. */}
+      {!loading && leaderboard.length > 0 && (
+        <aside className="qps-mini-board" style={{ top: boardTop }} aria-label="Clasificación simulada de la porra">
+          <div className="qps-mini-title">Porra (simulada)</div>
+          <ol className="qps-mini-list">
+            {leaderboard.map((r, i) => (
+              <li key={r.user} className={r.user.toLowerCase() === user?.toLowerCase() ? "qps-mini-me" : ""}>
+                <span className="qps-mini-pos">{r.confirmed ? i + 1 : "—"}</span>
+                <span className="qps-mini-name">{r.user}</span>
+                <span className="qps-mini-total">{r.confirmed ? r.total : "—"}</span>
+              </li>
+            ))}
+          </ol>
+        </aside>
+      )}
 
       <section className="hero">
         <div className="hero-inner">
@@ -244,29 +275,14 @@ export default function QuePasariaSiPage() {
                 {saveState === "saving" ? "Guardando…" : saveState === "saved" ? "Guardado ✓" : ""}
               </span>
             </h2>
-            {groupMatches.length === 0 ? (
-              <p className="muted">Aún no hay partidos de grupos disponibles.</p>
+            {pendingGroupMatches.length === 0 ? (
+              <p className="muted">No quedan partidos de grupos por jugar. Ajusta el cuadro de eliminatorias abajo.</p>
             ) : (
               <div className="qps-matches">
                 {Array.from(byDay.entries()).map(([day, dayMatches]) => (
                   <div key={day} className="qps-day">
                     <h3 className="matches-phase-label">{fmtDay(dayMatches[0].utcDate)}</h3>
                     {dayMatches.map((m) => {
-                      // Partido ya jugado: resultado real, fijo (no editable).
-                      if (m.played) {
-                        return (
-                          <div key={m.id} className="qps-match qps-match--played">
-                            <span className="qps-team qps-team--home"><Flag name={m.home} />{m.home}</span>
-                            <div className="qps-score qps-score--final">
-                              <span className="qps-final">{m.homeGoals ?? 0}</span>
-                              <span className="qps-dash">–</span>
-                              <span className="qps-final">{m.awayGoals ?? 0}</span>
-                            </div>
-                            <span className="qps-team qps-team--away">{m.away}<Flag name={m.away} /></span>
-                            <span className="qps-played-tag">Jugado</span>
-                          </div>
-                        );
-                      }
                       // Partido por jugar: editable.
                       const p = predictions[m.id];
                       return (
@@ -304,28 +320,7 @@ export default function QuePasariaSiPage() {
 
           {/* Columna de resultados simulados */}
           <section className="results-section qps-results">
-            <h2 className="results-title">Clasificación simulada de la porra</h2>
-            <div className="standings-wrap">
-              <table className="standings-table">
-                <thead>
-                  <tr><th className="st-rank">#</th><th className="st-name">Participante</th><th className="st-total">Total</th></tr>
-                </thead>
-                <tbody>
-                  {leaderboard.map((r, i) => (
-                    <tr key={r.user} className={`${r.user.toLowerCase() === user?.toLowerCase() ? "row-me" : ""} ${!r.confirmed ? "row-pending" : ""}`}>
-                      <td className="st-rank">{r.confirmed ? i + 1 : "—"}</td>
-                      <td className="st-name">
-                        {r.user}
-                        {r.user.toLowerCase() === user?.toLowerCase() ? <span className="me-badge"> (tú)</span> : ""}
-                      </td>
-                      <td className="st-total">{r.confirmed ? r.total : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <h2 className="results-title" style={{ marginTop: 28 }}>Grupos simulados</h2>
+            <h2 className="results-title">Grupos simulados</h2>
             <div className="groups-standings-grid">
               {Object.entries(groupStandings).map(([letter, table]) => (
                 <div className="group-standing-card" key={letter}>

@@ -3868,6 +3868,78 @@ body[data-sidebar="expanded"] .app-shell {
   }
 }
 
+/* Mini-marcador de la porra: siempre visible, fijo arriba a la derecha. */
+.qps-mini-board {
+  position: fixed;
+  right: 10px;
+  z-index: 39;
+  width: 168px;
+  max-height: 58vh;
+  overflow-y: auto;
+  background: rgba(20, 24, 29, 0.96);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 8px 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  font-size: 12px;
+}
+.qps-mini-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  text-align: center;
+  margin-bottom: 6px;
+}
+.qps-mini-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.qps-mini-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 3px;
+  border-radius: 5px;
+  line-height: 1.4;
+}
+.qps-mini-pos {
+  width: 16px;
+  text-align: right;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.qps-mini-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qps-mini-total {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.qps-mini-me {
+  background: #15212e;
+}
+.qps-mini-me .qps-mini-name {
+  color: var(--accent);
+  font-weight: 700;
+}
+@media (max-width: 720px) {
+  .qps-mini-board {
+    right: 6px;
+    width: 124px;
+    font-size: 11px;
+    max-height: 46vh;
+    padding: 6px 6px 4px;
+  }
+  .qps-mini-pos { width: 14px; }
+}
+
 .qps-counter {
   margin-left: 10px;
   font-size: 12px;
