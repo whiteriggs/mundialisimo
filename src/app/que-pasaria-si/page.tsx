@@ -4,12 +4,13 @@ import NavBar from "@/components/NavBar";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getStoredUser, clearUser } from "@/lib/auth";
-import { fetchAllMatches, type ApiAllMatch } from "@/lib/football-api";
+import { fetchAllMatches, fetchKnockoutMatches, type ApiAllMatch, type ApiKnockoutMatch } from "@/lib/football-api";
 import { fetchUsersRest, fetchBetsRest, type BetDoc } from "@/lib/leaderboard";
-import { fetchUserSim, saveUserSim, type Predictions, type KnockoutScores } from "@/lib/predictions";
+import { fetchUserSim, saveUserSim, type Predictions, type KnockoutScores, type KoScore } from "@/lib/predictions";
 import { buildTeamTotals, calcUserScore, type Match } from "@/lib/scoring";
 import { buildGroupStandings } from "@/lib/standings";
-import { simulateBracket, bracketToMatches } from "@/lib/simulateBracket";
+import { simulateBracket, bracketToMatches, BRACKET_2026 } from "@/lib/simulateBracket";
+import { resolveRealBracket } from "@/lib/realBracket";
 import { teamName } from "@/lib/teams";
 import { getGroupId } from "@/lib/group";
 import Flag from "@/components/Flag";
@@ -23,6 +24,7 @@ export default function QuePasariaSiPage() {
   const [user, setUser] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [apiMatches, setApiMatches] = useState<ApiAllMatch[]>([]);
+  const [koMatches, setKoMatches] = useState<ApiKnockoutMatch[]>([]);
   const [bets, setBets] = useState<BetDoc[]>([]);
   const [users, setUsers] = useState<string[]>([]);
   const [predictions, setPredictions] = useState<Predictions>({});
@@ -48,12 +50,14 @@ export default function QuePasariaSiPage() {
     setUser(u);
     Promise.all([
       fetchAllMatches().catch(() => [] as ApiAllMatch[]),
+      fetchKnockoutMatches().catch(() => [] as ApiKnockoutMatch[]),
       fetchUsersRest(getGroupId()),
       fetchBetsRest(getGroupId()),
       fetchUserSim(u),
     ])
-      .then(([m, us, bs, sim]) => {
+      .then(([m, ko, us, bs, sim]) => {
         setApiMatches(m);
+        setKoMatches(ko);
         setUsers(us);
         setBets(bs);
         setPredictions(sim.results);
@@ -99,9 +103,46 @@ export default function QuePasariaSiPage() {
 
   const groupStandings = useMemo(() => buildGroupStandings(groupSimMatches), [groupSimMatches]);
 
+  // Resultados REALES de eliminatorias ya jugados: se inyectan fijos en el
+  // cuadro (no se pueden editar) y el ganador se propaga. Los cruces de
+  // dieciseisavos reales (terceros oficiales) fijan los emparejamientos.
+  const realInfo = useMemo(() => resolveRealBracket(apiMatches, koMatches), [apiMatches, koMatches]);
+
+  const realR32Slots = useMemo(() => {
+    const out: Record<string, { home: string; away: string }> = {};
+    for (const def of BRACKET_2026) {
+      if (def.round !== "R32") continue;
+      const d = realInfo[def.id];
+      if (d?.home && d?.away) out[def.id] = { home: d.home, away: d.away };
+    }
+    return out;
+  }, [realInfo]);
+
+  const { realScores, lockedIds } = useMemo(() => {
+    const scores: KnockoutScores = {};
+    const locked = new Set<string>();
+    for (const [id, d] of Object.entries(realInfo)) {
+      if (d.km && d.km.finished) {
+        const km = d.km;
+        const s: KoScore = { h: km.homeGoals ?? 0, a: km.awayGoals ?? 0 };
+        if ((km.homeGoals ?? 0) === (km.awayGoals ?? 0) && km.winner) s.pen = km.winner;
+        scores[id] = s;
+        locked.add(id);
+      }
+    }
+    return { realScores: scores, lockedIds: locked };
+  }, [realInfo]);
+
+  // Marcadores efectivos: el resultado real manda; el pronóstico del usuario
+  // solo aplica a los cruces aún no jugados.
+  const effectiveKo = useMemo(() => ({ ...knockout, ...realScores }), [knockout, realScores]);
+
   // Cuadro de eliminatorias simulado: clasificados según los grupos + marcadores
-  // que pone el usuario, propagados ronda a ronda.
-  const bracket = useMemo(() => simulateBracket(groupStandings, knockout), [groupStandings, knockout]);
+  // (reales donde los hay, del usuario en el resto), propagados ronda a ronda.
+  const bracket = useMemo(
+    () => simulateBracket(groupStandings, effectiveKo, realR32Slots),
+    [groupStandings, effectiveKo, realR32Slots]
+  );
 
   // Los goles de eliminatorias TAMBIÉN puntdan en la porra: sumamos los cruces
   // con marcador al cómputo de cada selección.
@@ -265,8 +306,9 @@ export default function QuePasariaSiPage() {
       {loading ? (
         <div className="loading-screen"><p className="muted">Cargando…</p></div>
       ) : (
-        <div className="qps-grid">
-          {/* Columna de pronósticos */}
+        <div className={`qps-grid${pendingGroupMatches.length === 0 ? " qps-grid--single" : ""}`}>
+          {/* Columna de pronósticos (solo si quedan partidos de grupos por jugar) */}
+          {pendingGroupMatches.length > 0 && (
           <section className="results-section">
             <h2 className="results-title">
               Tus pronósticos
@@ -317,38 +359,43 @@ export default function QuePasariaSiPage() {
               </div>
             )}
           </section>
+          )}
 
           {/* Columna de resultados simulados */}
           <section className="results-section qps-results">
-            <h2 className="results-title">Grupos simulados</h2>
-            <div className="groups-standings-grid">
-              {Object.entries(groupStandings).map(([letter, table]) => (
-                <div className="group-standing-card" key={letter}>
-                  <h3 className="group-standing-title">Grupo {letter}</h3>
-                  <table className="standing-table">
-                    <thead>
-                      <tr>
-                        <th className="st-pos">#</th><th className="st-name">Equipo</th>
-                        <th>PJ</th><th>DG</th><th className="st-pts">Pts</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {table.map((s, idx) => (
-                        <tr key={s.name} className={idx < 2 ? "row-qualifier" : ""}>
-                          <td className="st-pos">{idx + 1}</td>
-                          <td className="st-name"><Flag name={s.name} />{s.name}</td>
-                          <td>{s.played}</td>
-                          <td className={s.gd > 0 ? "gd-pos" : s.gd < 0 ? "gd-neg" : ""}>{sign(s.gd)}</td>
-                          <td className="st-pts">{s.pts}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            {pendingGroupMatches.length > 0 && (
+              <>
+                <h2 className="results-title">Grupos simulados</h2>
+                <div className="groups-standings-grid">
+                  {Object.entries(groupStandings).map(([letter, table]) => (
+                    <div className="group-standing-card" key={letter}>
+                      <h3 className="group-standing-title">Grupo {letter}</h3>
+                      <table className="standing-table">
+                        <thead>
+                          <tr>
+                            <th className="st-pos">#</th><th className="st-name">Equipo</th>
+                            <th>PJ</th><th>DG</th><th className="st-pts">Pts</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {table.map((s, idx) => (
+                            <tr key={s.name} className={idx < 2 ? "row-qualifier" : ""}>
+                              <td className="st-pos">{idx + 1}</td>
+                              <td className="st-name"><Flag name={s.name} />{s.name}</td>
+                              <td>{s.played}</td>
+                              <td className={s.gd > 0 ? "gd-pos" : s.gd < 0 ? "gd-neg" : ""}>{sign(s.gd)}</td>
+                              <td className="st-pts">{s.pts}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            )}
 
-            <h2 className="results-title" style={{ marginTop: 28 }}>
+            <h2 className="results-title" style={pendingGroupMatches.length > 0 ? { marginTop: 28 } : undefined}>
               Cuadro de eliminatorias
               {champion && <span className="qps-champion">🏆 {champion}</span>}
             </h2>
@@ -362,8 +409,9 @@ export default function QuePasariaSiPage() {
                   {bracketByRound[round].map((m) => {
                     const sc = m.score;
                     const isTie = !!sc && sc.h === sc.a;
+                    const locked = lockedIds.has(m.id); // ya jugado de verdad
                     return (
-                      <div key={m.id} className={`qps-tie${m.ready ? "" : " qps-tie--tbd"}`}>
+                      <div key={m.id} className={`qps-tie${m.ready ? "" : " qps-tie--tbd"}${locked ? " qps-tie--locked" : ""}`}>
                         <div className="qps-tie-row">
                           <span className={`qps-side-name${m.winner === "home" ? " qps-side--win" : m.winner === "away" ? " qps-side--lose" : ""}`}>
                             {m.home !== "Por determinar" && <Flag name={m.home} />}
@@ -373,7 +421,7 @@ export default function QuePasariaSiPage() {
                             <input
                               type="text" inputMode="numeric" maxLength={2}
                               value={sc ? String(sc.h) : ""}
-                              placeholder="-" disabled={!m.ready}
+                              placeholder="-" disabled={!m.ready || locked}
                               onChange={(e) => setKoScore(m.id, "h", e.target.value)}
                               aria-label={`Goles ${m.home}`}
                             />
@@ -381,7 +429,7 @@ export default function QuePasariaSiPage() {
                             <input
                               type="text" inputMode="numeric" maxLength={2}
                               value={sc ? String(sc.a) : ""}
-                              placeholder="-" disabled={!m.ready}
+                              placeholder="-" disabled={!m.ready || locked}
                               onChange={(e) => setKoScore(m.id, "a", e.target.value)}
                               aria-label={`Goles ${m.away}`}
                             />
@@ -390,11 +438,13 @@ export default function QuePasariaSiPage() {
                             {m.away}
                             {m.away !== "Por determinar" && <Flag name={m.away} />}
                           </span>
-                          {sc && (
+                          {locked ? (
+                            <span className="qps-played-tag" title="Resultado real">✓</span>
+                          ) : sc ? (
                             <button className="qps-clear" onClick={() => clearKo(m.id)} title="Borrar marcador">×</button>
-                          )}
+                          ) : null}
                         </div>
-                        {isTie && (
+                        {isTie && !locked && (
                           <div className="qps-pens">
                             <span className="qps-pens-label">Penaltis:</span>
                             <button
@@ -405,6 +455,12 @@ export default function QuePasariaSiPage() {
                               className={`qps-pen-btn${sc?.pen === "away" ? " qps-pen-btn--on" : ""}`}
                               onClick={() => setKoPen(m.id, "away")}
                             >{m.away}</button>
+                          </div>
+                        )}
+                        {isTie && locked && sc?.pen && (
+                          <div className="qps-pens">
+                            <span className="qps-pens-label">Pasó por penaltis:</span>
+                            <span className="qps-pen-winner">{sc.pen === "home" ? m.home : m.away}</span>
                           </div>
                         )}
                       </div>

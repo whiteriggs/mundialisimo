@@ -4008,6 +4008,29 @@ body[data-sidebar="expanded"] .app-shell {
   color: var(--gold);
 }
 
+/* qps en una sola columna (cuando ya no quedan partidos de grupos por jugar). */
+.qps-grid--single {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 881px) {
+  .qps-grid--single .qps-results {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* Cruce ya jugado de verdad: resultado fijo, no editable. */
+.qps-tie--locked .qps-ko-score input {
+  opacity: 0.85;
+  cursor: default;
+}
+.qps-pen-winner {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--gold);
+}
+
 .qps-bracket {
   display: flex;
   flex-direction: column;

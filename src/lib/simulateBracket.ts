@@ -79,9 +79,12 @@ export interface ResolvedBracketMatch {
 }
 
 // koScores = { [matchId]: { h, a, pen? } } marcadores que pone el usuario.
+// realR32Slots = cruces REALES de dieciseisavos ya sorteados ({ id: { home, away } });
+// si se pasan, fijan esos emparejamientos (terceros oficiales) en vez de derivarlos.
 export function simulateBracket(
   standings: Record<string, TeamStanding[]>,
-  koScores: Record<string, KoScore>
+  koScores: Record<string, KoScore>,
+  realR32Slots: Record<string, { home: string; away: string }> = {}
 ): ResolvedBracketMatch[] {
   // ¿Cada grupo tiene sus 3 jornadas completas? Solo entonces fijamos posiciones.
   const groupComplete = (g: string) => {
@@ -131,8 +134,9 @@ export function simulateBracket(
   const out: ResolvedBracketMatch[] = [];
   // BRACKET_2026 está en orden topológico (R32 → … → Final).
   for (const def of BRACKET_2026) {
-    const home = resolveSide(def.home);
-    const away = resolveSide(def.away);
+    const fixed = realR32Slots[def.id];
+    const home = fixed ? fixed.home : resolveSide(def.home);
+    const away = fixed ? fixed.away : resolveSide(def.away);
     const ready = home !== TBD && away !== TBD;
     const score = ready ? (koScores[def.id] ?? null) : null;
     const winner = ready ? winnerOf(score ?? undefined) : null;
