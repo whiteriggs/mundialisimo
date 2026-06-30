@@ -51,11 +51,18 @@ export interface ProbabilityResult {
 const pairKey = (a: string, b: string) => [a, b].sort().join("|");
 
 // ── Equipos ya eliminados (a partir de los resultados REALES) ────────────────
-function computeEliminated(realGroup: Match[], realKO: Match[]): Set<string> {
+function computeEliminated(realGroup: Match[], apiMatches: ApiAllMatch[]): Set<string> {
   const elim = new Set<string>();
-  for (const m of realKO) {
-    if (m.homeGoals > m.awayGoals) elim.add(m.away);
-    else if (m.awayGoals > m.homeGoals) elim.add(m.home);
+  // Perdedor de cada eliminatoria jugada. En penaltis el marcador es un empate,
+  // así que el perdedor se determina por el campo `winner` (quien NO pasó).
+  for (const m of apiMatches) {
+    if (!m.played || (m.phase !== "knockout" && m.phase !== "third")) continue;
+    const w = m.winner === "HOME_TEAM" ? "home" : m.winner === "AWAY_TEAM" ? "away" : null;
+    let loser: string | null = null;
+    if (w) loser = w === "home" ? m.away : m.home;
+    else if ((m.homeGoals ?? 0) > (m.awayGoals ?? 0)) loser = m.away;
+    else if ((m.awayGoals ?? 0) > (m.homeGoals ?? 0)) loser = m.home;
+    if (loser) elim.add(loser);
   }
   const standings = buildGroupStandings(realGroup);
   const groupComplete = (g: string) => {
@@ -233,7 +240,7 @@ export function computeWinProbabilities(
     (m) => !m.played && m.phase === "groups" && m.home !== TBD && m.away !== TBD
   );
 
-  const eliminated = computeEliminated(realGroup, realKOList);
+  const eliminated = computeEliminated(realGroup, apiMatches);
 
   const base: ProbabilityResult = {
     sims,
