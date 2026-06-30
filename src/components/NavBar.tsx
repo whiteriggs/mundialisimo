@@ -102,6 +102,14 @@ const ICON = {
       <circle cx="16" cy="15" r="1.1" fill="currentColor" stroke="none" />
     </>
   ),
+  estadisticas: I(
+    <>
+      <path d="M4 20h16" />
+      <rect x="5" y="12" width="3.5" height="6" rx="0.6" />
+      <rect x="10.25" y="8" width="3.5" height="10" rx="0.6" />
+      <rect x="15.5" y="4" width="3.5" height="14" rx="0.6" />
+    </>
+  ),
 } as const;
 
 const NAV_LINKS: { href: string; label: string; icon: keyof typeof ICON }[] = [
@@ -112,6 +120,7 @@ const NAV_LINKS: { href: string; label: string; icon: keyof typeof ICON }[] = [
   { href: "/eliminatorias", label: "Eliminatorias", icon: "eliminatorias" },
   { href: "/que-pasaria-si", label: "Qué pasaría si…", icon: "simulador" },
   { href: "/probabilidades", label: "Probabilidades", icon: "probabilidades" },
+  { href: "/estadisticas", label: "Estadísticas", icon: "estadisticas" },
   { href: "/cronica", label: "Crónica", icon: "cronica" },
   { href: "/reglas", label: "Reglas", icon: "reglas" },
 ];

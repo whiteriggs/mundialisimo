@@ -4504,4 +4504,74 @@ body[data-sidebar="expanded"] .app-shell {
 }
 .chat-input button:disabled { opacity: 0.5; cursor: default; }
 
+/* ── Estadísticas (premios de coña) ───────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+.stat-card {
+  position: relative;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--gold), #ff8a3d);
+  opacity: 0.7;
+}
+.stat-card--empty { opacity: 0.6; }
+.stat-card--mine {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold) inset, 0 8px 24px rgba(246, 192, 80, 0.12);
+}
+.stat-emoji {
+  font-size: 38px;
+  line-height: 1;
+  margin-bottom: 6px;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+}
+.stat-title {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.stat-winner {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.1;
+}
+.stat-you {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.stat-value {
+  margin-top: 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.stat-blurb {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
 
