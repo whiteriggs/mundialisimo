@@ -114,8 +114,19 @@ async function main() {
         const old = prev.get(id);
         const override = SCORE_OVERRIDES[id];
 
-        const apiHome = override ? override.homeGoals : (m.score?.fullTime?.home ?? null);
-        const apiAway = override ? override.awayGoals : (m.score?.fullTime?.away ?? null);
+        // Penaltis: cuenta el resultado del juego (prórroga incl.), SIN la tanda.
+        // football-data mete la tanda en `fullTime`; usamos regularTime+extraTime.
+        const pickHome =
+          m.score?.duration === "PENALTY_SHOOTOUT" && m.score?.regularTime
+            ? (m.score.regularTime.home ?? 0) + (m.score.extraTime?.home ?? 0)
+            : (m.score?.fullTime?.home ?? null);
+        const pickAway =
+          m.score?.duration === "PENALTY_SHOOTOUT" && m.score?.regularTime
+            ? (m.score.regularTime.away ?? 0) + (m.score.extraTime?.away ?? 0)
+            : (m.score?.fullTime?.away ?? null);
+
+        const apiHome = override ? override.homeGoals : pickHome;
+        const apiAway = override ? override.awayGoals : pickAway;
         const apiHasScore = apiHome !== null || apiAway !== null;
 
         // Marcador provisional ya conocido de un build anterior.

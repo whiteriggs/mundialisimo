@@ -308,8 +308,16 @@ export async function fetchAllMatches(): Promise<ApiAllMatch[]> {
       stage: m.stage,
       home: m.homeTeam?.name ? toInternalName(m.homeTeam.name) : "Por determinar",
       away: m.awayTeam?.name ? toInternalName(m.awayTeam.name) : "Por determinar",
-      homeGoals: m.score?.fullTime?.home ?? null,
-      awayGoals: m.score?.fullTime?.away ?? null,
+      // Penaltis: el resultado que cuenta es el del juego (prórroga incl.), sin la
+      // tanda (football-data la mete en fullTime). Usamos regularTime + extraTime.
+      homeGoals:
+        m.score?.duration === "PENALTY_SHOOTOUT" && m.score?.regularTime
+          ? (m.score.regularTime.home ?? 0) + (m.score.extraTime?.home ?? 0)
+          : m.score?.fullTime?.home ?? null,
+      awayGoals:
+        m.score?.duration === "PENALTY_SHOOTOUT" && m.score?.regularTime
+          ? (m.score.regularTime.away ?? 0) + (m.score.extraTime?.away ?? 0)
+          : m.score?.fullTime?.away ?? null,
       phase: stageToPhase(m.stage),
       penalties: m.score?.duration === "PENALTY_SHOOTOUT",
       played: m.status === "FINISHED",

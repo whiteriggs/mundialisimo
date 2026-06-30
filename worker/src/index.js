@@ -73,6 +73,14 @@ function json(body, extraHeaders = {}) {
 }
 
 function pickScore(score) {
+  // Penaltis: el marcador que cuenta para la porra es el del FINAL DEL JUEGO
+  // (prórroga incluida), SIN la tanda. football-data mete la tanda en `fullTime`
+  // (p. ej. 4-5), así que usamos regularTime + extraTime, que es el empate real.
+  if (score?.duration === "PENALTY_SHOOTOUT" && score.regularTime) {
+    const rt = score.regularTime;
+    const et = score.extraTime ?? { home: 0, away: 0 };
+    return { home: (rt.home ?? 0) + (et.home ?? 0), away: (rt.away ?? 0) + (et.away ?? 0) };
+  }
   const home = score?.fullTime?.home ?? score?.regularTime?.home ?? score?.halfTime?.home ?? null;
   const away = score?.fullTime?.away ?? score?.regularTime?.away ?? score?.halfTime?.away ?? null;
   return { home, away };
