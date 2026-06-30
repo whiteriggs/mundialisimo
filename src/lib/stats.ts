@@ -16,6 +16,18 @@ export interface StatsResult {
   played: number;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 😤 PREMIO ESPECIAL ASIGNADO A MANO — cambia aquí el ganador cuando toque.
+// (No se calcula con datos; es un premio honorífico a dedo.)
+const MANUAL_AWARD: Award = {
+  emoji: "😤",
+  title: "El Quejica y Cascarrabias",
+  winner: "Esteban",
+  value: "Mención de (des)honor",
+  blurb: "Por protestar más que un árbitro y refunfuñar más que nadie. Premio honorífico, asignado a dedo.",
+};
+// ─────────────────────────────────────────────────────────────────────────────
+
 const up = (s: string) => s.toUpperCase();
 const matchLabel = (m: Match) => `${teamCode(m.home)}-${teamCode(m.away)}`;
 
@@ -71,6 +83,7 @@ export function computeStats(
         blank("🐦‍🔥", "Ave Fénix", "La mayor remontada en la clasificación."),
         blank("🚢", "El Titanic", "El mayor hundimiento en la clasificación."),
         blank("🥈", "El Eterno Segundo", "Mucho subcampeón, nada de oro."),
+        MANUAL_AWARD,
       ],
     };
   }
@@ -299,6 +312,8 @@ export function computeStats(
         }
       : blank("🚢", "El Titanic", "Nadie se ha hundido aún. Mar en calma."),
   );
+
+  awards.push(MANUAL_AWARD);
 
   return { awards, played: played.length };
 }
