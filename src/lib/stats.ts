@@ -16,17 +16,28 @@ export interface StatsResult {
   played: number;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 😤 PREMIO ESPECIAL ASIGNADO A MANO — cambia aquí el ganador cuando toque.
-// (No se calcula con datos; es un premio honorífico a dedo.)
-const MANUAL_AWARD: Award = {
+// Premio especial ASIGNADO A MANO (se edita desde el panel de Admin y se guarda
+// en Firestore). Estos son los valores por defecto si no hay nada configurado.
+export interface ManualAwardOverride {
+  winner?: string | null;
+  blurb?: string | null;
+}
+const DEFAULT_MANUAL = {
   emoji: "😤",
   title: "El Quejica y Cascarrabias",
   winner: "Esteban",
   value: "Mención de (des)honor",
   blurb: "Por protestar más que un árbitro y refunfuñar más que nadie. Premio honorífico, asignado a dedo.",
 };
-// ─────────────────────────────────────────────────────────────────────────────
+function manualAward(o?: ManualAwardOverride): Award {
+  return {
+    emoji: DEFAULT_MANUAL.emoji,
+    title: DEFAULT_MANUAL.title,
+    value: DEFAULT_MANUAL.value,
+    winner: o?.winner?.trim() ? o.winner.trim() : DEFAULT_MANUAL.winner,
+    blurb: o?.blurb?.trim() ? o.blurb.trim() : DEFAULT_MANUAL.blurb,
+  };
+}
 
 const up = (s: string) => s.toUpperCase();
 const matchLabel = (m: Match) => `${teamCode(m.home)}-${teamCode(m.away)}`;
@@ -38,7 +49,8 @@ const matchLabel = (m: Match) => `${teamCode(m.home)}-${teamCode(m.away)}`;
 export function computeStats(
   apiMatches: ApiAllMatch[],
   bets: BetDoc[],
-  users: string[]
+  users: string[],
+  manual?: ManualAwardOverride
 ): StatsResult {
   const betOf = (u: string) => bets.find((b) => b.user === u.toLowerCase());
   const players = users
@@ -83,7 +95,7 @@ export function computeStats(
         blank("🐦‍🔥", "Ave Fénix", "La mayor remontada en la clasificación."),
         blank("🚢", "El Titanic", "El mayor hundimiento en la clasificación."),
         blank("🥈", "El Eterno Segundo", "Mucho subcampeón, nada de oro."),
-        MANUAL_AWARD,
+        manualAward(manual),
       ],
     };
   }
@@ -313,7 +325,7 @@ export function computeStats(
       : blank("🚢", "El Titanic", "Nadie se ha hundido aún. Mar en calma."),
   );
 
-  awards.push(MANUAL_AWARD);
+  awards.push(manualAward(manual));
 
   return { awards, played: played.length };
 }

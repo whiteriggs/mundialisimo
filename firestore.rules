@@ -44,12 +44,20 @@ service cloud.firestore {
       allow delete: if true; // el admin puede retirar la contraseña de un usuario
     }
 
-    // ── Lista de jugadores del grupo ───────────────────────────────────────
+    // ── Configuración del grupo (lista de jugadores, premio especial…) ─────
     match /groups/{groupId}/config/{docId} {
       allow read: if true;
+      // Lista de jugadores: doc con solo `list`.
       allow write: if request.resource.data.keys().hasOnly(['list'])
         && request.resource.data.list is list
         && request.resource.data.list.size() <= 200;
+      // Premio especial de Estadísticas: ganador + frase, asignado desde Admin.
+      allow write: if docId == 'specialAward'
+        && request.resource.data.keys().hasOnly(['winner', 'blurb'])
+        && request.resource.data.winner is string
+        && request.resource.data.winner.size() <= 80
+        && request.resource.data.blurb is string
+        && request.resource.data.blurb.size() <= 600;
     }
 
     // ── Crónicas ───────────────────────────────────────────────────────────

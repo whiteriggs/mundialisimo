@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getStoredUser, clearUser } from "@/lib/auth";
 import { fetchAllMatches, type ApiAllMatch } from "@/lib/football-api";
-import { fetchUsersRest, fetchBetsRest, type BetDoc } from "@/lib/leaderboard";
+import { fetchUsersRest, fetchBetsRest, fetchSpecialAward, type BetDoc, type SpecialAward } from "@/lib/leaderboard";
 import { getGroupId } from "@/lib/group";
 import { computeStats, type StatsResult } from "@/lib/stats";
 
@@ -16,6 +16,7 @@ export default function EstadisticasPage() {
   const [apiMatches, setApiMatches] = useState<ApiAllMatch[]>([]);
   const [bets, setBets] = useState<BetDoc[]>([]);
   const [users, setUsers] = useState<string[]>([]);
+  const [special, setSpecial] = useState<SpecialAward>({ winner: null, blurb: null });
 
   useEffect(() => {
     const u = getStoredUser();
@@ -25,18 +26,20 @@ export default function EstadisticasPage() {
       fetchAllMatches().catch(() => [] as ApiAllMatch[]),
       fetchUsersRest(getGroupId()),
       fetchBetsRest(getGroupId()),
+      fetchSpecialAward().catch(() => ({ winner: null, blurb: null }) as SpecialAward),
     ])
-      .then(([m, us, bs]) => {
+      .then(([m, us, bs, sp]) => {
         setApiMatches(m);
         setUsers(us);
         setBets(bs);
+        setSpecial(sp);
       })
       .finally(() => setLoading(false));
   }, [router]);
 
   const stats: StatsResult | null = useMemo(
-    () => (loading ? null : computeStats(apiMatches, bets, users)),
-    [loading, apiMatches, bets, users]
+    () => (loading ? null : computeStats(apiMatches, bets, users, special)),
+    [loading, apiMatches, bets, users, special]
   );
 
   const uid = user?.toLowerCase();

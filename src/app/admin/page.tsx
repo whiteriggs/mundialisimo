@@ -38,7 +38,7 @@ function hasDuplicateGroup(ids: string[]) {
   return new Set(groups).size !== groups.length;
 }
 
-type Tab = "usuarios" | "contrasenas" | "apuestas" | "cronica";
+type Tab = "usuarios" | "contrasenas" | "apuestas" | "cronica" | "premio";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -74,6 +74,13 @@ export default function AdminPage() {
   const [chroniclePreview, setChroniclePreview]        = useState<string | null>(null);
   const [chroniclePublishing, setChroniclePublishing]  = useState(false);
   const [chronicleLeaderboard, setChronicleLeaderboard] = useState<{ user: string; total: number; confirmed: boolean }[]>([]);
+
+  // ── Premio especial (Estadísticas) state ──────────────────────
+  const [specialWinner, setSpecialWinner] = useState("");
+  const [specialBlurb, setSpecialBlurb]   = useState("");
+  const [specialSaving, setSpecialSaving] = useState(false);
+  const [specialMsg, setSpecialMsg]       = useState<string | null>(null);
+  const [specialLoaded, setSpecialLoaded] = useState(false);
 
   // ── Auth guard ────────────────────────────────────────────────
   useEffect(() => {
@@ -117,6 +124,34 @@ export default function AdminPage() {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [quotaActive]);
+
+  // ── Premio especial: cargar al abrir la pestaña y guardar ─────
+  useEffect(() => {
+    if (tab !== "premio" || specialLoaded) return;
+    getDoc(groupDoc("config", "specialAward"))
+      .then((snap) => {
+        const d = snap.data() as { winner?: string; blurb?: string } | undefined;
+        if (d) { setSpecialWinner(d.winner ?? ""); setSpecialBlurb(d.blurb ?? ""); }
+      })
+      .catch(() => {})
+      .finally(() => setSpecialLoaded(true));
+  }, [tab, specialLoaded]);
+
+  async function handleSaveSpecial() {
+    setSpecialSaving(true);
+    setSpecialMsg(null);
+    try {
+      await setDoc(groupDoc("config", "specialAward"), {
+        winner: specialWinner.trim(),
+        blurb: specialBlurb.trim(),
+      });
+      setSpecialMsg("Premio guardado ✓");
+    } catch {
+      setSpecialMsg("No se pudo guardar.");
+    } finally {
+      setSpecialSaving(false);
+    }
+  }
 
   // ── Helpers ───────────────────────────────────────────────────
   async function loadUsers() {
@@ -521,6 +556,7 @@ PROHIBIDO POR DEFECTO (salvo que las INDICACIONES DEL EDITOR lo pidan expresamen
           <button className={`admin-tab ${tab === "contrasenas" ? "active" : ""}`} onClick={() => setTab("contrasenas")}>Contraseñas</button>
           <button className={`admin-tab ${tab === "apuestas" ? "active" : ""}`} onClick={() => setTab("apuestas")}>Apuestas</button>
           <button className={`admin-tab ${tab === "cronica" ? "active" : ""}`} onClick={() => setTab("cronica")}>Crónica IA</button>
+          <button className={`admin-tab ${tab === "premio" ? "active" : ""}`} onClick={() => setTab("premio")}>Premio 😤</button>
         </div>
 
         {/* ── TAB: Usuarios ─────────────────────────────────────── */}
@@ -747,6 +783,43 @@ PROHIBIDO POR DEFECTO (salvo que las INDICACIONES DEL EDITOR lo pidan expresamen
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* ── TAB: Premio especial (Estadísticas) ───────────────── */}
+        {tab === "premio" && (
+          <div className="admin-panel card">
+            <h2>Premio especial 😤</h2>
+            <p className="muted" style={{ marginBottom: "1rem" }}>
+              El premio <strong>«El Quejica y Cascarrabias»</strong> de la pestaña{" "}
+              <a href="/estadisticas" target="_blank" rel="noreferrer">Estadísticas</a> se asigna a mano.
+              Cambia aquí el ganador (y, si quieres, el texto) y se guarda para todos.
+            </p>
+
+            <label className="admin-field-label" htmlFor="special-winner">Ganador</label>
+            <input
+              id="special-winner"
+              type="text"
+              value={specialWinner}
+              placeholder="Nombre del participante (vacío = Esteban por defecto)"
+              onChange={(e) => setSpecialWinner(e.target.value)}
+              style={{ width: "100%", marginBottom: "1rem", padding: "0.5rem", borderRadius: "6px", border: "1px solid #ccc" }}
+            />
+
+            <label className="admin-field-label" htmlFor="special-blurb">Frase (opcional)</label>
+            <textarea
+              id="special-blurb"
+              value={specialBlurb}
+              placeholder="Déjalo vacío para usar la frase por defecto."
+              rows={3}
+              onChange={(e) => setSpecialBlurb(e.target.value)}
+              style={{ width: "100%", marginBottom: "1rem", padding: "0.5rem", fontFamily: "inherit", fontSize: "0.9rem", borderRadius: "6px", border: "1px solid #ccc", resize: "vertical" }}
+            />
+
+            {specialMsg && <p className="admin-msg">{specialMsg}</p>}
+            <button className="btn" onClick={handleSaveSpecial} disabled={specialSaving}>
+              {specialSaving ? "Guardando…" : "Guardar premio"}
+            </button>
           </div>
         )}
       </div>

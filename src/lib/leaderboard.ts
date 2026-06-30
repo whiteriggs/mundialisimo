@@ -35,6 +35,20 @@ export async function fetchUsersRest(groupId: string): Promise<string[]> {
   return groupId === DEFAULT_GROUP ? USERS : [];
 }
 
+// Premio especial (manual) de la pestaña Estadísticas, editable desde Admin.
+export interface SpecialAward {
+  winner: string | null;
+  blurb: string | null;
+}
+export async function fetchSpecialAward(): Promise<SpecialAward> {
+  const docs = (await readCollection("config").catch(() => [])) as FsDoc[];
+  const doc = docs.find((d) => d.name.endsWith("/config/specialAward"));
+  return {
+    winner: doc?.fields?.winner?.stringValue ?? null,
+    blurb: doc?.fields?.blurb?.stringValue ?? null,
+  };
+}
+
 export async function fetchBetsRest(groupId: string): Promise<BetDoc[]> {
   void groupId; // el grupo activo lo resuelve readCollection vía getGroupId
   const docs = (await readCollection("bets")) as FsDoc[];
