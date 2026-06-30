@@ -63,7 +63,7 @@ export default function EstadisticasPage() {
           <div className="hero-crest placeholder">🏅</div>
           <div className="hero-text">
             <div className="hero-eyebrow">Porra Mundial 2026 · Palmarés absurdo</div>
-            <h2 className="hero-name">Estadísticas (de coña)</h2>
+            <h2 className="hero-name">Cachondísticas</h2>
             <p className="lead">
               Los premios que nadie pidió pero todos merecéis. Medallas al mérito… y al desastre.
             </p>
