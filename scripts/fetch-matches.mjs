@@ -176,6 +176,20 @@ async function main() {
         const penalties = m.score?.duration === "PENALTY_SHOOTOUT" ||
           Boolean(old && old.penalties);
 
+        // Ganador oficial; en penaltis sin ganador explícito se deduce del
+        // fullTime (que incluye la tanda): el lado con más goles totales pasó.
+        let winner = m.score?.winner ?? null;
+        if (
+          m.score?.duration === "PENALTY_SHOOTOUT" &&
+          winner !== "HOME_TEAM" &&
+          winner !== "AWAY_TEAM"
+        ) {
+          const ft = m.score?.fullTime;
+          if (ft && ft.home != null && ft.away != null && ft.home !== ft.away) {
+            winner = ft.home > ft.away ? "HOME_TEAM" : "AWAY_TEAM";
+          }
+        }
+
         return {
           id,
           utcDate: m.utcDate,
@@ -188,6 +202,7 @@ async function main() {
           awayGoals,
           phase: stageToPhase(m.stage),
           penalties,
+          winner,
           played,
           matchday: m.matchday ?? null,
         };

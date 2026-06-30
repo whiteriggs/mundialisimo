@@ -186,7 +186,20 @@ function consolidate(apiMatches, store) {
       // Ganador oficial según football-data ("HOME_TEAM"/"AWAY_TEAM"/"DRAW").
       // Imprescindible para saber quién pasa cuando hay tanda de penaltis (el
       // marcador a 90'/prórroga queda empatado). Se conserva en KV.
-      const winner = m.score?.winner ?? known?.winner ?? null;
+      // Si la API no da el ganador en una tanda, lo deducimos del `fullTime`
+      // (que SÍ incluye la tanda): el lado con más goles totales es quien pasó.
+      let winner = m.score?.winner ?? null;
+      if (
+        m.score?.duration === "PENALTY_SHOOTOUT" &&
+        winner !== "HOME_TEAM" &&
+        winner !== "AWAY_TEAM"
+      ) {
+        const ft = m.score?.fullTime;
+        if (ft && ft.home != null && ft.away != null && ft.home !== ft.away) {
+          winner = ft.home > ft.away ? "HOME_TEAM" : "AWAY_TEAM";
+        }
+      }
+      winner = winner ?? known?.winner ?? null;
 
       // Persistir en KV solo lo que aporta estado (marcador o confirmado).
       if (hasScore || confirmed) {

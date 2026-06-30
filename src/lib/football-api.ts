@@ -321,7 +321,18 @@ export async function fetchAllMatches(): Promise<ApiAllMatch[]> {
       phase: stageToPhase(m.stage),
       penalties: m.score?.duration === "PENALTY_SHOOTOUT",
       played: m.status === "FINISHED",
-      winner: m.score?.winner ?? null,
+      // En penaltis sin ganador HOME/AWAY claro (null o "DRAW"), se deduce del
+      // fullTime (que incluye la tanda): el lado con más goles totales pasó.
+      winner:
+        m.score?.duration === "PENALTY_SHOOTOUT" &&
+        m.score?.winner !== "HOME_TEAM" &&
+        m.score?.winner !== "AWAY_TEAM" &&
+        m.score?.fullTime &&
+        m.score.fullTime.home !== m.score.fullTime.away
+          ? m.score.fullTime.home > m.score.fullTime.away
+            ? "HOME_TEAM"
+            : "AWAY_TEAM"
+          : m.score?.winner ?? null,
       matchday: m.matchday ?? null,
     }));
 }
