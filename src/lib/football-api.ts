@@ -1,4 +1,4 @@
-import { Match, Phase } from "./scoring";
+import { Phase } from "./scoring";
 
 const API_KEY = process.env.NEXT_PUBLIC_FOOTBALL_DATA_KEY ?? "";
 const BASE = "https://api.football-data.org/v4";
@@ -146,45 +146,10 @@ export async function fetchGroupStandings(): Promise<ApiStandingGroup[]> {
 }
 
 // ── Matches ────────────────────────────────────────────────────────────────
-type ApiMatch = {
-  id: number;
-  stage: string;
-  status: string;
-  homeTeam: { name: string };
-  awayTeam: { name: string };
-  score: {
-    winner: "HOME_TEAM" | "AWAY_TEAM" | "DRAW" | null;
-    duration: "REGULAR" | "EXTRA_TIME" | "PENALTY_SHOOTOUT";
-    fullTime: { home: number | null; away: number | null };
-  };
-};
-
 function stageToPhase(stage: string): Phase {
   if (stage === "GROUP_STAGE") return "groups";
   if (stage === "THIRD_PLACE") return "third";
   return "knockout";
-}
-
-export async function fetchFinishedMatches(): Promise<Match[]> {
-  const res = await fetch(
-    `${BASE}/competitions/${COMPETITION}/matches?status=FINISHED`,
-    { headers: { "X-Auth-Token": API_KEY } }
-  );
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`football-data.org ${res.status}: ${text}`);
-  }
-  const data = await res.json();
-  return (data.matches as ApiMatch[]).map((m): Match => ({
-    id: String(m.id),
-    home: toInternalName(m.homeTeam.name),
-    away: toInternalName(m.awayTeam.name),
-    homeGoals: m.score.fullTime.home ?? 0,
-    awayGoals: m.score.fullTime.away ?? 0,
-    phase: stageToPhase(m.stage),
-    penalties: m.score.duration === "PENALTY_SHOOTOUT",
-    played: true,
-  }));
 }
 
 // ── Knockout bracket ───────────────────────────────────────────────────────
