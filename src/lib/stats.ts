@@ -16,26 +16,27 @@ export interface StatsResult {
   played: number;
 }
 
-// Premio especial ASIGNADO A MANO (se edita desde el panel de Admin y se guarda
-// en Firestore). Estos son los valores por defecto si no hay nada configurado.
+// Premio especial ASIGNADO A MANO por grupo (se edita desde el panel de Admin y
+// se guarda en Firestore, independiente en cada grupo). Solo aparece si ese
+// grupo tiene un ganador configurado; si no, no se muestra.
 export interface ManualAwardOverride {
   winner?: string | null;
   blurb?: string | null;
 }
-const DEFAULT_MANUAL = {
-  emoji: "😤",
-  title: "El Quejica y Cascarrabias",
-  winner: "Esteban",
-  value: "Mención de (des)honor",
-  blurb: "Por protestar más que un árbitro y refunfuñar más que nadie. Premio honorífico, asignado a dedo.",
-};
-function manualAward(o?: ManualAwardOverride): Award {
+const MANUAL_EMOJI = "😤";
+const MANUAL_TITLE = "El Quejica y Cascarrabias";
+const MANUAL_VALUE = "Mención de (des)honor";
+const MANUAL_DEFAULT_BLURB =
+  "Por protestar más que un árbitro y refunfuñar más que nadie. Premio honorífico, asignado a dedo.";
+function manualAward(o?: ManualAwardOverride): Award | null {
+  const winner = o?.winner?.trim();
+  if (!winner) return null; // sin ganador configurado en este grupo → no aparece
   return {
-    emoji: DEFAULT_MANUAL.emoji,
-    title: DEFAULT_MANUAL.title,
-    value: DEFAULT_MANUAL.value,
-    winner: o?.winner?.trim() ? o.winner.trim() : DEFAULT_MANUAL.winner,
-    blurb: o?.blurb?.trim() ? o.blurb.trim() : DEFAULT_MANUAL.blurb,
+    emoji: MANUAL_EMOJI,
+    title: MANUAL_TITLE,
+    value: MANUAL_VALUE,
+    winner,
+    blurb: o?.blurb?.trim() ? o.blurb.trim() : MANUAL_DEFAULT_BLURB,
   };
 }
 
@@ -80,6 +81,7 @@ export function computeStats(
   });
 
   if (n === 0 || played.length === 0) {
+    const ma = manualAward(manual);
     return {
       played: played.length,
       awards: [
@@ -95,7 +97,7 @@ export function computeStats(
         blank("🐦‍🔥", "Ave Fénix", "La mayor remontada en la clasificación."),
         blank("🚢", "El Titanic", "El mayor hundimiento en la clasificación."),
         blank("🥈", "El Eterno Segundo", "Mucho subcampeón, nada de oro."),
-        manualAward(manual),
+        ...(ma ? [ma] : []),
       ],
     };
   }
@@ -325,7 +327,8 @@ export function computeStats(
       : blank("🚢", "El Titanic", "Nadie se ha hundido aún. Mar en calma."),
   );
 
-  awards.push(manualAward(manual));
+  const ma = manualAward(manual);
+  if (ma) awards.push(ma);
 
   return { awards, played: played.length };
 }
