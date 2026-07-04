@@ -31,6 +31,12 @@ export default function QuePasariaSiPage() {
   const [knockout, setKnockout] = useState<KnockoutScores>({});
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
 
+  // Reglas de puntuación alternativas (experimento local, no se guarda):
+  //  • penWin: un cruce por penaltis cuenta como victoria del ganador (no empate).
+  //  • penGoals: además suma los goles de la tanda (solo cruces reales ya jugados).
+  const [penWin, setPenWin] = useState(false);
+  const [penGoals, setPenGoals] = useState(false);
+
   // El topbar es sticky y en móvil crece (fila del chip); medimos su alto para
   // anclar el mini-marcador justo debajo, sin solaparlo.
   const topbarRef = useRef<HTMLElement>(null);
@@ -125,7 +131,12 @@ export default function QuePasariaSiPage() {
       if (d.km && d.km.finished) {
         const km = d.km;
         const s: KoScore = { h: km.homeGoals ?? 0, a: km.awayGoals ?? 0 };
-        if ((km.homeGoals ?? 0) === (km.awayGoals ?? 0) && km.winner) s.pen = km.winner;
+        if ((km.homeGoals ?? 0) === (km.awayGoals ?? 0) && km.winner) {
+          s.pen = km.winner;
+          // Marcador real de la tanda (para el modo "a lo loco").
+          if (km.penHome != null) s.penHome = km.penHome;
+          if (km.penAway != null) s.penAway = km.penAway;
+        }
         scores[id] = s;
         locked.add(id);
       }
@@ -147,8 +158,8 @@ export default function QuePasariaSiPage() {
   // Los goles de eliminatorias TAMBIÉN puntdan en la porra: sumamos los cruces
   // con marcador al cómputo de cada selección.
   const teamTotals = useMemo(
-    () => buildTeamTotals([...groupSimMatches, ...bracketToMatches(bracket)]),
-    [groupSimMatches, bracket]
+    () => buildTeamTotals([...groupSimMatches, ...bracketToMatches(bracket)], { penaltyWin: penWin, penaltyGoals: penGoals }),
+    [groupSimMatches, bracket, penWin, penGoals]
   );
 
   const leaderboard = useMemo(() => {
@@ -402,6 +413,29 @@ export default function QuePasariaSiPage() {
             <p className="muted" style={{ marginBottom: 12, fontSize: "0.82rem" }}>
               Los clasificados salen de tus grupos. Pon el marcador de cada cruce —los goles también puntúan en la porra. Si hay empate, elige quién pasa por penaltis.
             </p>
+            <div className="qps-rules">
+              <label className="qps-rule">
+                <input
+                  type="checkbox"
+                  checked={penWin}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    setPenWin(on);
+                    if (!on) setPenGoals(false);
+                  }}
+                />
+                <span>Puntuación sumando al ganar por penaltis</span>
+              </label>
+              <label className={`qps-rule${penWin ? "" : " qps-rule--disabled"}`}>
+                <input
+                  type="checkbox"
+                  checked={penGoals}
+                  disabled={!penWin}
+                  onChange={(e) => setPenGoals(e.target.checked)}
+                />
+                <span>Puntuación a lo loco sumando goles de los penaltis</span>
+              </label>
+            </div>
             <div className="qps-bracket">
               {ROUND_LABELS.map(([round, label]) => (
                 <div key={round} className="qps-bracket-round">

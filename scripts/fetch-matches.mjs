@@ -61,6 +61,16 @@ function stageToPhase(stage) {
   return "knockout";
 }
 
+// Goles de la tanda de penaltis = fullTime − (regularTime + extraTime).
+function penTally(score) {
+  if (score?.duration !== "PENALTY_SHOOTOUT" || !score?.fullTime || !score?.regularTime) return null;
+  const et = score.extraTime ?? { home: 0, away: 0 };
+  const home = (score.fullTime.home ?? 0) - (score.regularTime.home ?? 0) - (et.home ?? 0);
+  const away = (score.fullTime.away ?? 0) - (score.regularTime.away ?? 0) - (et.away ?? 0);
+  if (home < 0 || away < 0) return null;
+  return { home, away };
+}
+
 const LIVE_STATUSES = new Set(["IN_PLAY", "PAUSED"]);
 
 // Carga el matches.json del build anterior para no perder marcadores ya vistos.
@@ -202,6 +212,8 @@ async function main() {
           awayGoals,
           phase: stageToPhase(m.stage),
           penalties,
+          penHome: penTally(m.score)?.home ?? null,
+          penAway: penTally(m.score)?.away ?? null,
           winner,
           played,
           matchday: m.matchday ?? null,

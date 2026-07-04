@@ -86,6 +86,17 @@ function pickScore(score) {
   return { home, away };
 }
 
+// Goles de la tanda de penaltis = fullTime − (regularTime + extraTime).
+// football-data mete la tanda en `fullTime`; el resto está en regular+prórroga.
+function penTally(score) {
+  if (score?.duration !== "PENALTY_SHOOTOUT" || !score?.fullTime || !score?.regularTime) return null;
+  const et = score.extraTime ?? { home: 0, away: 0 };
+  const home = (score.fullTime.home ?? 0) - (score.regularTime.home ?? 0) - (et.home ?? 0);
+  const away = (score.fullTime.away ?? 0) - (score.regularTime.away ?? 0) - (et.away ?? 0);
+  if (home < 0 || away < 0) return null;
+  return { home, away };
+}
+
 async function enrichLiveScores(apiMatches, apiKey) {
   const base = Array.isArray(apiMatches) ? apiMatches : [];
   const now = Date.now();
@@ -201,6 +212,8 @@ function consolidate(apiMatches, store) {
       }
       winner = winner ?? known?.winner ?? null;
 
+      const pt = penTally(m.score);
+
       // Persistir en KV solo lo que aporta estado (marcador o confirmado).
       if (hasScore || confirmed) {
         next[id] = { homeGoals, awayGoals, confirmed, status, penalties, winner };
@@ -218,6 +231,8 @@ function consolidate(apiMatches, store) {
         awayGoals,
         phase: stageToPhase(m.stage),
         penalties,
+        penHome: pt?.home ?? null,
+        penAway: pt?.away ?? null,
         winner,
         played,
         matchday: m.matchday ?? null,

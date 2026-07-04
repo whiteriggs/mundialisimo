@@ -4016,6 +4016,41 @@ body[data-sidebar="expanded"] .app-shell {
   color: var(--gold);
 }
 
+/* Reglas de puntuación alternativas (toggles del experimento). */
+.qps-rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.qps-rule {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1.25;
+}
+.qps-rule input {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+.qps-rule--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.qps-rule--disabled input {
+  cursor: not-allowed;
+}
+
 /* qps en una sola columna (cuando ya no quedan partidos de grupos por jugar). */
 .qps-grid--single {
   grid-template-columns: 1fr;

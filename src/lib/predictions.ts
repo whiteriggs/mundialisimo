@@ -12,10 +12,13 @@ export interface Score {
 // results = marcadores imaginados para partidos de grupos no jugados.
 export type Predictions = Record<string, Score>;
 // knockout = marcador de cada cruce: { h, a, pen? }. pen = quién pasa si empate.
+// penHome/penAway = goles de la tanda (solo cruces reales ya jugados).
 export interface KoScore {
   h: number;
   a: number;
   pen?: "home" | "away";
+  penHome?: number;
+  penAway?: number;
 }
 export type KnockoutScores = Record<string, KoScore>;
 

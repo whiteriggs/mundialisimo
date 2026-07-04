@@ -61,11 +61,14 @@ const TBD = "Por determinar";
 const GROUP_LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"];
 
 // Marcador de un cruce de eliminatorias. Si hay empate en goles, `pen` indica
-// quién pasa por penaltis ("home" | "away").
+// quién pasa por penaltis ("home" | "away"). `penHome`/`penAway` son los goles de
+// la tanda (solo se conocen en partidos reales ya jugados).
 export interface KoScore {
   h: number;
   a: number;
   pen?: "home" | "away";
+  penHome?: number;
+  penAway?: number;
 }
 
 export interface ResolvedBracketMatch {
@@ -153,6 +156,7 @@ export function bracketToMatches(resolved: ResolvedBracketMatch[]): Match[] {
   for (const m of resolved) {
     if (!m.ready || !m.score) continue;
     const { h, a } = m.score;
+    const penalties = h === a; // empate decidido en penaltis
     matches.push({
       id: `ko-${m.id}`,
       home: m.home,
@@ -160,7 +164,10 @@ export function bracketToMatches(resolved: ResolvedBracketMatch[]): Match[] {
       homeGoals: h,
       awayGoals: a,
       phase: "knockout",
-      penalties: h === a, // empate decidido en penaltis
+      penalties,
+      penWinner: penalties ? (m.winner ?? m.score.pen ?? undefined) : undefined,
+      penHome: penalties ? m.score.penHome : undefined,
+      penAway: penalties ? m.score.penAway : undefined,
       played: true,
     });
   }

@@ -152,6 +152,19 @@ function stageToPhase(stage: string): Phase {
   return "knockout";
 }
 
+// Goles de la tanda de penaltis = fullTime − (regularTime + extraTime).
+// football-data mete la tanda en `fullTime`; el resto (juego + prórroga) está en
+// regularTime + extraTime. Devuelve null si no es una tanda o faltan datos.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function penTally(score: any): { home: number; away: number } | null {
+  if (score?.duration !== "PENALTY_SHOOTOUT" || !score?.fullTime || !score?.regularTime) return null;
+  const et = score.extraTime ?? { home: 0, away: 0 };
+  const home = (score.fullTime.home ?? 0) - (score.regularTime.home ?? 0) - (et.home ?? 0);
+  const away = (score.fullTime.away ?? 0) - (score.regularTime.away ?? 0) - (et.away ?? 0);
+  if (home < 0 || away < 0) return null;
+  return { home, away };
+}
+
 // ── Knockout bracket ───────────────────────────────────────────────────────
 // football-data.org usa "LAST_32"/"LAST_16" para los dieciseisavos/octavos del
 // Mundial 2026 (48 equipos). Los normalizamos a los nombres canónicos que usa
@@ -175,6 +188,8 @@ export type ApiKnockoutMatch = {
   finished: boolean;
   live: boolean;
   penalties: boolean;
+  penHome: number | null;
+  penAway: number | null;
   date: string;
   winner: "home" | "away" | null;
 };
@@ -195,6 +210,8 @@ export async function fetchKnockoutMatches(): Promise<ApiKnockoutMatch[]> {
       finished: m.played,
       live: isLiveStatus(m.status),
       penalties: m.penalties,
+      penHome: m.penHome ?? null,
+      penAway: m.penAway ?? null,
       date: new Date(m.utcDate).toLocaleDateString("es-ES", { day: "numeric", month: "short" }),
       winner:
         m.homeGoals !== null && m.awayGoals !== null && m.homeGoals !== m.awayGoals
@@ -225,7 +242,11 @@ export type ApiAllMatch = {
   penalties: boolean;
   played: boolean;  // Ganador oficial ("HOME_TEAM"/"AWAY_TEAM"/"DRAW"/null). Necesario para saber
   // quién pasa cuando una eliminatoria se decide en los penaltis.
-  winner?: string | null;};
+  winner?: string | null;
+  // Goles de la tanda de penaltis (fullTime − (regularTime+extraTime)). Solo en
+  // eliminatorias decididas en la tanda; null en el resto.
+  penHome?: number | null;
+  penAway?: number | null;};
 
 export async function fetchAllMatches(): Promise<ApiAllMatch[]> {
   // 0. Fuente en vivo: Worker de Cloudflare (datos frescos, con CORS).
@@ -286,6 +307,9 @@ export async function fetchAllMatches(): Promise<ApiAllMatch[]> {
       phase: stageToPhase(m.stage),
       penalties: m.score?.duration === "PENALTY_SHOOTOUT",
       played: m.status === "FINISHED",
+      // Goles de la tanda = fullTime − (regularTime + extraTime).
+      penHome: penTally(m.score)?.home ?? null,
+      penAway: penTally(m.score)?.away ?? null,
       // En penaltis sin ganador HOME/AWAY claro (null o "DRAW"), se deduce del
       // fullTime (que incluye la tanda): el lado con más goles totales pasó.
       winner:
