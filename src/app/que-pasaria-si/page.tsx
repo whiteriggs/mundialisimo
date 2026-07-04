@@ -156,23 +156,32 @@ export default function QuePasariaSiPage() {
   );
 
   // Los goles de eliminatorias TAMBIÉN puntdan en la porra: sumamos los cruces
-  // con marcador al cómputo de cada selección.
-  const teamTotals = useMemo(
-    () => buildTeamTotals([...groupSimMatches, ...bracketToMatches(bracket)], { penaltyWin: penWin, penaltyGoals: penGoals }),
-    [groupSimMatches, bracket, penWin, penGoals]
+  // con marcador al cómputo de cada selección. Calculamos los tres modos para
+  // poder mostrar la diferencia por toggle en el marcador.
+  const simMatches = useMemo(
+    () => [...groupSimMatches, ...bracketToMatches(bracket)],
+    [groupSimMatches, bracket]
   );
+  const totalsBase = useMemo(() => buildTeamTotals(simMatches), [simMatches]);
+  const totalsWin = useMemo(() => buildTeamTotals(simMatches, { penaltyWin: true }), [simMatches]);
+  const totalsFull = useMemo(() => buildTeamTotals(simMatches, { penaltyWin: true, penaltyGoals: true }), [simMatches]);
 
   const leaderboard = useMemo(() => {
+    // Totales según los toggles activos + delta que aporta cada uno.
+    const activeTotals = penGoals ? totalsFull : penWin ? totalsWin : totalsBase;
     return users
       .map((u) => {
         const bet = bets.find((b) => b.user === u.toLowerCase());
-        const total = bet?.confirmed
-          ? calcUserScore(bet.favorites, bet.antiFavorites, teamTotals)
-          : 0;
-        return { user: u, total, confirmed: bet?.confirmed ?? false };
+        if (!bet?.confirmed) return { user: u, total: 0, dWin: 0, dGoals: 0, confirmed: false };
+        const fav = bet.favorites, anti = bet.antiFavorites;
+        const total = calcUserScore(fav, anti, activeTotals);
+        // Efecto marginal de cada toggle: T1 = victoria vs empate; T2 = + goles tanda.
+        const dWin = calcUserScore(fav, anti, totalsWin) - calcUserScore(fav, anti, totalsBase);
+        const dGoals = calcUserScore(fav, anti, totalsFull) - calcUserScore(fav, anti, totalsWin);
+        return { user: u, total, dWin, dGoals, confirmed: true };
       })
       .sort((a, b) => b.total - a.total);
-  }, [users, bets, teamTotals]);
+  }, [users, bets, totalsBase, totalsWin, totalsFull, penWin, penGoals]);
 
   const bracketByRound = useMemo(() => {
     const r: Record<string, typeof bracket> = { R32: [], R16: [], QF: [], SF: [], FINAL: [] };
@@ -287,14 +296,33 @@ export default function QuePasariaSiPage() {
 
       {/* Mini-marcador de la porra, siempre visible arriba a la derecha. */}
       {!loading && leaderboard.length > 0 && (
-        <aside className="qps-mini-board" style={{ top: boardTop }} aria-label="Clasificación simulada de la porra">
+        <aside className={`qps-mini-board${penWin || penGoals ? " qps-mini-board--wide" : ""}`} style={{ top: boardTop }} aria-label="Clasificación simulada de la porra">
           <div className="qps-mini-title">Porra (simulada)</div>
+          {(penWin || penGoals) && (
+            <div className="qps-mini-head">
+              <span className="qps-mini-pos" />
+              <span className="qps-mini-name" />
+              <span className="qps-mini-total">Pts</span>
+              {penWin && <span className="qps-mini-delta" title="Victoria por penaltis">Δvic</span>}
+              {penGoals && <span className="qps-mini-delta" title="Goles de la tanda">Δpen</span>}
+            </div>
+          )}
           <ol className="qps-mini-list">
             {leaderboard.map((r, i) => (
               <li key={r.user} className={r.user.toLowerCase() === user?.toLowerCase() ? "qps-mini-me" : ""}>
                 <span className="qps-mini-pos">{r.confirmed ? i + 1 : "—"}</span>
                 <span className="qps-mini-name">{r.user}</span>
                 <span className="qps-mini-total">{r.confirmed ? r.total : "—"}</span>
+                {penWin && (
+                  <span className={`qps-mini-delta${r.dWin > 0 ? " qps-mini-delta--pos" : r.dWin < 0 ? " qps-mini-delta--neg" : ""}`}>
+                    {r.confirmed ? sign(r.dWin) : "—"}
+                  </span>
+                )}
+                {penGoals && (
+                  <span className={`qps-mini-delta${r.dGoals > 0 ? " qps-mini-delta--pos" : r.dGoals < 0 ? " qps-mini-delta--neg" : ""}`}>
+                    {r.confirmed ? sign(r.dGoals) : "—"}
+                  </span>
+                )}
               </li>
             ))}
           </ol>

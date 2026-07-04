@@ -3930,6 +3930,41 @@ body[data-sidebar="expanded"] .app-shell {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+/* Columnas de diferencia (una por toggle activo). */
+.qps-mini-board--wide {
+  width: 236px;
+}
+.qps-mini-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 3px 3px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 3px;
+}
+.qps-mini-head .qps-mini-total,
+.qps-mini-head .qps-mini-delta {
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.qps-mini-delta {
+  width: 30px;
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  flex: 0 0 auto;
+}
+.qps-mini-delta--pos {
+  color: var(--pos, #4ade80);
+}
+.qps-mini-delta--neg {
+  color: var(--neg, #f87171);
+}
 .qps-mini-me {
   background: #15212e;
 }
@@ -3945,6 +3980,10 @@ body[data-sidebar="expanded"] .app-shell {
     max-height: 46vh;
     padding: 6px 6px 4px;
   }
+  .qps-mini-board--wide {
+    width: 186px;
+  }
+  .qps-mini-delta { width: 26px; }
   .qps-mini-pos { width: 14px; }
 }
 
