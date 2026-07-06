@@ -5,8 +5,12 @@ on:
     branches: ["main"]
   workflow_dispatch:
   schedule:
-    # Rebuild cada 5 min durante el Mundial (11 jun – 27 jul 2026)
-    - cron: "*/5 * * * *"
+    # Rebuild diario como BACKUP: la web lee los partidos en vivo del Cloudflare
+    # Worker (LIVE_MATCHES_URL) y calcula la clasificación en el cliente cada 12s,
+    # así que NO hace falta rebuild para los directos. Este cron solo refresca el
+    # matches.json de fallback (para cuando el Worker esté caído). Antes era */5
+    # (24/7), que se comía ~576 min/día de Actions.
+    - cron: "0 5 * * *"
 
 permissions:
   contents: read
