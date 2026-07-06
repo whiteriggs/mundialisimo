@@ -1425,6 +1425,114 @@ a {
 .prob-legend li { margin: 4px 0; line-height: 1.5; font-size: 13px; }
 .prob-help { font-size: 12px; margin: 0 0 10px; }
 
+/* ── Escenarios "qué pasaría si" en probabilidades ─────────────────────── */
+.scen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.scen-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 10px 6px;
+  background: rgba(255, 255, 255, 0.02);
+}
+.scen-card--key {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 1px var(--gold) inset;
+}
+.scen-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.scen-teams {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  font-size: 13px;
+}
+.scen-vs { color: var(--text-dim); font-weight: 500; font-size: 11px; }
+.scen-round {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.scen-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.scen-table th {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+  font-weight: 700;
+  padding: 3px 4px;
+  text-align: right;
+  border-bottom: 1px solid var(--line);
+}
+.scen-table th.scen-outcome { text-align: left; }
+.scen-table td { padding: 4px; text-align: right; font-variant-numeric: tabular-nums; }
+.scen-table td.scen-outcome { text-align: left; }
+.scen-p { color: var(--text-dim); width: 44px; }
+.scen-u { width: 46px; font-weight: 600; }
+.scen-u-lead { color: var(--gold); font-weight: 800; }
+.scen-rare td { opacity: 0.5; }
+.scen-table tbody tr + tr td { border-top: 1px solid rgba(255, 255, 255, 0.05); }
+
+.scen-explorer {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 720px) {
+  .scen-explorer { grid-template-columns: 1fr; }
+}
+.scen-selects { display: flex; flex-direction: column; gap: 8px; }
+.scen-select { display: flex; flex-direction: column; gap: 3px; }
+.scen-select-lbl {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.scen-select select {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface, #10161d);
+  color: var(--text);
+  font-size: 13px;
+}
+.scen-out {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  align-self: start;
+  position: sticky;
+  top: 12px;
+}
+.scen-cond-table { width: 100%; border-collapse: collapse; }
+.scen-cond-table td { padding: 5px 6px; font-size: 14px; }
+.scen-cond-name { font-weight: 600; }
+.scen-cond-val { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+.scen-cond-table tr + tr td { border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.scen-warn { color: var(--neg, #f87171); }
+.scen-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 11px;
+}
+
 /* Balance esperado favoritos / antifavoritos */
 .prob-balance {
   display: grid;

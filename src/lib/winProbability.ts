@@ -42,13 +42,85 @@ export interface TeamProbability {
   semiPct: number;
 }
 
+// ── Escenarios "¿qué pasaría si…?" por cruce pendiente ───────────────────────
+export interface PendingMatchInfo {
+  key: string;   // pairKey(home, away)
+  home: string;
+  away: string;
+  round: string; // etiqueta en español (Octavos, Cuartos…)
+}
+
+// Desenlace de un cruce: 0 = gana local (90'/pró), 1 = local pasa por penaltis,
+// 2 = visitante pasa por penaltis, 3 = gana visitante (90'/pró).
+export interface ScenarioOutcome {
+  code: 0 | 1 | 2 | 3;
+  prob: number;      // % de simulaciones en que ocurre
+  winPct: number[];  // por jugador (orden = scenarioSims.players): P(gana la porra | desenlace)
+}
+
+export interface MatchScenario {
+  match: PendingMatchInfo;
+  outcomes: ScenarioOutcome[];
+  swing: number;     // cuánto varía el winPct del líder entre desenlaces (para ordenar)
+}
+
+// Datos crudos por simulación: permiten condicionar sobre varios cruces a la vez.
+export interface ScenarioSims {
+  pending: PendingMatchInfo[]; // columnas (índice = columna en `outcomes`)
+  players: string[];           // orden de `winners`
+  simCount: number;
+  outcomes: Int8Array;         // simCount * pending.length, valores 0..3 (-1 si no ocurrió)
+  winners: Int16Array;         // simCount, índice del ganador de la porra
+}
+
 export interface ProbabilityResult {
   users: UserProbability[];
   teams: TeamProbability[];
   sims: number;
+  pending: PendingMatchInfo[];
+  scenarios: MatchScenario[];
+  scenarioSims: ScenarioSims;
 }
 
 const pairKey = (a: string, b: string) => [a, b].sort().join("|");
+
+function roundLabel(stage: string): string {
+  switch (stage) {
+    case "LAST_32": case "ROUND_OF_32": return "Dieciseisavos";
+    case "LAST_16": case "ROUND_OF_16": return "Octavos";
+    case "QUARTER_FINALS": return "Cuartos";
+    case "SEMI_FINALS": return "Semifinales";
+    case "THIRD_PLACE": return "3.er puesto";
+    case "FINAL": return "Final";
+    default: return "Eliminatoria";
+  }
+}
+
+// Filtra las simulaciones que cumplen los desenlaces elegidos y devuelve, para
+// cada jugador, con qué frecuencia gana la porra en ese subconjunto. `selection`
+// = { [match.key]: code }. Para el explorador interactivo de escenarios.
+export function conditionalWinPct(
+  sims: ScenarioSims,
+  selection: Record<string, number>
+): { pct: number[]; sample: number } {
+  const P = sims.pending.length;
+  const cols = Object.entries(selection)
+    .map(([key, code]) => ({ c: sims.pending.findIndex((p) => p.key === key), code }))
+    .filter((x) => x.c >= 0);
+  const n = sims.players.length;
+  const winc = new Array(n).fill(0);
+  let sample = 0;
+  for (let s = 0; s < sims.simCount; s++) {
+    let ok = true;
+    for (const { c, code } of cols) {
+      if (sims.outcomes[s * P + c] !== code) { ok = false; break; }
+    }
+    if (!ok) continue;
+    sample++;
+    winc[sims.winners[s]]++;
+  }
+  return { pct: winc.map((w) => (sample ? (w / sample) * 100 : 0)), sample };
+}
 
 // ── Equipos ya eliminados (a partir de los resultados REALES) ────────────────
 function computeEliminated(realGroup: Match[], apiMatches: ApiAllMatch[]): Set<string> {
@@ -89,6 +161,8 @@ interface BracketOutcome {
   champion: string | null;
   finalists: string[];
   semifinalists: string[];
+  // Por cruce jugado en esta simulación: quién pasó y si fue en penaltis.
+  koResults: Record<string, { winner: "home" | "away"; viaPen: boolean }>;
 }
 
 // ── Resuelve el cuadro de eliminatorias en UNA simulación ────────────────────
@@ -111,6 +185,7 @@ function resolveBracket(
 
   const winnerTeam: Record<string, string> = {};
   const sides: Record<string, { home: string; away: string; round: string }> = {};
+  const koResults: Record<string, { winner: "home" | "away"; viaPen: boolean }> = {};
 
   const resolveSide = (side: Side): string => {
     if (side.kind === "group") return standings[side.group]?.[side.pos - 1]?.name ?? TBD;
@@ -144,6 +219,7 @@ function resolveBracket(
     else if (real?.winner) winnerSide = real.winner; // penaltis REALES ya jugados
     else winnerSide = shootoutWinner(eff[home] ?? 1600, eff[away] ?? 1600, rng);
     winnerTeam[id] = winnerSide === "home" ? home : away;
+    koResults[pairKey(home, away)] = { winner: winnerSide, viaPen: h === a };
     out.push({
       id: `ko-${id}`, home, away, homeGoals: h, awayGoals: a,
       phase, penalties: h === a, played: true,
@@ -174,7 +250,7 @@ function resolveBracket(
   const fin = sides["104"];
   const finalists = fin ? [fin.home, fin.away] : [];
 
-  return { matches: out, champion: winnerTeam["104"] ?? null, finalists, semifinalists };
+  return { matches: out, champion: winnerTeam["104"] ?? null, finalists, semifinalists, koResults };
 }
 
 function percentile(sorted: number[], p: number): number {
@@ -242,9 +318,23 @@ export function computeWinProbabilities(
 
   const eliminated = computeEliminated(realGroup, apiMatches);
 
+  // Cruces de eliminatoria pendientes con ambos rivales ya conocidos: base de
+  // los escenarios "¿qué pasaría si…?".
+  const pending: PendingMatchInfo[] = apiMatches
+    .filter(
+      (m) => !m.played && (m.phase === "knockout" || m.phase === "third") && m.home !== TBD && m.away !== TBD
+    )
+    .map((m) => ({ key: pairKey(m.home, m.away), home: m.home, away: m.away, round: roundLabel(m.stage) }));
+  const P = pending.length;
+  const outcomesArr = new Int8Array(sims * P).fill(-1);
+  const winnersArr = new Int16Array(sims);
+
   const base: ProbabilityResult = {
     sims,
     teams: [],
+    pending,
+    scenarios: [],
+    scenarioSims: { pending, players: players.map((p) => p.user), simCount: sims, outcomes: outcomesArr, winners: winnersArr },
     users: players.map((p) => ({
       user: p.user,
       winPct: 0, podiumPct: 0, lastPct: 0, meanScore: 0, p10: 0, p90: 0,
@@ -329,6 +419,13 @@ export function computeWinProbabilities(
       if (k < 3) podiumCount[idx]++;
     }
     lastCount[order[n - 1].i]++;
+
+    // Escenarios: desenlace de cada cruce pendiente + ganador de la porra.
+    winnersArr[s] = order[0].i;
+    for (let c = 0; c < P; c++) {
+      const r = bracket.koResults[pending[c].key];
+      if (r) outcomesArr[s * P + c] = r.winner === "home" ? (r.viaPen ? 1 : 0) : (r.viaPen ? 2 : 3);
+    }
   }
 
   // Puntos esperados por equipo (para MVP / lastre).
@@ -379,6 +476,30 @@ export function computeWinProbabilities(
       semiPct: ((semiCount[team] ?? 0) / sims) * 100,
     }))
     .sort((a, b) => b.championPct - a.championPct || b.finalPct - a.finalPct);
+
+  // Escenarios marginales por cruce pendiente (para la sección automática).
+  const leaderIdx = players.findIndex((p) => p.user === base.users[0]?.user);
+  base.scenarios = pending
+    .map((pm, c): MatchScenario => {
+      const cnt = [0, 0, 0, 0];
+      const win = [0, 1, 2, 3].map(() => new Array(n).fill(0));
+      for (let s = 0; s < sims; s++) {
+        const o = outcomesArr[s * P + c];
+        if (o < 0) continue;
+        cnt[o]++;
+        win[o][winnersArr[s]]++;
+      }
+      const outcomes: ScenarioOutcome[] = ([0, 1, 2, 3] as const).map((o) => ({
+        code: o,
+        prob: (cnt[o] / sims) * 100,
+        winPct: win[o].map((w) => (cnt[o] ? (w / cnt[o]) * 100 : 0)),
+      }));
+      const li = leaderIdx >= 0 ? leaderIdx : 0;
+      const vals = outcomes.filter((x) => x.prob > 0).map((x) => x.winPct[li]);
+      const swing = vals.length ? Math.max(...vals) - Math.min(...vals) : 0;
+      return { match: pm, outcomes, swing };
+    })
+    .sort((a, b) => b.swing - a.swing);
 
   return base;
 }

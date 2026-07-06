@@ -8,11 +8,22 @@ import { getStoredUser, clearUser } from "@/lib/auth";
 import { fetchAllMatches, type ApiAllMatch } from "@/lib/football-api";
 import { fetchUsersRest, fetchBetsRest, type BetDoc } from "@/lib/leaderboard";
 import { getGroupId } from "@/lib/group";
-import { computeWinProbabilities, type ProbabilityResult, type UserProbability } from "@/lib/winProbability";
+import { computeWinProbabilities, conditionalWinPct, type ProbabilityResult, type UserProbability, type PendingMatchInfo } from "@/lib/winProbability";
 
 // Formatea un % de forma legible: sin decimales si es alto, 1 decimal si es bajo.
 const pct = (n: number) => (n >= 9.95 ? `${Math.round(n)}%` : n < 0.05 ? "0%" : `${n.toFixed(1)}%`);
 const ordinal = (n: number) => `${n}.º`;
+
+// Etiqueta de un desenlace de cruce (0 local, 1 local pen, 2 visit pen, 3 visit).
+function outcomeLabel(m: PendingMatchInfo, code: number): string {
+  switch (code) {
+    case 0: return `Gana ${m.home}`;
+    case 1: return `${m.home} pasa en penaltis`;
+    case 2: return `${m.away} pasa en penaltis`;
+    case 3: return `Gana ${m.away}`;
+    default: return "";
+  }
+}
 
 // Color de una barra de puesto: del dorado (1.º) al rojo (último).
 function posColor(k: number, total: number): string {
@@ -29,6 +40,8 @@ export default function ProbabilidadesPage() {
   const [calc, setCalc] = useState<"idle" | "running" | "done">("idle");
   const [prob, setProb] = useState<ProbabilityResult | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  // Explorador interactivo: desenlace elegido por cruce (key → code 0..3).
+  const [scenSel, setScenSel] = useState<Record<string, number>>({});
 
   const [apiMatches, setApiMatches] = useState<ApiAllMatch[]>([]);
   const [bets, setBets] = useState<BetDoc[]>([]);
@@ -57,7 +70,7 @@ export default function ProbabilidadesPage() {
     if (loading) return;
     setCalc("running");
     const id = setTimeout(() => {
-      setProb(computeWinProbabilities(apiMatches, bets, users));
+      setProb(computeWinProbabilities(apiMatches, bets, users, 8000));
       setCalc("done");
     }, 40);
     return () => clearTimeout(id);
@@ -71,6 +84,27 @@ export default function ProbabilidadesPage() {
     const sel = selected ?? user ?? "";
     return prob.users.find((u) => u.user.toLowerCase() === sel.toLowerCase()) ?? prob.users[0];
   }, [prob, selected, user]);
+
+  // Aspirantes reales: quienes tienen alguna opción (winPct ≥ 1%). Son las
+  // columnas de las tablas de escenarios. Si casi nadie destaca, top 4.
+  const contenders = useMemo(() => {
+    if (!prob) return [] as UserProbability[];
+    const real = prob.users.filter((u) => u.winPct >= 1);
+    return (real.length >= 2 ? real : prob.users).slice(0, 4);
+  }, [prob]);
+
+  // Índice de cada jugador en el orden de scenarioSims (para leer los winPct).
+  const playerIndex = useMemo(() => {
+    const map: Record<string, number> = {};
+    prob?.scenarioSims.players.forEach((u, i) => (map[u] = i));
+    return map;
+  }, [prob]);
+
+  // Resultado del explorador interactivo según los desenlaces elegidos.
+  const scenResult = useMemo(() => {
+    if (!prob) return null;
+    return conditionalWinPct(prob.scenarioSims, scenSel);
+  }, [prob, scenSel]);
 
   function handleLogout() {
     clearUser();
@@ -178,6 +212,125 @@ export default function ProbabilidadesPage() {
               </table>
             </div>
           </div>
+
+          {/* ── Partidos que deciden la porra (escenarios automáticos) ── */}
+          {prob.scenarios.length > 0 && contenders.length > 0 && (
+            <div className="results-section">
+              <h2 className="results-title">Partidos que deciden la porra</h2>
+              <p className="muted prob-help">
+                Para cada cruce pendiente, cómo cambia la probabilidad de ganar la porra según el desenlace.
+                Pasar por penaltis puntúa como <strong>empate</strong> (sin el bonus de victoria), así que no es lo
+                mismo ganar en los 90'/prórroga que en la tanda. Ordenados por lo decisivos que son.
+              </p>
+              <div className="scen-grid">
+                {prob.scenarios.map((sc) => (
+                  <div key={sc.match.key} className={`scen-card${sc.swing >= 10 ? " scen-card--key" : ""}`}>
+                    <div className="scen-head">
+                      <span className="scen-teams">
+                        <Flag name={sc.match.home} />{sc.match.home}
+                        <span className="scen-vs">vs</span>
+                        {sc.match.away}<Flag name={sc.match.away} />
+                      </span>
+                      <span className="scen-round">{sc.match.round}</span>
+                    </div>
+                    <table className="scen-table">
+                      <thead>
+                        <tr>
+                          <th className="scen-outcome">Desenlace</th>
+                          <th className="scen-p" title="Probabilidad de que ocurra">Prob.</th>
+                          {contenders.map((c) => (
+                            <th key={c.user} className="scen-u">{c.user}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sc.outcomes.map((o) => {
+                          const best = Math.max(...contenders.map((c) => o.winPct[playerIndex[c.user]] ?? 0));
+                          return (
+                            <tr key={o.code} className={o.prob < 1 ? "scen-rare" : ""}>
+                              <td className="scen-outcome">{outcomeLabel(sc.match, o.code)}</td>
+                              <td className="scen-p">{pct(o.prob)}</td>
+                              {contenders.map((c) => {
+                                const v = o.winPct[playerIndex[c.user]] ?? 0;
+                                return (
+                                  <td key={c.user} className={`scen-u${v === best && o.prob >= 1 ? " scen-u-lead" : ""}`}>
+                                    {pct(v)}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Explorador interactivo de escenarios ──────────────── */}
+          {prob.scenarios.length > 0 && contenders.length > 0 && (
+            <div className="results-section">
+              <h2 className="results-title">Explorador de escenarios</h2>
+              <p className="muted prob-help">
+                Elige un desenlace para uno o varios cruces y mira las probabilidades condicionadas a que pase eso.
+              </p>
+              <div className="scen-explorer">
+                <div className="scen-selects">
+                  {prob.pending.map((m) => (
+                    <label key={m.key} className="scen-select">
+                      <span className="scen-select-lbl">
+                        <Flag name={m.home} />{m.home} <span className="scen-vs">vs</span> {m.away}<Flag name={m.away} />
+                      </span>
+                      <select
+                        value={scenSel[m.key] ?? ""}
+                        onChange={(e) =>
+                          setScenSel((prev) => {
+                            const next = { ...prev };
+                            if (e.target.value === "") delete next[m.key];
+                            else next[m.key] = Number(e.target.value);
+                            return next;
+                          })
+                        }
+                      >
+                        <option value="">Cualquiera</option>
+                        <option value="0">Gana {m.home}</option>
+                        <option value="1">{m.home} por penaltis</option>
+                        <option value="2">{m.away} por penaltis</option>
+                        <option value="3">Gana {m.away}</option>
+                      </select>
+                    </label>
+                  ))}
+                </div>
+                <div className="scen-out">
+                  {Object.keys(scenSel).length === 0 ? (
+                    <p className="muted">Sin condiciones aún: esto es la probabilidad base. Elige algún desenlace.</p>
+                  ) : scenResult && scenResult.sample < 40 ? (
+                    <p className="muted scen-warn">Solo {scenResult.sample} simulaciones cumplen esa combinación → resultado poco fiable.</p>
+                  ) : null}
+                  {scenResult && (
+                    <table className="scen-cond-table">
+                      <tbody>
+                        {contenders.map((c) => (
+                          <tr key={c.user} className={c.user.toLowerCase() === uid ? "row-me" : ""}>
+                            <td className="scen-cond-name">{c.user}{c.user.toLowerCase() === uid ? " (tú)" : ""}</td>
+                            <td className="scen-cond-val">{pct(scenResult.pct[playerIndex[c.user]] ?? 0)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                  {Object.keys(scenSel).length > 0 && scenResult && (
+                    <div className="scen-actions">
+                      <span className="muted">{scenResult.sample.toLocaleString("es-ES")} de {prob.sims.toLocaleString("es-ES")} simulaciones</span>
+                      <button className="mini-action" onClick={() => setScenSel({})}>Limpiar</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── Ficha detallada del participante en foco ──────────── */}
           {focus && (
