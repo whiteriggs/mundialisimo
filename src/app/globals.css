@@ -2699,6 +2699,89 @@ a {
   align-items: start;
 }
 
+/* ─── Cierre de temporada (campeón / podio / farolillo) ───────── */
+.closing {
+  max-width: 1100px;
+  margin: 1.5rem auto 0;
+  padding: 1.75rem 1.5rem 2rem;
+  text-align: center;
+  background:
+    radial-gradient(120% 120% at 50% -10%, rgba(212, 175, 55, 0.16), transparent 60%),
+    rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--gold);
+}
+.closing-inner { max-width: 640px; margin: 0 auto; }
+.closing-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+  margin: 0 0 4px;
+}
+.closing-title { margin: 0 0 6px; font-size: 1.5rem; }
+.closing-champ {
+  margin: 0 0 1.25rem;
+  font-size: 1.7rem;
+  font-weight: 900;
+  color: var(--gold);
+}
+.closing-champ-pts {
+  margin-left: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.closing-podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 auto 1.25rem;
+  max-width: 420px;
+}
+.podium-spot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+}
+.podium-medal { font-size: 1.6rem; line-height: 1; }
+.podium-name { font-weight: 800; font-size: 0.95rem; }
+.podium-pts { font-size: 0.78rem; color: var(--text-dim); }
+.podium-bar {
+  width: 100%;
+  margin-top: 4px;
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 6px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: #10161d;
+}
+.podium-1 .podium-bar { height: 78px; background: linear-gradient(180deg, #f4d03f, #d4af37); }
+.podium-2 .podium-bar { height: 56px; background: linear-gradient(180deg, #d8dbe0, #aab0b8); }
+.podium-3 .podium-bar { height: 40px; background: linear-gradient(180deg, #d8a15a, #b87333); }
+.closing-lantern {
+  margin: 0 0 1.25rem;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+.closing-lantern-pts { color: var(--text-dim); }
+.closing-bye {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+@media (max-width: 720px) {
+  .closing { margin-top: 1rem; padding: 1.25rem 1rem 1.5rem; }
+  .closing-champ { font-size: 1.4rem; }
+  .closing-podium { max-width: 320px; }
+}
+
 .home-left {
   display: flex;
   flex-direction: column;

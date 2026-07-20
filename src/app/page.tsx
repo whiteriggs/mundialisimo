@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import NavBar from "@/components/NavBar";
 import UfwcChampion from "@/components/UfwcChampion";
 import NextMatchCountdown from "@/components/NextMatchCountdown";
+import SeasonClosing from "@/components/SeasonClosing";
 import {
   getUsers,
   hasUserPassword,
@@ -131,6 +132,8 @@ export default function Home() {
         </div>
         {alreadyIn && <NavBar user={alreadyIn} />}
       </header>
+
+      <SeasonClosing group={group} />
 
       <div className="home-layout">
         {/* ── Left: hero + rules ─────────────────────────────── */}
